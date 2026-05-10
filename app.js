@@ -825,27 +825,59 @@ function renderDashboard() {
     </div>
   `).join('');
 
-  /* ── All entries for this month (date-grouped) ── */
-  const byDate = {};
-  [...expenses].sort((a,b) => b.date.localeCompare(a.date)).forEach(e => {
-    if (!byDate[e.date]) byDate[e.date] = [];
-    byDate[e.date].push(e);
+  /* ── All entries for this month — grouped by category, collapsible ── */
+  const byCat = {};
+  expenses.forEach(e => {
+    if (!byCat[e.category]) byCat[e.category] = [];
+    byCat[e.category].push(e);
   });
-  const dates = Object.keys(byDate);
-  document.getElementById('dash-entries').innerHTML = dates.length === 0
+  /* Sort entries inside each category by date desc */
+  Object.keys(byCat).forEach(k => {
+    byCat[k].sort((a, b) => b.date.localeCompare(a.date) || b.rowIndex - a.rowIndex);
+  });
+  /* Sort categories by total spend desc so biggest spenders appear first */
+  const catKeys = Object.keys(byCat).sort((a, b) => {
+    const ta = byCat[a].reduce((s, e) => s + e.amount, 0);
+    const tb = byCat[b].reduce((s, e) => s + e.amount, 0);
+    return tb - ta;
+  });
+
+  /* Preserve which categories the user expanded across re-renders */
+  if (!window.expandedCatGroups) window.expandedCatGroups = new Set();
+
+  document.getElementById('dash-entries').innerHTML = catKeys.length === 0
     ? `<div class="empty-state"><div class="empty-icon">📭</div><p>No entries for ${monthLabel(viewMonth)}.<br/>Tap <strong>Add</strong> to record one.</p></div>`
-    : dates.map(date => {
-        const rows     = byDate[date];
-        const dayTotal = rows.reduce((s,e) => s + e.amount, 0);
+    : catKeys.map(catKey => {
+        const rows  = byCat[catKey];
+        const cat   = CAT_MAP[catKey] || { icon: '📦', label: catKey, color: '#78909C' };
+        const ctot  = rows.reduce((s, e) => s + e.amount, 0);
+        const count = rows.length;
+        const open  = window.expandedCatGroups.has(catKey) ? 'expanded' : '';
         return `
-          <div class="month-group">
-            <div class="month-group-header">
-              <span>${fmtDate(date)}</span>
-              <span class="month-group-total">${fmt(dayTotal)}</span>
+          <div class="cat-group ${open}" data-cat="${catKey}">
+            <button class="cat-group-header" onclick="toggleCatGroup('${catKey.replace(/'/g, "\\'")}')">
+              <div class="cat-group-icon" style="background:${cat.color}22;">${cat.icon}</div>
+              <div class="cat-group-info">
+                <div class="cat-group-name">${cat.label}</div>
+                <div class="cat-group-meta">${count} ${count === 1 ? 'entry' : 'entries'}</div>
+              </div>
+              <div class="cat-group-total">${fmt(ctot)}</div>
+              <div class="cat-group-chevron">▾</div>
+            </button>
+            <div class="cat-group-body">
+              ${rows.map(e => expenseRowHTML(e, false)).join('')}
             </div>
-            ${rows.map(e => expenseRowHTML(e, true)).join('')}
           </div>`;
       }).join('');
+}
+
+function toggleCatGroup(catKey) {
+  if (!window.expandedCatGroups) window.expandedCatGroups = new Set();
+  const el = document.querySelector(`.cat-group[data-cat="${CSS.escape(catKey)}"]`);
+  if (!el) return;
+  const isExpanded = el.classList.toggle('expanded');
+  if (isExpanded) window.expandedCatGroups.add(catKey);
+  else            window.expandedCatGroups.delete(catKey);
 }
 
 function buildInsights(expenses, total, dailyAvg, topCat, topCatEntry, prevTotal, momPct) {
@@ -994,8 +1026,10 @@ function changeMonth(delta) {
 /* ═══════════════════════════════════════════════════════════
    VOICE ENTRY ENGINE
    ═══════════════════════════════════════════════════════════ */
-let recognition = null;
-let voiceParsed = null;
+let recognition  = null;
+let voiceParsed  = null;
+let voiceStarting = false;   /* guard against double-tap */
+let voiceAborted  = false;   /* set when error fires so onend skips processing */
 
 /* Keyword map — covers common Indian English phrases */
 const VOICE_KEYWORDS = {
@@ -1155,15 +1189,25 @@ function parseVoiceCommand(text) {
   const amountMatch = cleaned.match(/\b(\d+(?:\.\d+)?)\b/);
   const amount = amountMatch ? parseFloat(amountMatch[1]) : null;
 
-  /* ── Category: keyword match (built-in first, then custom) ── */
-  let category = null;
-  for (const [cat, keywords] of Object.entries(VOICE_KEYWORDS)) {
-    if (keywords.some(kw => cleaned.includes(kw))) { category = cat; break; }
+  /* ── Category: longest-match wins so multi-word custom labels
+        (e.g. "Outside Food") beat shorter built-in keywords (e.g. "food") ── */
+  const candidates = [];
+  /* Custom categories — match against the full label */
+  for (const c of customCategories) {
+    candidates.push({ key: c.key, term: c.label.toLowerCase() });
   }
-  if (!category) {
-    for (const c of customCategories) {
-      if (cleaned.includes(c.label.toLowerCase())) { category = c.key; break; }
-    }
+  /* Built-in keywords */
+  for (const [cat, keywords] of Object.entries(VOICE_KEYWORDS)) {
+    for (const kw of keywords) candidates.push({ key: cat, term: kw });
+  }
+  /* Word-boundary match, sorted by term length descending */
+  candidates.sort((a, b) => b.term.length - a.term.length);
+
+  let category = null;
+  for (const c of candidates) {
+    /* Use word-boundary regex so "food" doesn't match inside "seafood" */
+    const re = new RegExp(`\\b${c.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+    if (re.test(cleaned)) { category = c.key; break; }
   }
 
   return { amount, category, date };
@@ -1175,38 +1219,98 @@ function startVoice() {
     showToast('Voice not supported — try Safari on iPhone', true);
     return;
   }
-  recognition = new SpeechRec();
-  recognition.lang           = 'en-IN';
-  recognition.continuous     = false;
-  recognition.interimResults = true;
+  /* Guard against rapid double-tap: ignore until we're past start handshake */
+  if (voiceStarting) return;
+  voiceStarting = true;
+  voiceAborted  = false;
 
-  document.getElementById('voice-idle').style.display      = 'none';
-  document.getElementById('voice-listening').style.display = 'flex';
-  document.getElementById('voice-transcript-text').textContent = 'Listening…';
+  /* Tear down any prior recognition cleanly to avoid the race that produces
+     spurious "aborted" errors when start() is called while another instance
+     is still alive. */
+  if (recognition) {
+    try {
+      recognition.onend = null;
+      recognition.onerror = null;
+      recognition.onresult = null;
+      recognition.abort();
+    } catch (_) { /* noop */ }
+    recognition = null;
+  }
 
-  recognition.onresult = e => {
-    const t = Array.from(e.results).map(r => r[0].transcript).join('');
-    document.getElementById('voice-transcript-text').textContent = t || 'Listening…';
-  };
+  /* Tiny delay lets the browser fully release the mic from the previous
+     session — important on iOS Safari where back-to-back start() throws. */
+  setTimeout(() => {
+    let r;
+    try {
+      r = new SpeechRec();
+      r.lang           = 'en-IN';
+      r.continuous     = false;
+      r.interimResults = true;
+    } catch (err) {
+      voiceStarting = false;
+      showToast('Mic init failed — try again', true);
+      console.error(err);
+      return;
+    }
 
-  recognition.onend = () => {
-    const text = document.getElementById('voice-transcript-text').textContent.trim();
-    document.getElementById('voice-idle').style.display      = 'flex';
-    document.getElementById('voice-listening').style.display = 'none';
-    if (text && text !== 'Listening…') handleVoiceResult(text);
-  };
+    document.getElementById('voice-idle').style.display      = 'none';
+    document.getElementById('voice-listening').style.display = 'flex';
+    document.getElementById('voice-transcript-text').textContent = 'Listening…';
 
-  recognition.onerror = e => {
-    document.getElementById('voice-idle').style.display      = 'flex';
-    document.getElementById('voice-listening').style.display = 'none';
-    if (e.error !== 'no-speech') showToast('Mic error: ' + e.error, true);
-  };
+    r.onresult = e => {
+      const t = Array.from(e.results).map(res => res[0].transcript).join('');
+      document.getElementById('voice-transcript-text').textContent = t || 'Listening…';
+    };
 
-  recognition.start();
+    r.onend = () => {
+      document.getElementById('voice-idle').style.display      = 'flex';
+      document.getElementById('voice-listening').style.display = 'none';
+      const text = document.getElementById('voice-transcript-text').textContent.trim();
+      recognition = null;
+      voiceStarting = false;
+      /* Skip processing if we were aborted (error path) */
+      if (voiceAborted) { voiceAborted = false; return; }
+      if (text && text !== 'Listening…') handleVoiceResult(text);
+    };
+
+    r.onerror = e => {
+      voiceAborted = true;
+      document.getElementById('voice-idle').style.display      = 'flex';
+      document.getElementById('voice-listening').style.display = 'none';
+      /* Suppress noisy benign errors:
+         - 'aborted'   = user re-tapped mic / system race
+         - 'no-speech' = silence; nothing to do */
+      if (e.error === 'aborted' || e.error === 'no-speech') return;
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+        showToast('Mic permission blocked — enable it in browser settings', true);
+      } else if (e.error === 'network') {
+        showToast('Mic needs internet — check your connection', true);
+      } else if (e.error === 'audio-capture') {
+        showToast('No mic detected', true);
+      } else {
+        showToast('Mic error: ' + e.error, true);
+      }
+    };
+
+    try {
+      r.start();
+      recognition = r;
+    } catch (err) {
+      /* "InvalidStateError: recognition already started" — usually a stuck
+         state from a prior crash. Reset and let user retry. */
+      voiceStarting = false;
+      document.getElementById('voice-idle').style.display      = 'flex';
+      document.getElementById('voice-listening').style.display = 'none';
+      console.error('Mic start failed:', err);
+      showToast('Mic busy — tap again in a moment', true);
+    }
+  }, 120);
 }
 
 function stopVoice() {
-  if (recognition) { recognition.stop(); recognition = null; }
+  if (recognition) {
+    try { recognition.stop(); } catch (_) { /* noop */ }
+  }
 }
 
 function handleVoiceResult(transcript) {
