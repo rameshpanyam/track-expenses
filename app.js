@@ -139,9 +139,20 @@ async function sheetsRequest(method, path, body) {
 
 /* ── Find / create the spreadsheet ────────────────────────── */
 async function initSpreadsheet() {
-  /* 1️⃣  Try localStorage ID */
+  /* 1️⃣  Try localStorage ID — but first verify it isn't trashed/deleted */
   if (spreadsheetId) {
     try {
+      /* Drive check: 404 = permanently deleted, trashed = in Trash bin.
+         Both mean we must start fresh. */
+      const driveResp = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${spreadsheetId}?fields=id,trashed`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      if (!driveResp.ok) throw new Error(`Drive file not found (HTTP ${driveResp.status})`);
+      const driveInfo = await driveResp.json();
+      if (driveInfo.trashed) throw new Error('Sheet has been moved to Trash');
+
+      /* File exists and is not trashed — load its tabs */
       const meta = await sheetsRequest('GET', `/${spreadsheetId}?fields=spreadsheetId,sheets.properties`);
       const tab  = meta.sheets.find(s => s.properties.title === TAB_NAME);
       if (tab) {
@@ -158,17 +169,19 @@ async function initSpreadsheet() {
       await writeHeaders();
       return;
     } catch (e) {
-      console.warn('Stored sheet ID unusable, searching Drive:', e.message);
+      console.warn('Stored sheet unusable — will search Drive or create new:', e.message);
       spreadsheetId = null; sheetGid = -1;
       localStorage.removeItem('expenseSheetId');
       localStorage.removeItem('expenseSheetGid');
     }
   }
 
-  /* 2️⃣  Search Drive for existing sheet (handles localStorage cleared) */
+  /* 2️⃣  Search Drive for an existing non-trashed sheet by name */
   try {
-    const q   = encodeURIComponent(`name="${SPREADSHEET_NAME}" and mimeType="application/vnd.google-apps.spreadsheet" and trashed=false`);
-    const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, {
+    const q   = encodeURIComponent(
+      `name="${SPREADSHEET_NAME}" and mimeType="application/vnd.google-apps.spreadsheet" and trashed=false`
+    );
+    const res  = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
     const data = await res.json();
@@ -185,7 +198,7 @@ async function initSpreadsheet() {
     }
   } catch (e) { console.warn('Drive search failed:', e.message); }
 
-  /* 3️⃣  Create brand-new spreadsheet */
+  /* 3️⃣  Nothing found — create a brand-new spreadsheet */
   const created = await sheetsRequest('POST', '', {
     properties: { title: SPREADSHEET_NAME },
     sheets:     [{ properties: { title: TAB_NAME } }],
