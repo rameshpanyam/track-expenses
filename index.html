@@ -3,30 +3,37 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#0f0f13" />
+  <meta name="theme-color" content="#F5F4EF" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Expenses" />
-  <meta name="description" content="Track monthly expenses — synced to Google Sheets." />
+  <meta name="description" content="Track expenses — synced to Google Sheets, beautiful dashboard." />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
   <link rel="manifest" href="manifest.json" />
+
+  <!-- IBM Plex Sans font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
   <title>Expense Tracker</title>
   <link rel="stylesheet" href="style.css" />
+
+  <!-- Chart.js for the Dashboard -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 
   <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════
-     LOGIN SCREEN (shown until signed in)
-══════════════════════════════════════════ -->
+<!-- ── Login Screen ── -->
 <div id="login-screen">
   <div class="login-card">
     <div class="login-logo">💸</div>
     <h1 class="login-title">Track Expenses</h1>
-    <p class="login-sub">Sign in with Google to save your expenses directly to <strong>Google Sheets</strong> — your data is always safe, always yours.</p>
+    <p class="login-sub">Sign in with Google to save every rupee directly to <strong>Google Sheets</strong> — always safe, always yours.</p>
     <button class="google-btn" id="signin-btn" onclick="signIn()">
       <svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -36,24 +43,20 @@
       </svg>
       Sign in with Google
     </button>
-    <p class="login-note">Your data goes to a sheet called <strong>"Track Expenses"</strong> in your Google Drive. Nothing is stored on any server.</p>
+    <p class="login-note">A sheet called <strong>"Track Expenses"</strong> is created in your Google Drive. Nothing stored on any server.</p>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     LOADING OVERLAY
-══════════════════════════════════════════ -->
+<!-- ── Loading Overlay ── -->
 <div id="loading-overlay" style="display:none;">
   <div class="spinner"></div>
   <div id="loading-msg">Loading…</div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     MAIN APP (hidden until signed in)
-══════════════════════════════════════════ -->
-<div id="app" style="display:none;">
+<!-- ── Main App ── -->
+<div id="app" style="display:none; flex-direction:column; height:100dvh;">
 
-  <!-- ── Header ── -->
+  <!-- Header -->
   <header class="app-header">
     <span class="app-title">💸 Expenses</span>
     <div class="header-month">
@@ -61,11 +64,12 @@
       <span id="header-month-label">Today</span>
       <button id="month-next" style="visibility:hidden">›</button>
     </div>
-    <button class="signout-btn" onclick="signOut()" title="Sign out">⏻</button>
+    <button class="signout-btn" onclick="signOut()">Sign out</button>
   </header>
 
-  <!-- ── View: Add Expense ── -->
+  <!-- ── Add View ── -->
   <div id="view-add" class="view active">
+    <p class="add-view-greeting">How much did you spend?</p>
 
     <div class="amount-input-wrap">
       <span class="amount-currency">₹</span>
@@ -77,7 +81,7 @@
     <div id="cat-grid" class="cat-grid"></div>
 
     <input id="note-input" class="note-input" type="text"
-           placeholder="Note (optional) — e.g. Big Bazaar" autocomplete="off" />
+           placeholder="Note (optional) — e.g. Big Bazaar, Swiggy…" autocomplete="off" />
 
     <div class="date-row">
       <label for="date-input">Date</label>
@@ -85,40 +89,111 @@
     </div>
 
     <button class="add-btn" onclick="saveExpense()" disabled>+ Add Expense</button>
-    <div id="today-total" style="display:none; text-align:center; margin-top:14px; font-size:.82rem; color:var(--muted);"></div>
+    <div id="today-total"></div>
   </div>
 
-  <!-- ── View: Summary ── -->
+  <!-- ── Summary View ── -->
   <div id="view-summary" class="view">
-    <div class="summary-total-card">
-      <div>
-        <div class="summary-total-label">Total spent</div>
-        <div class="summary-total-amount" id="summary-total-amount">₹0</div>
-      </div>
-      <div class="summary-total-right">
-        <div class="summary-total-count" id="summary-total-count">0 expenses</div>
-      </div>
+    <!-- Hero -->
+    <div class="summary-hero">
+      <div class="summary-hero-label">Total spent</div>
+      <div class="summary-hero-amount" id="summary-total-amount">₹0</div>
+      <div class="summary-hero-meta" id="summary-total-count">0 expenses</div>
     </div>
+
+    <!-- Quick stats -->
+    <div class="stat-row" id="summary-stat-row"></div>
+
+    <!-- By category -->
     <p class="section-label">By category</p>
     <div id="cat-summary-list" class="cat-summary-list"></div>
-    <p class="section-label mt16">All expenses</p>
+
+    <!-- All entries -->
+    <p class="section-label mt16">All entries</p>
     <div id="summary-expense-list" class="expense-list"></div>
     <div style="height:16px;"></div>
   </div>
 
-  <!-- ── View: History ── -->
+  <!-- ── Dashboard View ── -->
+  <div id="view-dashboard" class="view">
+
+    <!-- Hero spend card -->
+    <div class="dash-hero" id="dash-hero">
+      <div class="dash-hero-month" id="dash-hero-month">May 2026</div>
+      <div class="dash-hero-amount" id="dash-hero-amount">₹0</div>
+      <div class="dash-hero-sub" id="dash-hero-sub">No expenses yet</div>
+      <div class="dash-hero-badge flat" id="dash-mom-badge">— vs last month</div>
+    </div>
+
+    <!-- 3 stat pills -->
+    <div class="dash-pills" id="dash-pills">
+      <div class="dash-pill">
+        <div class="dash-pill-icon">📅</div>
+        <div class="dash-pill-value" id="pill-daily">₹0</div>
+        <div class="dash-pill-label">Daily avg</div>
+      </div>
+      <div class="dash-pill">
+        <div class="dash-pill-icon">🏆</div>
+        <div class="dash-pill-value" id="pill-topcat">—</div>
+        <div class="dash-pill-label">Top category</div>
+      </div>
+      <div class="dash-pill">
+        <div class="dash-pill-icon">📝</div>
+        <div class="dash-pill-value" id="pill-entries">0</div>
+        <div class="dash-pill-label">Entries</div>
+      </div>
+    </div>
+
+    <!-- Monthly trend chart -->
+    <p class="dash-section-title">6-month spending trend</p>
+    <div class="chart-card">
+      <div class="chart-card-title">Monthly Spending</div>
+      <div class="chart-card-sub" id="bar-chart-sub">Last 6 months at a glance</div>
+      <div class="chart-wrap" style="height:180px;">
+        <canvas id="monthlyBarChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Category donut chart -->
+    <p class="dash-section-title">Where your money went</p>
+    <div class="chart-card">
+      <div class="chart-card-title">Category Breakdown</div>
+      <div class="chart-card-sub" id="donut-chart-sub">This month</div>
+      <div class="donut-layout">
+        <div class="donut-wrap">
+          <canvas id="categoryDonutChart" width="130" height="130"></canvas>
+          <div class="donut-center">
+            <div class="donut-center-value" id="donut-center-val">₹0</div>
+            <div class="donut-center-label">total</div>
+          </div>
+        </div>
+        <div class="donut-legend" id="donut-legend"></div>
+      </div>
+    </div>
+
+    <!-- Smart financial insights -->
+    <p class="dash-section-title">Financial insights</p>
+    <div class="insights-list" id="insights-list"></div>
+
+    <div style="height:16px;"></div>
+  </div>
+
+  <!-- ── History View ── -->
   <div id="view-history" class="view">
     <div id="history-list"></div>
     <div style="height:16px;"></div>
   </div>
 
-  <!-- ── Bottom nav ── -->
+  <!-- Bottom nav (4 tabs) -->
   <nav class="bottom-nav">
     <button id="nav-add" class="nav-btn active" onclick="switchView('add')">
       <span class="nav-icon">➕</span><span>Add</span>
     </button>
     <button id="nav-summary" class="nav-btn" onclick="switchView('summary')">
-      <span class="nav-icon">📊</span><span>Summary</span>
+      <span class="nav-icon">📋</span><span>Summary</span>
+    </button>
+    <button id="nav-dashboard" class="nav-btn" onclick="switchView('dashboard')">
+      <span class="nav-icon">📊</span><span>Dashboard</span>
     </button>
     <button id="nav-history" class="nav-btn" onclick="switchView('history')">
       <span class="nav-icon">🗓️</span><span>History</span>
@@ -130,7 +205,7 @@
 <!-- Toast -->
 <div id="toast" class="toast"></div>
 
-<!-- Delete confirm modal (native confirm() is blocked in iOS PWA mode) -->
+<!-- Delete confirm modal -->
 <div id="confirm-modal" class="confirm-modal" style="display:none;">
   <div class="confirm-box">
     <p class="confirm-msg">Delete this expense?</p>

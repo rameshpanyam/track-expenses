@@ -1,105 +1,118 @@
 /* ═══════════════════════════════════════════════════════════
-   EXPENSE TRACKER — Google Sheets backend + Google Sign-In
-   ═══════════════════════════════════════════════════════════
-
-   ⚠️  SETUP REQUIRED — replace the line below with your
-       Google OAuth Client ID (see README for instructions).
+   EXPENSE TRACKER — Google Sheets + Financial Dashboard
    ═══════════════════════════════════════════════════════════ */
 const CLIENT_ID = '1093636568303-n89biq36ui8as34r9dblglcd91o44crq.apps.googleusercontent.com';
 
-/* ── Google Sheets config ──────────────────────────────────── */
-// drive.file lets us search Drive for our existing sheet by name (fallback when localStorage is cleared)
+/* ── Sheets config ─────────────────────────────────────────── */
 const SCOPES           = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
 const SPREADSHEET_NAME = 'Track Expenses';
 const TAB_NAME         = 'Expenses';
 const HEADERS          = ['Date', 'Category', 'Amount', 'Note', 'CreatedAt'];
 
-/* ── Categories (matching your Excel) ─────────────────────── */
+/* ── Categories ────────────────────────────────────────────── */
 const CATEGORIES = [
-  { key: 'food',      icon: '🍽️',  label: 'Food'     },
-  { key: 'grocery',   icon: '🛒',  label: 'Grocery'  },
-  { key: 'market',    icon: '🥦',  label: 'Market'   },
-  { key: 'medicine',  icon: '💊',  label: 'Medicine' },
-  { key: 'petrol',    icon: '⛽',  label: 'Petrol'   },
-  { key: 'recharge',  icon: '📱',  label: 'Recharge' },
-  { key: 'water',     icon: '💧',  label: 'Water'    },
-  { key: 'gifts',     icon: '🎁',  label: 'Gifts'    },
-  { key: 'other',     icon: '📦',  label: 'Other'    },
+  { key: 'food',     icon: '🍽️', label: 'Food',     color: '#FF6B6B' },
+  { key: 'grocery',  icon: '🛒', label: 'Grocery',  color: '#26C6DA' },
+  { key: 'market',   icon: '🥦', label: 'Market',   color: '#66BB6A' },
+  { key: 'medicine', icon: '💊', label: 'Medicine', color: '#AB47BC' },
+  { key: 'petrol',   icon: '⛽', label: 'Petrol',   color: '#FFA726' },
+  { key: 'recharge', icon: '📱', label: 'Recharge', color: '#7C5CFC' },
+  { key: 'water',    icon: '💧', label: 'Water',    color: '#42A5F5' },
+  { key: 'gifts',    icon: '🎁', label: 'Gifts',    color: '#EC407A' },
+  { key: 'other',    icon: '📦', label: 'Other',    color: '#78909C' },
 ];
 const CAT_MAP = Object.fromEntries(CATEGORIES.map(c => [c.key, c]));
 
-/* ── App state ─────────────────────────────────────────────── */
+/* ── State ─────────────────────────────────────────────────── */
 let tokenClient   = null;
 let accessToken   = null;
 let tokenExpiry   = 0;
-
-// Spreadsheet IDs saved to localStorage so we don't recreate each session
 let spreadsheetId = localStorage.getItem('expenseSheetId') || null;
 let sheetGid      = Number(localStorage.getItem('expenseSheetGid') ?? -1);
-
-let allExpenses   = [];   // { rowIndex, date, category, amount, note, createdAt }
+let allExpenses   = [];
 let currentView   = 'add';
 let selectedCat   = null;
-let viewMonth     = new Date();
-viewMonth.setDate(1);
-
-/* ── Pending delete confirmation ───────────────────────────── */
+let viewMonth     = new Date(); viewMonth.setDate(1);
 let pendingDeleteRow = null;
+
+/* Chart instances — must destroy before recreating */
+let barChart    = null;
+let donutChart  = null;
 
 /* ═══════════════════════════════════════════════════════════
    HELPERS
    ═══════════════════════════════════════════════════════════ */
-function fmt(amount) {
-  return '₹' + Number(amount).toLocaleString('en-IN', { maximumFractionDigits: 0 });
-}
+const fmt = amount =>
+  '₹' + Number(amount).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+
 function fmtDate(dateStr) {
-  const [y, m, d] = dateStr.split('-');
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return `${parseInt(d)} ${months[parseInt(m) - 1]}`;
+  if (!dateStr) return '';
+  const [, m, d] = dateStr.split('-');
+  return `${parseInt(d)} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(m)-1]}`;
 }
+
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
+
 function monthLabel(date) {
   return date.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+}
+
+function monthShort(date) {
+  return date.toLocaleDateString('en-IN', { month: 'short' });
+}
+
+function daysElapsedInMonth(date) {
+  const now   = new Date();
+  const isNow = date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+  return isNow
+    ? now.getDate()
+    : new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+}
+
+function expensesForMonth(date) {
+  const y = date.getFullYear(), m = date.getMonth() + 1;
+  return allExpenses.filter(e => {
+    if (!e.date) return false;
+    const [ey, em] = e.date.split('-').map(Number);
+    return ey === y && em === m;
+  });
 }
 
 /* ── Toast ─────────────────────────────────────────────────── */
 function showToast(msg, isError = false) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.style.background = isError ? 'var(--red)' : 'var(--green)';
+  t.textContent  = msg;
+  t.style.background = isError ? 'var(--red)' : 'var(--dark-card)';
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
 }
 
-/* ── Loading overlay ───────────────────────────────────────── */
-function setLoading(msg) {
+/* ── Loading ───────────────────────────────────────────────── */
+function setLoading(msg)  {
   document.getElementById('loading-msg').textContent = msg || 'Loading…';
   document.getElementById('loading-overlay').style.display = 'flex';
 }
-function clearLoading() {
-  document.getElementById('loading-overlay').style.display = 'none';
+function clearLoading()   { document.getElementById('loading-overlay').style.display = 'none'; }
+
+/* ── Category badge background ─────────────────────────────── */
+function catBg(cat) {
+  const c = CAT_MAP[cat];
+  return c ? c.color + '22' : '#78909C22';
 }
 
 /* ═══════════════════════════════════════════════════════════
    GOOGLE SHEETS API
    ═══════════════════════════════════════════════════════════ */
 async function sheetsRequest(method, path, body) {
-  const url = path.startsWith('https')
-    ? path
-    : `https://sheets.googleapis.com/v4/spreadsheets${path}`;
-
-  const r = await fetch(url, {
+  const url = path.startsWith('https') ? path : `https://sheets.googleapis.com/v4/spreadsheets${path}`;
+  const r   = await fetch(url, {
     method,
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type':  'application/json',
-    },
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined,
   });
-
   if (!r.ok) {
     const err = await r.json().catch(() => ({}));
     throw new Error(err.error?.message || `Sheets API ${method} → HTTP ${r.status}`);
@@ -107,45 +120,42 @@ async function sheetsRequest(method, path, body) {
   return r.json();
 }
 
-/* ── Find or create the spreadsheet ───────────────────────── */
+/* ── Find / create the spreadsheet ────────────────────────── */
 async function initSpreadsheet() {
-  // 1️⃣ Try the spreadsheet ID stored in localStorage
+  /* 1️⃣  Try localStorage ID */
   if (spreadsheetId) {
     try {
       const meta = await sheetsRequest('GET', `/${spreadsheetId}?fields=spreadsheetId,sheets.properties`);
-      spreadsheetId = meta.spreadsheetId;
-      const tab = meta.sheets.find(s => s.properties.title === TAB_NAME);
+      const tab  = meta.sheets.find(s => s.properties.title === TAB_NAME);
       if (tab) {
         sheetGid = tab.properties.sheetId;
         localStorage.setItem('expenseSheetGid', sheetGid);
-        return; // ✅ found it — done
+        return;
       }
-      // Spreadsheet exists but tab is missing — add it
-      const addResp = await sheetsRequest('POST', `/${spreadsheetId}:batchUpdate`, {
+      // Tab missing — add it
+      const res = await sheetsRequest('POST', `/${spreadsheetId}:batchUpdate`, {
         requests: [{ addSheet: { properties: { title: TAB_NAME } } }]
       });
-      sheetGid = addResp.replies[0].addSheet.properties.sheetId;
+      sheetGid = res.replies[0].addSheet.properties.sheetId;
       localStorage.setItem('expenseSheetGid', sheetGid);
       await writeHeaders();
       return;
     } catch (e) {
-      console.warn('Stored sheet ID not usable, will search Drive:', e.message);
-      spreadsheetId = null;
-      sheetGid      = -1;
+      console.warn('Stored sheet ID unusable, searching Drive:', e.message);
+      spreadsheetId = null; sheetGid = -1;
       localStorage.removeItem('expenseSheetId');
       localStorage.removeItem('expenseSheetGid');
     }
   }
 
-  // 2️⃣ localStorage was cleared — search Google Drive for existing "Track Expenses" sheet
+  /* 2️⃣  Search Drive for existing sheet (handles localStorage cleared) */
   try {
     const q   = encodeURIComponent(`name="${SPREADSHEET_NAME}" and mimeType="application/vnd.google-apps.spreadsheet" and trashed=false`);
     const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
     const data = await res.json();
-    if (data.files && data.files.length > 0) {
-      // Found the existing sheet — load it
+    if (data.files?.length) {
       spreadsheetId = data.files[0].id;
       localStorage.setItem('expenseSheetId', spreadsheetId);
       const meta = await sheetsRequest('GET', `/${spreadsheetId}?fields=sheets.properties`);
@@ -153,14 +163,12 @@ async function initSpreadsheet() {
       if (tab) {
         sheetGid = tab.properties.sheetId;
         localStorage.setItem('expenseSheetGid', sheetGid);
-        return; // ✅ recovered from Drive search — done
+        return;
       }
     }
-  } catch (e) {
-    console.warn('Drive search failed, will create new sheet:', e.message);
-  }
+  } catch (e) { console.warn('Drive search failed:', e.message); }
 
-  // 3️⃣ Nothing found anywhere — create a brand-new spreadsheet
+  /* 3️⃣  Create brand-new spreadsheet */
   const created = await sheetsRequest('POST', '', {
     properties: { title: SPREADSHEET_NAME },
     sheets:     [{ properties: { title: TAB_NAME } }],
@@ -175,19 +183,15 @@ async function initSpreadsheet() {
 async function writeHeaders() {
   await sheetsRequest('POST',
     `/${spreadsheetId}/values/${TAB_NAME}!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
-    { values: [HEADERS] }
-  );
+    { values: [HEADERS] });
 }
 
-/* ── Load all expenses ─────────────────────────────────────── */
 async function loadExpenses() {
   const data = await sheetsRequest('GET', `/${spreadsheetId}/values/${TAB_NAME}!A:E`);
   const rows = data.values || [];
-  // Row 1 is the header; data starts at row 2 (rowIndex 2 = 0-based index 1 in Sheets)
-  allExpenses = rows
-    .slice(1)
+  allExpenses = rows.slice(1)
     .map((row, i) => ({
-      rowIndex:  i + 2,                   // 1-based sheet row (header is row 1)
+      rowIndex:  i + 2,
       date:      row[0] || '',
       category:  row[1] || '',
       amount:    parseFloat(row[2]) || 0,
@@ -197,48 +201,36 @@ async function loadExpenses() {
     .filter(e => e.date && e.amount > 0);
 }
 
-/* ── Append a new expense row ──────────────────────────────── */
-async function appendExpenseRow(expense) {
+async function appendExpenseRow(exp) {
   await sheetsRequest('POST',
     `/${spreadsheetId}/values/${TAB_NAME}!A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
-    { values: [[expense.date, expense.category, expense.amount, expense.note, expense.createdAt]] }
-  );
+    { values: [[exp.date, exp.category, exp.amount, exp.note, exp.createdAt]] });
 }
 
-/* ── Delete a row by its 1-based sheet row number ─────────── */
 async function deleteSheetRow(rowIndex) {
   if (sheetGid < 0) {
-    // Re-fetch sheetGid if it got lost
     const meta = await sheetsRequest('GET', `/${spreadsheetId}?fields=sheets.properties`);
     const tab  = meta.sheets.find(s => s.properties.title === TAB_NAME);
-    sheetGid   = tab ? tab.properties.sheetId : 0;
+    sheetGid   = tab?.properties.sheetId ?? 0;
     localStorage.setItem('expenseSheetGid', sheetGid);
   }
   await sheetsRequest('POST', `/${spreadsheetId}:batchUpdate`, {
-    requests: [{
-      deleteDimension: {
-        range: {
-          sheetId:    sheetGid,
-          dimension:  'ROWS',
-          startIndex: rowIndex - 1,   // 0-based
-          endIndex:   rowIndex,
-        }
-      }
-    }]
+    requests: [{ deleteDimension: {
+      range: { sheetId: sheetGid, dimension: 'ROWS', startIndex: rowIndex - 1, endIndex: rowIndex }
+    }}]
   });
 }
 
 /* ═══════════════════════════════════════════════════════════
-   TOKEN / AUTH
+   GOOGLE AUTH
    ═══════════════════════════════════════════════════════════ */
 function initGoogleAuth() {
-  // Bail out if CLIENT_ID is still the placeholder
   if (CLIENT_ID.includes('YOUR_GOOGLE_CLIENT_ID')) {
-    document.getElementById('signin-btn').textContent = '⚠️ CLIENT_ID not set — see README';
-    document.getElementById('signin-btn').disabled = true;
+    const btn = document.getElementById('signin-btn');
+    btn.textContent = '⚠️ CLIENT_ID not set — see README';
+    btn.disabled    = true;
     return;
   }
-
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
     scope:     SCOPES,
@@ -247,17 +239,12 @@ function initGoogleAuth() {
 }
 
 async function handleTokenResponse(resp) {
-  if (resp.error) {
-    showToast('Sign-in failed: ' + resp.error, true);
-    clearLoading();
-    return;
-  }
+  if (resp.error) { showToast('Sign-in failed: ' + resp.error, true); clearLoading(); return; }
   accessToken = resp.access_token;
   tokenExpiry = Date.now() + resp.expires_in * 1000;
 
-  // Show the app shell, hide login
-  document.getElementById('login-screen').style.display  = 'none';
-  document.getElementById('app').style.display            = 'flex';
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display          = 'flex';
 
   setLoading('Setting up your Google Sheet…');
   try {
@@ -275,11 +262,7 @@ async function handleTokenResponse(resp) {
 }
 
 function signIn() {
-  if (!tokenClient) {
-    showToast('Google Sign-In not ready yet, try again in a moment.', true);
-    return;
-  }
-  // prompt: '' → silent if user already granted; 'select_account' to force picker
+  if (!tokenClient) { showToast('Google Sign-In loading, try again.', true); return; }
   tokenClient.requestAccessToken({ prompt: '' });
 }
 
@@ -287,35 +270,27 @@ function signOut() {
   google.accounts.oauth2.revoke(accessToken, () => {
     accessToken = null;
     allExpenses = [];
-    // ✅ Keep spreadsheetId + sheetGid in localStorage so the next sign-in
-    //    finds the SAME sheet instead of creating a new one.
+    // ✅ Keep sheet IDs in localStorage so next sign-in finds same sheet
     document.getElementById('app').style.display          = 'none';
     document.getElementById('login-screen').style.display = 'flex';
+    destroyCharts();
   });
 }
 
-/* Silently refresh the token before it expires */
 async function ensureToken() {
-  if (Date.now() < tokenExpiry - 60_000) return; // still valid for ≥1 min
+  if (Date.now() < tokenExpiry - 60_000) return;
   await new Promise(resolve => {
     tokenClient.requestAccessToken({
       prompt: '',
       callback: (resp) => {
-        if (!resp.error) {
-          accessToken = resp.access_token;
-          tokenExpiry = Date.now() + resp.expires_in * 1000;
-        }
+        if (!resp.error) { accessToken = resp.access_token; tokenExpiry = Date.now() + resp.expires_in * 1000; }
         resolve();
       }
     });
   });
 }
 
-/* Called by Google's script after it loads */
-function onGoogleLibraryLoad() {
-  // google.accounts is now available
-  setTimeout(initGoogleAuth, 100);
-}
+function onGoogleLibraryLoad() { setTimeout(initGoogleAuth, 100); }
 
 /* ═══════════════════════════════════════════════════════════
    ADD VIEW
@@ -323,7 +298,7 @@ function onGoogleLibraryLoad() {
 function buildAddView() {
   document.getElementById('cat-grid').innerHTML = CATEGORIES.map(c => `
     <button class="cat-btn" data-cat="${c.key}" onclick="selectCat('${c.key}')">
-      <span class="cat-icon">${c.icon}</span>
+      <div class="cat-icon-wrap">${c.icon}</div>
       <span class="cat-name">${c.label}</span>
     </button>
   `).join('');
@@ -334,8 +309,8 @@ function buildAddView() {
 
 function selectCat(key) {
   selectedCat = key;
-  document.querySelectorAll('.cat-btn').forEach(btn =>
-    btn.classList.toggle('selected', btn.dataset.cat === key)
+  document.querySelectorAll('.cat-btn').forEach(b =>
+    b.classList.toggle('selected', b.dataset.cat === key)
   );
   refreshAddBtn();
 }
@@ -351,17 +326,13 @@ function refreshAddBtn() {
 }
 
 function renderTodayTotal() {
-  const today  = todayStr();
-  const todayE = allExpenses.filter(e => e.date === today);
-  const total  = todayE.reduce((s, e) => s + e.amount, 0);
-  const el     = document.getElementById('today-total');
+  const today = todayStr();
+  const list  = allExpenses.filter(e => e.date === today);
+  const total = list.reduce((s, e) => s + e.amount, 0);
+  const el    = document.getElementById('today-total');
   if (!el) return;
-  if (total > 0) {
-    el.textContent = `Today: ${fmt(total)} · ${todayE.length} entr${todayE.length === 1 ? 'y' : 'ies'}`;
-    el.style.display = 'block';
-  } else {
-    el.style.display = 'none';
-  }
+  el.textContent  = total > 0 ? `Today so far: ${fmt(total)} · ${list.length} entr${list.length === 1 ? 'y' : 'ies'}` : '';
+  el.style.display = total > 0 ? 'block' : 'none';
 }
 
 async function saveExpense() {
@@ -370,23 +341,16 @@ async function saveExpense() {
   const dateEl   = document.getElementById('date-input');
   const amount   = parseFloat(amountEl.value);
 
-  if (!amount || amount <= 0) { amountEl.focus(); return; }
-  if (!selectedCat)            { showToast('Pick a category'); return; }
+  if (!amount || amount <= 0) { amountEl.focus(); showToast('Enter an amount', true); return; }
+  if (!selectedCat)            { showToast('Pick a category', true); return; }
   if (!dateEl.value)           { dateEl.focus(); return; }
 
   setLoading('Saving to Google Sheets…');
   try {
     await ensureToken();
-    await appendExpenseRow({
-      date:      dateEl.value,
-      category:  selectedCat,
-      amount:    amount,
-      note:      noteEl.value.trim(),
-      createdAt: new Date().toISOString(),
-    });
-    await loadExpenses();   // reload so rowIndex is accurate
+    await appendExpenseRow({ date: dateEl.value, category: selectedCat, amount, note: noteEl.value.trim(), createdAt: new Date().toISOString() });
+    await loadExpenses();
 
-    // Reset form
     amountEl.value = '';
     noteEl.value   = '';
     dateEl.value   = todayStr();
@@ -395,7 +359,7 @@ async function saveExpense() {
     refreshAddBtn();
     renderTodayTotal();
     clearLoading();
-    showToast('Saved to Google Sheets ✓');
+    showToast('Saved ✓');
   } catch (e) {
     clearLoading();
     showToast('Save failed: ' + e.message, true);
@@ -404,35 +368,33 @@ async function saveExpense() {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   DELETE — custom confirm modal (iOS PWA blocks window.confirm)
+   DELETE
    ═══════════════════════════════════════════════════════════ */
 function deleteExpense(rowIndex) {
   pendingDeleteRow = rowIndex;
   document.getElementById('confirm-modal').style.display = 'flex';
   document.getElementById('confirm-ok-btn').onclick = confirmDelete;
 }
-
 function closeConfirm() {
   pendingDeleteRow = null;
   document.getElementById('confirm-modal').style.display = 'none';
 }
-
 async function confirmDelete() {
   closeConfirm();
-  if (pendingDeleteRow === null) return;
-  const row = pendingDeleteRow;
-  pendingDeleteRow = null;
+  const row = pendingDeleteRow; pendingDeleteRow = null;
+  if (row === null) return;
 
   setLoading('Deleting…');
   try {
     await ensureToken();
     await deleteSheetRow(row);
     await loadExpenses();
-    if (currentView === 'summary') renderSummary();
-    if (currentView === 'history') renderHistory();
+    if (currentView === 'summary')   renderSummary();
+    if (currentView === 'dashboard') renderDashboard();
+    if (currentView === 'history')   renderHistory();
     renderTodayTotal();
     clearLoading();
-    showToast('Deleted — check Google Sheets to undo ✓');
+    showToast('Deleted — undo in Google Sheets ✓');
   } catch (e) {
     clearLoading();
     showToast('Delete failed: ' + e.message, true);
@@ -460,11 +422,31 @@ function renderSummary() {
   document.getElementById('summary-total-count').textContent  =
     `${expenses.length} expense${expenses.length !== 1 ? 's' : ''}`;
 
-  // Category breakdown
+  /* Quick stat cards */
   const byCategory = {};
-  CATEGORIES.forEach(c => { byCategory[c.key] = 0; });
   expenses.forEach(e => { byCategory[e.category] = (byCategory[e.category] || 0) + e.amount; });
+  const topCat = Object.entries(byCategory).sort((a,b) => b[1]-a[1])[0];
+  const days   = daysElapsedInMonth(viewMonth);
+  const dailyAvg = days > 0 ? total / days : 0;
 
+  const prevMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1);
+  const prevTotal = expensesForMonth(prevMonth).reduce((s, e) => s + e.amount, 0);
+  const momDiff   = prevTotal > 0 ? ((total - prevTotal) / prevTotal * 100).toFixed(1) : null;
+
+  document.getElementById('summary-stat-row').innerHTML = `
+    <div class="stat-card purple">
+      <div class="stat-card-label">Daily Avg</div>
+      <div class="stat-card-value">${fmt(dailyAvg)}</div>
+      <div class="stat-card-sub">over ${days} days</div>
+    </div>
+    <div class="stat-card ${momDiff === null ? '' : Number(momDiff) > 0 ? 'red' : 'green'}">
+      <div class="stat-card-label">vs Last Month</div>
+      <div class="stat-card-value">${momDiff === null ? '—' : (Number(momDiff) > 0 ? '↑' : '↓') + Math.abs(momDiff) + '%'}</div>
+      <div class="stat-card-sub">${prevTotal > 0 ? fmt(prevTotal) + ' last month' : 'no prior data'}</div>
+    </div>
+  `;
+
+  /* Category breakdown */
   const sorted = CATEGORIES
     .map(c => ({ ...c, amount: byCategory[c.key] || 0 }))
     .filter(c => c.amount > 0)
@@ -472,30 +454,272 @@ function renderSummary() {
 
   const listEl = document.getElementById('cat-summary-list');
   if (sorted.length === 0) {
-    listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div>
-      <p>No expenses recorded for ${monthLabel(viewMonth)}.</p></div>`;
+    listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>No expenses for ${monthLabel(viewMonth)}.</p></div>`;
   } else {
     const maxAmt = sorted[0].amount;
     listEl.innerHTML = sorted.map(c => `
       <div class="cat-summary-row">
-        <span class="cat-summary-icon">${c.icon}</span>
+        <div class="cat-icon-badge" style="background:${c.color}22;">${c.icon}</div>
         <div class="cat-summary-info">
           <div class="cat-summary-name">${c.label}</div>
           <div class="cat-summary-bar-track">
-            <div class="cat-summary-bar-fill" style="width:${Math.round((c.amount/maxAmt)*100)}%"></div>
+            <div class="cat-summary-bar-fill" style="width:${Math.round(c.amount/maxAmt*100)}%;background:${c.color};"></div>
           </div>
         </div>
-        <div>
+        <div class="cat-summary-right">
           <div class="cat-summary-amount">${fmt(c.amount)}</div>
-          <div class="cat-summary-pct">${total > 0 ? Math.round((c.amount/total)*100) : 0}%</div>
+          <div class="cat-summary-pct">${total > 0 ? Math.round(c.amount/total*100) : 0}%</div>
         </div>
       </div>
     `).join('');
   }
 
-  // All expenses list
+  /* Expense list */
   document.getElementById('summary-expense-list').innerHTML = expenses.length === 0 ? '' :
     expenses.map(e => expenseRowHTML(e)).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DASHBOARD VIEW
+   ═══════════════════════════════════════════════════════════ */
+function destroyCharts() {
+  if (barChart)   { barChart.destroy();   barChart   = null; }
+  if (donutChart) { donutChart.destroy(); donutChart = null; }
+}
+
+function renderDashboard() {
+  const expenses  = monthExpenses();
+  const total     = expenses.reduce((s, e) => s + e.amount, 0);
+  const days      = daysElapsedInMonth(viewMonth);
+  const dailyAvg  = days > 0 ? total / days : 0;
+
+  /* Category totals */
+  const byCategory = {};
+  expenses.forEach(e => { byCategory[e.category] = (byCategory[e.category] || 0) + e.amount; });
+  const topCatEntry = Object.entries(byCategory).sort((a,b) => b[1]-a[1])[0];
+  const topCat = topCatEntry ? CAT_MAP[topCatEntry[0]] : null;
+
+  /* Month-over-month */
+  const prevMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1);
+  const prevTotal = expensesForMonth(prevMonth).reduce((s, e) => s + e.amount, 0);
+  const momPct    = prevTotal > 0 ? ((total - prevTotal) / prevTotal * 100).toFixed(1) : null;
+
+  /* Hero card */
+  document.getElementById('dash-hero-month').textContent  = monthLabel(viewMonth);
+  document.getElementById('dash-hero-amount').textContent = fmt(total);
+  document.getElementById('dash-hero-sub').textContent    =
+    `${expenses.length} expense${expenses.length !== 1 ? 's' : ''} · ${days} days tracked`;
+
+  const badge = document.getElementById('dash-mom-badge');
+  if (momPct === null) {
+    badge.className   = 'dash-hero-badge flat';
+    badge.textContent = '— vs last month';
+  } else {
+    const up = Number(momPct) > 0;
+    badge.className   = `dash-hero-badge ${up ? 'up' : 'down'}`;
+    badge.textContent = `${up ? '↑' : '↓'} ${Math.abs(momPct)}% vs last month (${fmt(prevTotal)})`;
+  }
+
+  /* Stat pills */
+  document.getElementById('pill-daily').textContent   = fmt(dailyAvg);
+  document.getElementById('pill-topcat').textContent  = topCat ? topCat.icon : '—';
+  document.getElementById('pill-entries').textContent = expenses.length;
+
+  /* ── Bar chart: last 6 months ── */
+  const months6 = Array.from({ length: 6 }, (_, i) =>
+    new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 5 + i, 1)
+  );
+  const barLabels = months6.map(m => monthShort(m));
+  const barData   = months6.map(m => expensesForMonth(m).reduce((s, e) => s + e.amount, 0));
+  const barColors = months6.map((m, i) =>
+    i === 5 ? 'rgba(124,92,252,1)' : 'rgba(124,92,252,0.25)'
+  );
+
+  document.getElementById('bar-chart-sub').textContent =
+    `${barLabels[0]} → ${barLabels[5]} · current month highlighted`;
+
+  destroyCharts();
+
+  const barCtx = document.getElementById('monthlyBarChart').getContext('2d');
+  barChart = new Chart(barCtx, {
+    type: 'bar',
+    data: {
+      labels: barLabels,
+      datasets: [{
+        data:            barData,
+        backgroundColor: barColors,
+        borderRadius:    8,
+        borderSkipped:   false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ' ' + fmt(ctx.raw),
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { family: 'IBM Plex Sans', size: 11 }, color: '#9098B1' } },
+        y: {
+          grid: { color: 'rgba(0,0,0,.05)' },
+          ticks: {
+            font: { family: 'IBM Plex Sans', size: 10 },
+            color: '#9098B1',
+            callback: v => v >= 1000 ? '₹' + (v/1000).toFixed(0) + 'k' : '₹' + v,
+          }
+        }
+      }
+    }
+  });
+
+  /* ── Donut chart: this month categories ── */
+  const catSorted = CATEGORIES
+    .map(c => ({ ...c, amount: byCategory[c.key] || 0 }))
+    .filter(c => c.amount > 0)
+    .sort((a,b) => b.amount - a.amount);
+
+  document.getElementById('donut-chart-sub').textContent = monthLabel(viewMonth);
+  document.getElementById('donut-center-val').textContent = fmt(total);
+
+  if (catSorted.length > 0) {
+    const donutCtx = document.getElementById('categoryDonutChart').getContext('2d');
+    donutChart = new Chart(donutCtx, {
+      type: 'doughnut',
+      data: {
+        labels:   catSorted.map(c => c.label),
+        datasets: [{
+          data:              catSorted.map(c => c.amount),
+          backgroundColor:   catSorted.map(c => c.color),
+          borderWidth:       2,
+          borderColor:       '#FFFFFF',
+          hoverBorderWidth:  3,
+          borderRadius:      4,
+        }]
+      },
+      options: {
+        responsive: false,
+        cutout: '68%',
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmt(ctx.raw)}` } }
+        }
+      }
+    });
+  }
+
+  /* Donut legend */
+  document.getElementById('donut-legend').innerHTML = catSorted.slice(0, 5).map(c => `
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${c.color};"></div>
+      <span class="legend-name">${c.label}</span>
+      <span class="legend-amt">${fmt(c.amount)}</span>
+    </div>
+  `).join('') || '<p style="font-size:.8rem;color:var(--muted)">No data for this month</p>';
+
+  /* ── Smart insights ── */
+  const insights = buildInsights(expenses, total, dailyAvg, topCat, topCatEntry, prevTotal, momPct);
+  document.getElementById('insights-list').innerHTML = insights.map(i => `
+    <div class="insight-card">
+      <div class="insight-icon" style="background:${i.bg};">${i.icon}</div>
+      <div class="insight-body">
+        <div class="insight-title">${i.title}</div>
+        <div class="insight-sub">${i.sub}</div>
+      </div>
+      ${i.val ? `<div class="insight-val">${i.val}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function buildInsights(expenses, total, dailyAvg, topCat, topCatEntry, prevTotal, momPct) {
+  const insights = [];
+
+  /* Daily average */
+  if (total > 0) {
+    insights.push({
+      icon: '📅', bg: 'rgba(124,92,252,.12)',
+      title: 'Daily average spend',
+      sub:   `Based on ${daysElapsedInMonth(viewMonth)} days tracked this month`,
+      val:   fmt(dailyAvg),
+    });
+  }
+
+  /* Top category */
+  if (topCat && topCatEntry) {
+    const pct = total > 0 ? Math.round(topCatEntry[1] / total * 100) : 0;
+    insights.push({
+      icon: topCat.icon, bg: topCat.color + '22',
+      title: `${topCat.label} is your biggest spend`,
+      sub:   `${pct}% of your total this month`,
+      val:   fmt(topCatEntry[1]),
+    });
+  }
+
+  /* vs last month */
+  if (momPct !== null) {
+    const up = Number(momPct) > 0;
+    insights.push({
+      icon: up ? '📈' : '📉',
+      bg:   up ? 'rgba(220,38,38,.1)' : 'rgba(22,163,74,.1)',
+      title: up ? `Spending up ${Math.abs(momPct)}% vs last month` : `Spending down ${Math.abs(momPct)}% vs last month`,
+      sub:   `Last month: ${fmt(prevTotal)} · This month: ${fmt(total)}`,
+      val:   (up ? '+' : '−') + fmt(Math.abs(total - prevTotal)),
+    });
+  }
+
+  /* Biggest single expense */
+  if (expenses.length > 0) {
+    const biggest = [...expenses].sort((a,b) => b.amount - a.amount)[0];
+    const bigCat  = CAT_MAP[biggest.category] || { icon: '📦', label: biggest.category };
+    insights.push({
+      icon: '💎', bg: 'rgba(255,167,38,.12)',
+      title: `Biggest expense this month`,
+      sub:   `${bigCat.icon} ${bigCat.label}${biggest.note ? ' · ' + biggest.note : ''} on ${fmtDate(biggest.date)}`,
+      val:   fmt(biggest.amount),
+    });
+  }
+
+  /* Days with expenses */
+  if (expenses.length > 0) {
+    const uniqueDays = new Set(expenses.map(e => e.date)).size;
+    const allDays    = daysElapsedInMonth(viewMonth);
+    const pct        = Math.round(uniqueDays / allDays * 100);
+    insights.push({
+      icon: '🗓️', bg: 'rgba(38,198,218,.12)',
+      title: `Spent on ${uniqueDays} out of ${allDays} days`,
+      sub:   `${pct}% of days this month had at least one expense`,
+      val:   null,
+    });
+  }
+
+  /* Projection: end of month */
+  const now = new Date();
+  const isCurrentMonth = viewMonth.getFullYear() === now.getFullYear() && viewMonth.getMonth() === now.getMonth();
+  if (isCurrentMonth && dailyAvg > 0) {
+    const daysInMonth   = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const projected     = dailyAvg * daysInMonth;
+    insights.push({
+      icon: '🔮', bg: 'rgba(171,71,188,.12)',
+      title: 'Projected month-end total',
+      sub:   `At your current pace of ${fmt(dailyAvg)}/day`,
+      val:   fmt(projected),
+    });
+  }
+
+  if (insights.length === 0) {
+    insights.push({
+      icon: '🌱', bg: 'rgba(102,187,106,.12)',
+      title: 'Start tracking to see insights',
+      sub:   'Add your first expense and your financial story will appear here.',
+      val:   null,
+    });
+  }
+
+  return insights;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -504,23 +728,18 @@ function renderSummary() {
 function renderHistory() {
   const expenses = monthExpenses();
   const byDate   = {};
-  expenses.forEach(e => {
-    if (!byDate[e.date]) byDate[e.date] = [];
-    byDate[e.date].push(e);
-  });
-
+  expenses.forEach(e => { if (!byDate[e.date]) byDate[e.date] = []; byDate[e.date].push(e); });
   const dates     = Object.keys(byDate).sort().reverse();
   const container = document.getElementById('history-list');
 
   if (dates.length === 0) {
-    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div>
-      <p>No expenses for ${monthLabel(viewMonth)}.</p></div>`;
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>No expenses for ${monthLabel(viewMonth)}.<br/>Tap <strong>Add</strong> to record one.</p></div>`;
     return;
   }
 
   container.innerHTML = dates.map(date => {
-    const rows     = byDate[date].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    const dayTotal = rows.reduce((s, e) => s + e.amount, 0);
+    const rows     = byDate[date].sort((a,b) => b.createdAt.localeCompare(a.createdAt));
+    const dayTotal = rows.reduce((s,e) => s + e.amount, 0);
     return `
       <div class="month-group">
         <div class="month-group-header">
@@ -535,11 +754,12 @@ function renderHistory() {
   }).join('');
 }
 
+/* ── Shared expense row HTML ───────────────────────────────── */
 function expenseRowHTML(e, hideDate = false) {
-  const cat = CAT_MAP[e.category] || { icon: '📦', label: e.category };
+  const cat = CAT_MAP[e.category] || { icon: '📦', label: e.category, color: '#78909C' };
   return `
     <div class="expense-row">
-      <span class="expense-cat-icon">${cat.icon}</span>
+      <div class="expense-cat-icon" style="background:${cat.color}22;">${cat.icon}</div>
       <div class="expense-info">
         <div class="expense-cat-name">${cat.label}</div>
         ${e.note ? `<div class="expense-note">${e.note}</div>` : ''}
@@ -560,32 +780,38 @@ function switchView(view) {
   currentView = view;
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
-  document.getElementById('view-' + view).classList.add('active');
-  document.getElementById('nav-'  + view).classList.add('active');
+  document.getElementById('view-'  + view).classList.add('active');
+  document.getElementById('nav-'   + view).classList.add('active');
   updateHeaderMonth();
-  if (view === 'add')     renderTodayTotal();
-  if (view === 'summary') renderSummary();
-  if (view === 'history') renderHistory();
+
+  if (view === 'add')       renderTodayTotal();
+  if (view === 'summary')   renderSummary();
+  if (view === 'dashboard') renderDashboard();
+  if (view === 'history')   renderHistory();
 }
 
 function updateHeaderMonth() {
-  const el = document.getElementById('header-month-label');
+  const el   = document.getElementById('header-month-label');
+  const prev = document.getElementById('month-prev');
+  const next = document.getElementById('month-next');
+
   if (currentView === 'add') {
-    el.textContent = 'Today';
-    document.getElementById('month-prev').style.visibility = 'hidden';
-    document.getElementById('month-next').style.visibility = 'hidden';
+    el.textContent          = 'Today';
+    prev.style.visibility   = 'hidden';
+    next.style.visibility   = 'hidden';
   } else {
-    el.textContent = monthLabel(viewMonth);
-    document.getElementById('month-prev').style.visibility = 'visible';
-    document.getElementById('month-next').style.visibility = 'visible';
+    el.textContent          = monthLabel(viewMonth);
+    prev.style.visibility   = 'visible';
+    next.style.visibility   = 'visible';
   }
 }
 
 function changeMonth(delta) {
   viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + delta, 1);
   updateHeaderMonth();
-  if (currentView === 'summary') renderSummary();
-  if (currentView === 'history') renderHistory();
+  if (currentView === 'summary')   renderSummary();
+  if (currentView === 'dashboard') { destroyCharts(); renderDashboard(); }
+  if (currentView === 'history')   renderHistory();
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -593,9 +819,7 @@ function changeMonth(delta) {
    ═══════════════════════════════════════════════════════════ */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(err =>
-      console.warn('SW registration failed:', err)
-    );
+    navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW failed:', e));
   });
 }
 
@@ -606,15 +830,8 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('month-prev').addEventListener('click', () => changeMonth(-1));
   document.getElementById('month-next').addEventListener('click', () => changeMonth(1));
-
-  // Close confirm modal on backdrop click
   document.getElementById('confirm-modal').addEventListener('click', function(e) {
     if (e.target === this) closeConfirm();
   });
-
-  // Google library may have loaded before DOMContentLoaded
-  if (typeof google !== 'undefined' && google.accounts) {
-    initGoogleAuth();
-  }
-  // Otherwise onGoogleLibraryLoad() will be called by the GSI script
+  if (typeof google !== 'undefined' && google.accounts) initGoogleAuth();
 });
