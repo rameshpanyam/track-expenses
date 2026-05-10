@@ -380,9 +380,9 @@ function closeConfirm() {
   document.getElementById('confirm-modal').style.display = 'none';
 }
 async function confirmDelete() {
+  const row = pendingDeleteRow;   // capture BEFORE closeConfirm() nullifies it
   closeConfirm();
-  const row = pendingDeleteRow; pendingDeleteRow = null;
-  if (row === null) return;
+  if (row === null || row === undefined) return;
 
   setLoading('Deleting…');
   try {
