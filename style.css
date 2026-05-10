@@ -374,3 +374,162 @@ html, body {
 /* Scrollbar hidden */
 .view::-webkit-scrollbar { display: none; }
 .view { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── Login screen ──────────────────────────────────────────── */
+#login-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  background: var(--bg);
+  padding: 24px;
+}
+.login-card {
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+  padding: 40px 28px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+}
+.login-logo {
+  font-size: 3.5rem;
+  margin-bottom: 16px;
+  line-height: 1;
+}
+.login-title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -.4px;
+  margin-bottom: 10px;
+}
+.login-sub {
+  font-size: .9rem;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: 28px;
+}
+.login-sub strong { color: var(--text); }
+
+/* Google Sign-In button */
+.google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 20px;
+  background: #fff;
+  color: #3c4043;
+  border: none;
+  border-radius: var(--radius);
+  font-size: .95rem;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: -.1px;
+  transition: box-shadow .2s, transform .1s;
+  -webkit-tap-highlight-color: transparent;
+  margin-bottom: 18px;
+}
+.google-btn:active { transform: scale(.97); box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+.google-btn:disabled { opacity: .5; cursor: default; }
+.google-icon { width: 20px; height: 20px; flex-shrink: 0; }
+
+.login-note {
+  font-size: .75rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.login-note strong { color: var(--text); }
+
+/* ── Loading overlay ───────────────────────────────────────── */
+#loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15,15,19,.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  z-index: 200;
+  backdrop-filter: blur(4px);
+}
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#loading-msg {
+  font-size: .9rem;
+  color: var(--muted);
+}
+
+/* ── Sign-out button in header ─────────────────────────────── */
+.signout-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  line-height: 1;
+  transition: color .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.signout-btn:active { color: var(--red); }
+
+/* ── Delete confirm modal ──────────────────────────────────── */
+.confirm-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 300;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  backdrop-filter: blur(2px);
+}
+.confirm-box {
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg2);
+  border-radius: 20px 20px 0 0;
+  padding: 28px 24px calc(24px + env(safe-area-inset-bottom, 0px));
+  text-align: center;
+}
+.confirm-msg {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.confirm-sub {
+  font-size: .85rem;
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+.confirm-actions {
+  display: flex;
+  gap: 12px;
+}
+.confirm-cancel, .confirm-ok {
+  flex: 1;
+  padding: 14px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: .95rem;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity .15s;
+}
+.confirm-cancel { background: var(--bg3); color: var(--text); }
+.confirm-ok     { background: var(--red); color: #fff; }
+.confirm-cancel:active, .confirm-ok:active { opacity: .8; }
