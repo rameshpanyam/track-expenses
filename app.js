@@ -1017,47 +1017,116 @@ const MONTH_MAP = {
   november:11, nov:11, december:12, dec:12,
 };
 
+/* ymd helper — Date object → "YYYY-MM-DD" */
+function ymd(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+/* Try to extract a date from a phrase. Returns { date, matched } where
+   matched is the substring that was consumed (so the caller can strip it
+   before running the amount regex). Returns null if no date phrase found. */
+function extractDateFromVoice(lower) {
+  const now = new Date();
+  const monthNames = 'january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec';
+
+  /* day before yesterday — check before "yesterday" */
+  let m = lower.match(/\bday\s+before\s+yesterday\b/);
+  if (m) {
+    const d = new Date(); d.setDate(d.getDate() - 2);
+    return { date: ymd(d), matched: m[0] };
+  }
+
+  /* yesterday */
+  m = lower.match(/\byesterday\b/);
+  if (m) {
+    const d = new Date(); d.setDate(d.getDate() - 1);
+    return { date: ymd(d), matched: m[0] };
+  }
+
+  /* today */
+  m = lower.match(/\btoday\b/);
+  if (m) return { date: todayStr(), matched: m[0] };
+
+  /* "5th of this month" / "5 this month" / "5 of this month" */
+  m = lower.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?this\s+month\b/);
+  /* "this month 5th" / "this month on 5" */
+  if (!m) m = lower.match(/\bthis\s+month\s+(?:on\s+)?(\d{1,2})(?:st|nd|rd|th)?\b/);
+  if (m) {
+    const day = parseInt(m[1]);
+    if (day >= 1 && day <= 31) {
+      const d = new Date(now.getFullYear(), now.getMonth(), day);
+      return { date: ymd(d), matched: m[0] };
+    }
+  }
+
+  /* "25th of last month" / "last month 25th" */
+  m = lower.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?last\s+month\b/);
+  if (!m) m = lower.match(/\blast\s+month\s+(?:on\s+)?(\d{1,2})(?:st|nd|rd|th)?\b/);
+  if (m) {
+    const day = parseInt(m[1]);
+    if (day >= 1 && day <= 31) {
+      const d = new Date(now.getFullYear(), now.getMonth() - 1, day);
+      return { date: ymd(d), matched: m[0] };
+    }
+  }
+
+  /* "5 of next month" / "next month 5th" */
+  m = lower.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?next\s+month\b/);
+  if (!m) m = lower.match(/\bnext\s+month\s+(?:on\s+)?(\d{1,2})(?:st|nd|rd|th)?\b/);
+  if (m) {
+    const day = parseInt(m[1]);
+    if (day >= 1 && day <= 31) {
+      const d = new Date(now.getFullYear(), now.getMonth() + 1, day);
+      return { date: ymd(d), matched: m[0] };
+    }
+  }
+
+  /* "15th march", "15 march", "15 of march", "15th of march" */
+  let dm = lower.match(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?(${monthNames})\\b`, 'i'));
+  /* "march 15", "march 15th", "march the 15th" */
+  if (!dm) dm = lower.match(new RegExp(`\\b(${monthNames})\\s+(?:the\\s+)?(\\d{1,2})(?:st|nd|rd|th)?\\b`, 'i'));
+  if (dm) {
+    let day, monthStr;
+    if (/^\d/.test(dm[1])) { day = parseInt(dm[1]); monthStr = dm[2]; }
+    else                   { monthStr = dm[1]; day = parseInt(dm[2]); }
+    const month = MONTH_MAP[monthStr.toLowerCase()];
+    if (month && day >= 1 && day <= 31) {
+      let year = now.getFullYear();
+      /* If specified month is in the future relative to current month,
+         assume the user meant LAST year (e.g. in May, "October 12" → last Oct) */
+      if (month > now.getMonth() + 1) year -= 1;
+      const d = new Date(year, month - 1, day);
+      return { date: ymd(d), matched: dm[0] };
+    }
+  }
+
+  return null;
+}
+
 function parseVoiceCommand(text) {
   const lower = text.toLowerCase().trim();
 
-  /* ── Amount: first number found ── */
-  const amountMatch = lower.match(/\b(\d+(?:\.\d+)?)\b/);
+  /* ── Date: parse first so we can strip it before amount detection ── */
+  const dateRes = extractDateFromVoice(lower);
+  const date    = dateRes ? dateRes.date : todayStr();
+
+  /* Strip the date phrase so e.g. "12 january 200 food" doesn't make amount=12 */
+  const cleaned = dateRes
+    ? lower.replace(dateRes.matched, ' ').replace(/\s+/g, ' ').trim()
+    : lower;
+
+  /* ── Amount: first number in the cleaned string ── */
+  const amountMatch = cleaned.match(/\b(\d+(?:\.\d+)?)\b/);
   const amount = amountMatch ? parseFloat(amountMatch[1]) : null;
 
   /* ── Category: keyword match (built-in first, then custom) ── */
   let category = null;
   for (const [cat, keywords] of Object.entries(VOICE_KEYWORDS)) {
-    if (keywords.some(kw => lower.includes(kw))) { category = cat; break; }
+    if (keywords.some(kw => cleaned.includes(kw))) { category = cat; break; }
   }
   if (!category) {
     for (const c of customCategories) {
-      if (lower.includes(c.label.toLowerCase())) { category = c.key; break; }
-    }
-  }
-
-  /* ── Date: default today, then check keywords ── */
-  let date = todayStr();
-  if (lower.includes('yesterday')) {
-    const d = new Date(); d.setDate(d.getDate() - 1);
-    date = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  } else {
-    /* Match "12th january", "12 jan", "january 12", "jan 12" */
-    const monthNames = 'january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec';
-    const p1 = new RegExp(`(\\d{1,2})(?:st|nd|rd|th)?\\s+(${monthNames})`, 'i');
-    const p2 = new RegExp(`(${monthNames})\\s+(\\d{1,2})`, 'i');
-    let dm = lower.match(p1) || lower.match(p2);
-    if (dm) {
-      let day, monthStr;
-      if (/^\d/.test(dm[1])) { day = parseInt(dm[1]); monthStr = dm[2]; }
-      else                   { monthStr = dm[1]; day = parseInt(dm[2]); }
-      const month = MONTH_MAP[monthStr.toLowerCase()];
-      if (month && day >= 1 && day <= 31) {
-        const now = new Date();
-        let year  = now.getFullYear();
-        /* If the specified month is in the future this year, use last year */
-        if (month > now.getMonth() + 1) year -= 1;
-        date = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-      }
+      if (cleaned.includes(c.label.toLowerCase())) { category = c.key; break; }
     }
   }
 
