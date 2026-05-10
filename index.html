@@ -18,7 +18,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
   <title>Expense Tracker</title>
-  <link rel="stylesheet" href="style.css?v=19" />
+  <link rel="stylesheet" href="style.css?v=20" />
 
   <!-- Chart.js for the Dashboard -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
@@ -27,6 +27,20 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
+
+<!-- ── Floating money icons background (decorative, aria-hidden) ── -->
+<div class="money-bg" aria-hidden="true">
+  <span class="money-bg__icon" style="--mx:8%;  --md:0s;   --ms:22s;">₹</span>
+  <span class="money-bg__icon" style="--mx:22%; --md:4s;   --ms:26s;">💸</span>
+  <span class="money-bg__icon" style="--mx:38%; --md:9s;   --ms:24s;">💰</span>
+  <span class="money-bg__icon" style="--mx:54%; --md:2s;   --ms:28s;">🪙</span>
+  <span class="money-bg__icon" style="--mx:68%; --md:11s;  --ms:30s;">₹</span>
+  <span class="money-bg__icon" style="--mx:82%; --md:6s;   --ms:25s;">📊</span>
+  <span class="money-bg__icon" style="--mx:92%; --md:13s;  --ms:27s;">💵</span>
+  <span class="money-bg__icon" style="--mx:14%; --md:16s;  --ms:32s;">🪙</span>
+  <span class="money-bg__icon" style="--mx:46%; --md:19s;  --ms:34s;">💸</span>
+  <span class="money-bg__icon" style="--mx:74%; --md:21s;  --ms:29s;">₹</span>
+</div>
 
 <!-- ── Login Screen ── -->
 <div id="login-screen">
@@ -149,7 +163,7 @@
       <input id="date-input" class="date-input" type="date" />
     </div>
 
-    <button class="add-btn" onclick="saveExpense()" disabled>+ Add Expense</button>
+    <button id="add-btn" class="add-btn" onclick="saveExpense()" disabled>+ Add Expense</button>
     <div id="today-total"></div>
   </div>
 
@@ -282,6 +296,6 @@
   </div>
 </div>
 
-<script src="app.js?v=19"></script>
+<script src="app.js?v=20"></script>
 </body>
 </html>

@@ -79,6 +79,47 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
+/* HTML-escape user-supplied strings before injecting into innerHTML. */
+function escapeHTML(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/* Confetti burst — spawns money emojis from the given element's center,
+   each shooting outward in a random direction. Pure CSS animation, no deps. */
+function burstConfetti(originEl) {
+  if (!originEl) return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const rect = originEl.getBoundingClientRect();
+  const cx   = rect.left + rect.width  / 2;
+  const cy   = rect.top  + rect.height / 2;
+  const symbols = ['₹', '💸', '💰', '🪙', '✨'];
+  const layer = document.createElement('div');
+  layer.className = 'confetti-layer';
+  for (let i = 0; i < 14; i++) {
+    const p = document.createElement('span');
+    p.className = 'confetti-piece';
+    p.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+    const angle = (Math.PI * 2 * i) / 14 + (Math.random() - .5) * .4;
+    const dist  = 80 + Math.random() * 90;
+    const dx    = Math.cos(angle) * dist;
+    const dy    = Math.sin(angle) * dist - 30;       // bias upward
+    p.style.left = cx + 'px';
+    p.style.top  = cy + 'px';
+    p.style.setProperty('--dx', dx + 'px');
+    p.style.setProperty('--dy', dy + 'px');
+    p.style.setProperty('--rot', (Math.random() * 720 - 360) + 'deg');
+    p.style.animationDelay = (Math.random() * 60) + 'ms';
+    layer.appendChild(p);
+  }
+  document.body.appendChild(layer);
+  setTimeout(() => layer.remove(), 1400);
+}
+
 function monthLabel(date) {
   return date.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 }
@@ -556,6 +597,7 @@ async function saveExpense() {
     renderTodayTotal();
     clearLoading();
     showToast('Saved ✓');
+    burstConfetti(document.getElementById('add-btn'));
   } catch (e) {
     clearLoading();
     showToast('Save failed: ' + e.message, true);
@@ -865,7 +907,7 @@ function renderDashboard() {
               <div class="cat-group-chevron">▾</div>
             </button>
             <div class="cat-group-body">
-              ${rows.map(e => expenseRowHTML(e, false)).join('')}
+              ${rows.map(e => expenseRowHTML(e, false, true)).join('')}
             </div>
           </div>`;
       }).join('');
@@ -968,14 +1010,23 @@ function buildInsights(expenses, total, dailyAvg, topCat, topCatEntry, prevTotal
 }
 
 /* ── Shared expense row HTML ───────────────────────────────── */
-function expenseRowHTML(e, hideDate = false) {
-  const cat = CAT_MAP[e.category] || { icon: '📦', label: e.category, color: '#78909C' };
+/* opts:
+     hideDate    – suppress the date column (default false)
+     inCatGroup  – row is rendered inside the dashboard category dropdown.
+                   The category is already shown in the group header, so we
+                   surface the NOTE as the primary line instead.            */
+function expenseRowHTML(e, hideDate = false, inCatGroup = false) {
+  const cat       = CAT_MAP[e.category] || { icon: '📦', label: e.category, color: '#78909C' };
+  const safeNote  = e.note ? escapeHTML(e.note) : '';
+  const primary   = inCatGroup
+    ? (safeNote ? `<div class="expense-note expense-note--primary">📝 ${safeNote}</div>`
+                : `<div class="expense-note expense-note--empty">— no note —</div>`)
+    : `<div class="expense-cat-name">${cat.label}</div>${safeNote ? `<div class="expense-note">${safeNote}</div>` : ''}`;
   return `
     <div class="expense-row">
       <div class="expense-cat-icon" style="background:${cat.color}22;">${cat.icon}</div>
       <div class="expense-info">
-        <div class="expense-cat-name">${cat.label}</div>
-        ${e.note ? `<div class="expense-note">${e.note}</div>` : ''}
+        ${primary}
       </div>
       <div class="expense-right">
         <div class="expense-amount">${fmt(e.amount)}</div>
@@ -1183,7 +1234,29 @@ function parseVoiceCommand(text) {
   /* ── Date: parse first so we can strip it before amount detection ── */
   const dateRes = extractDateFromVoice(lower);
   const date    = dateRes ? dateRes.date : todayStr();
-  const cleaned = dateRes ? dateRes.stripped : lower;
+  let cleaned   = dateRes ? dateRes.stripped : lower;
+
+  /* ── Note extraction. Supports:
+        "... and note is mangos"
+        "... note is mangos" / "note: mangos" / "note mangos"
+        "... for mangos and onions"            (last clause)
+        "... — mangos"   /  "... - mangos"     (em/en/dash separator)
+        We pull the note out FIRST, then strip the matched fragment so it
+        doesn't pollute amount/category detection.                            */
+  let note = '';
+  const noteMatchers = [
+    /\b(?:and\s+)?note(?:\s+is|:)?\s+(.+)$/i,   // "and note is X" / "note X"
+    /\bfor\s+(.+)$/i,                            // "for X"
+    /\s[—–-]\s+(.+)$/                            // " - X" / " — X"
+  ];
+  for (const re of noteMatchers) {
+    const m = cleaned.match(re);
+    if (m && m[1] && m[1].trim().length) {
+      note    = m[1].trim().replace(/[.,!?]+$/, '');
+      cleaned = cleaned.slice(0, m.index).trim();
+      break;
+    }
+  }
 
   /* ── Amount: first number in the cleaned string ── */
   const amountMatch = cleaned.match(/\b(\d+(?:\.\d+)?)\b/);
@@ -1210,7 +1283,16 @@ function parseVoiceCommand(text) {
     if (re.test(cleaned)) { category = c.key; break; }
   }
 
-  return { amount, category, date };
+  /* If the user said "for X" but X happens to be a known category keyword,
+     "for" was actually the category-prefix, not a note. Re-classify. */
+  if (note && !category) {
+    for (const c of candidates) {
+      const re = new RegExp(`\\b${c.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+      if (re.test(note)) { category = c.key; note = note.replace(re, '').replace(/\s{2,}/g, ' ').trim(); break; }
+    }
+  }
+
+  return { amount, category, date, note };
 }
 
 function startVoice() {
@@ -1333,6 +1415,7 @@ function handleVoiceResult(transcript) {
       ${cat ? cat.icon + ' ' + cat.label : '❓ Category?'}
     </div>
     <div class="voice-chip ok">📅 ${dateDisplay}</div>
+    ${parsed.note ? `<div class="voice-chip ok">📝 ${escapeHTML(parsed.note)}</div>` : ''}
   `;
 
   document.getElementById('voice-confirm-btn').disabled = !(parsed.amount && parsed.category);
@@ -1349,21 +1432,23 @@ function editVoiceResult() {
   if (voiceParsed.amount)   { document.getElementById('amount-input').value = voiceParsed.amount; refreshAddBtn(); }
   if (voiceParsed.category) selectCat(voiceParsed.category);
   if (voiceParsed.date)     document.getElementById('date-input').value = voiceParsed.date;
+  if (voiceParsed.note)     document.getElementById('note-input').value = voiceParsed.note;
   cancelVoice();
 }
 
 async function confirmVoiceAdd() {
   if (!voiceParsed?.amount || !voiceParsed?.category) return;
-  const { amount, category, date } = voiceParsed;
+  const { amount, category, date, note = '' } = voiceParsed;
   cancelVoice();
   setLoading('Saving to Google Sheets…');
   try {
     await ensureToken();
-    await appendExpenseRow({ date, category, amount, note: '', createdAt: new Date().toISOString() });
+    await appendExpenseRow({ date, category, amount, note, createdAt: new Date().toISOString() });
     await loadExpenses();
     renderTodayTotal();
     clearLoading();
     showToast('Saved ✓');
+    burstConfetti(document.querySelector('.voice-btn') || document.getElementById('add-btn'));
   } catch (e) {
     clearLoading();
     showToast('Save failed: ' + e.message, true);
