@@ -8,7 +8,8 @@
 const CLIENT_ID = '1093636568303-n89biq36ui8as34r9dblglcd91o44crq.apps.googleusercontent.com';
 
 /* ── Google Sheets config ──────────────────────────────────── */
-const SCOPES         = 'https://www.googleapis.com/auth/spreadsheets';
+// drive.file lets us search Drive for our existing sheet by name (fallback when localStorage is cleared)
+const SCOPES           = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
 const SPREADSHEET_NAME = 'Track Expenses';
 const TAB_NAME         = 'Expenses';
 const HEADERS          = ['Date', 'Category', 'Amount', 'Note', 'CreatedAt'];
@@ -108,7 +109,7 @@ async function sheetsRequest(method, path, body) {
 
 /* ── Find or create the spreadsheet ───────────────────────── */
 async function initSpreadsheet() {
-  // Try the stored spreadsheet ID first
+  // 1️⃣ Try the spreadsheet ID stored in localStorage
   if (spreadsheetId) {
     try {
       const meta = await sheetsRequest('GET', `/${spreadsheetId}?fields=spreadsheetId,sheets.properties`);
@@ -117,9 +118,9 @@ async function initSpreadsheet() {
       if (tab) {
         sheetGid = tab.properties.sheetId;
         localStorage.setItem('expenseSheetGid', sheetGid);
-        return; // all good, existing sheet found
+        return; // ✅ found it — done
       }
-      // Spreadsheet exists but our tab is missing — add it
+      // Spreadsheet exists but tab is missing — add it
       const addResp = await sheetsRequest('POST', `/${spreadsheetId}:batchUpdate`, {
         requests: [{ addSheet: { properties: { title: TAB_NAME } } }]
       });
@@ -128,7 +129,7 @@ async function initSpreadsheet() {
       await writeHeaders();
       return;
     } catch (e) {
-      console.warn('Stored sheet ID not usable, creating new one:', e.message);
+      console.warn('Stored sheet ID not usable, will search Drive:', e.message);
       spreadsheetId = null;
       sheetGid      = -1;
       localStorage.removeItem('expenseSheetId');
@@ -136,7 +137,30 @@ async function initSpreadsheet() {
     }
   }
 
-  // Create a brand-new spreadsheet in the user's Drive
+  // 2️⃣ localStorage was cleared — search Google Drive for existing "Track Expenses" sheet
+  try {
+    const q   = encodeURIComponent(`name="${SPREADSHEET_NAME}" and mimeType="application/vnd.google-apps.spreadsheet" and trashed=false`);
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const data = await res.json();
+    if (data.files && data.files.length > 0) {
+      // Found the existing sheet — load it
+      spreadsheetId = data.files[0].id;
+      localStorage.setItem('expenseSheetId', spreadsheetId);
+      const meta = await sheetsRequest('GET', `/${spreadsheetId}?fields=sheets.properties`);
+      const tab  = meta.sheets.find(s => s.properties.title === TAB_NAME);
+      if (tab) {
+        sheetGid = tab.properties.sheetId;
+        localStorage.setItem('expenseSheetGid', sheetGid);
+        return; // ✅ recovered from Drive search — done
+      }
+    }
+  } catch (e) {
+    console.warn('Drive search failed, will create new sheet:', e.message);
+  }
+
+  // 3️⃣ Nothing found anywhere — create a brand-new spreadsheet
   const created = await sheetsRequest('POST', '', {
     properties: { title: SPREADSHEET_NAME },
     sheets:     [{ properties: { title: TAB_NAME } }],
@@ -145,7 +169,6 @@ async function initSpreadsheet() {
   sheetGid      = created.sheets[0].properties.sheetId;
   localStorage.setItem('expenseSheetId', spreadsheetId);
   localStorage.setItem('expenseSheetGid', sheetGid);
-
   await writeHeaders();
 }
 
@@ -262,14 +285,12 @@ function signIn() {
 
 function signOut() {
   google.accounts.oauth2.revoke(accessToken, () => {
-    accessToken   = null;
-    spreadsheetId = null;
-    sheetGid      = -1;
-    allExpenses   = [];
-    localStorage.removeItem('expenseSheetId');
-    localStorage.removeItem('expenseSheetGid');
-    document.getElementById('app').style.display           = 'none';
-    document.getElementById('login-screen').style.display  = 'flex';
+    accessToken = null;
+    allExpenses = [];
+    // ✅ Keep spreadsheetId + sheetGid in localStorage so the next sign-in
+    //    finds the SAME sheet instead of creating a new one.
+    document.getElementById('app').style.display          = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
   });
 }
 
