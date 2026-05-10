@@ -5,7 +5,7 @@
    ⚠️  SETUP REQUIRED — replace the line below with your
        Google OAuth Client ID (see README for instructions).
    ═══════════════════════════════════════════════════════════ */
-const CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+const CLIENT_ID = '1093636568303-n89biq36ui8as34r9dblglcd91o44crq.apps.googleusercontent.com';
 
 /* ── Google Sheets config ──────────────────────────────────── */
 const SCOPES         = 'https://www.googleapis.com/auth/spreadsheets';
