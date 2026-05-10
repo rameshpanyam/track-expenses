@@ -137,51 +137,66 @@ async function sheetsRequest(method, path, body) {
   return r.json();
 }
 
-/* ── Find / create the spreadsheet ────────────────────────── */
-async function initSpreadsheet() {
-  /* Strategy:
-     1. Use localStorage ID + verify it directly via Drive API (trashed? deleted?)
-        drive.file allows direct-by-ID access across sessions without revocation.
-        drive.file SEARCH does NOT work across sessions — so we never search.
-     2. If stored ID is gone or inaccessible → create brand-new sheet.
-     Sign-out does NOT revoke the token, so drive.file access persists. */
+/* ── Verify a stored spreadsheet ID is still valid ─────────── */
+async function verifyStoredSheet() {
+  if (!spreadsheetId) return false;
+  try {
+    const dr = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${spreadsheetId}?fields=id,trashed`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    if (!dr.ok) return false;
+    const info = await dr.json();
+    if (info.trashed) return false;
 
-  if (spreadsheetId) {
-    try {
-      /* Direct Drive check — works with drive.file across sessions */
-      const dr = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${spreadsheetId}?fields=id,trashed`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-      if (!dr.ok) throw new Error(`Drive HTTP ${dr.status}`);
-      const info = await dr.json();
-      if (info.trashed) throw new Error('Sheet is in Trash');
-
-      /* Sheet is live — get tab info */
-      const meta = await sheetsRequest('GET', `/${spreadsheetId}?fields=sheets.properties`);
-      const tab  = meta.sheets.find(s => s.properties.title === TAB_NAME);
-      if (tab) {
-        sheetGid = tab.properties.sheetId;
-        localStorage.setItem('expenseSheetGid', sheetGid);
-        return;                             /* ✅ All good */
-      }
-      /* Tab missing — add it */
-      const res = await sheetsRequest('POST', `/${spreadsheetId}:batchUpdate`, {
-        requests: [{ addSheet: { properties: { title: TAB_NAME } } }]
-      });
-      sheetGid = res.replies[0].addSheet.properties.sheetId;
+    /* Make sure the Expenses tab exists */
+    const meta = await sheetsRequest('GET', `/${spreadsheetId}?fields=sheets.properties`);
+    const tab  = meta.sheets.find(s => s.properties.title === TAB_NAME);
+    if (tab) {
+      sheetGid = tab.properties.sheetId;
       localStorage.setItem('expenseSheetGid', sheetGid);
-      await writeHeaders();
-      return;
-    } catch (e) {
-      console.warn('Stored sheet inaccessible — creating new:', e.message);
-      spreadsheetId = null; sheetGid = -1;
-      localStorage.removeItem('expenseSheetId');
-      localStorage.removeItem('expenseSheetGid');
+      return true;
     }
+    /* Tab missing — add it */
+    const res = await sheetsRequest('POST', `/${spreadsheetId}:batchUpdate`, {
+      requests: [{ addSheet: { properties: { title: TAB_NAME } } }]
+    });
+    sheetGid = res.replies[0].addSheet.properties.sheetId;
+    localStorage.setItem('expenseSheetGid', sheetGid);
+    await writeHeaders();
+    return true;
+  } catch (e) {
+    console.warn('Stored sheet invalid:', e.message);
+    return false;
   }
+}
 
-  /* Create brand-new spreadsheet */
+/* ── Set the active sheet (called from chooser) ───────────── */
+async function setActiveSheet(id) {
+  spreadsheetId = id;
+  localStorage.setItem('expenseSheetId', id);
+
+  /* Get tab info — create Expenses tab if missing */
+  const meta = await sheetsRequest('GET', `/${spreadsheetId}?fields=sheets.properties`);
+  let tab = meta.sheets.find(s => s.properties.title === TAB_NAME);
+  if (!tab) {
+    const res = await sheetsRequest('POST', `/${spreadsheetId}:batchUpdate`, {
+      requests: [{ addSheet: { properties: { title: TAB_NAME } } }]
+    });
+    sheetGid = res.replies[0].addSheet.properties.sheetId;
+    localStorage.setItem('expenseSheetGid', sheetGid);
+    await writeHeaders();
+  } else {
+    sheetGid = tab.properties.sheetId;
+    localStorage.setItem('expenseSheetGid', sheetGid);
+    /* Ensure header row exists */
+    const data = await sheetsRequest('GET', `/${spreadsheetId}/values/${TAB_NAME}!A1:E1`);
+    if (!data.values || data.values.length === 0) await writeHeaders();
+  }
+}
+
+/* ── Create a brand-new spreadsheet ───────────────────────── */
+async function createNewSpreadsheet() {
   const created = await sheetsRequest('POST', '', {
     properties: { title: SPREADSHEET_NAME },
     sheets:     [{ properties: { title: TAB_NAME } }],
@@ -257,12 +272,36 @@ async function handleTokenResponse(resp) {
   tokenExpiry = Date.now() + resp.expires_in * 1000;
 
   document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app').style.display          = 'flex';
 
-  setLoading('Setting up your Google Sheet…');
+  /* If we have a stored sheet ID, try to use it directly. Otherwise prompt
+     the user to pick or create a sheet. */
+  setLoading('Checking your saved sheet…');
+  let valid = false;
   try {
-    await initSpreadsheet();
-    setLoading('Loading your expenses…');
+    valid = await verifyStoredSheet();
+  } catch (e) {
+    valid = false;
+  }
+  clearLoading();
+
+  if (valid) {
+    await enterMainApp();
+  } else {
+    spreadsheetId = null; sheetGid = -1;
+    localStorage.removeItem('expenseSheetId');
+    localStorage.removeItem('expenseSheetGid');
+    showSheetChooser();
+  }
+}
+
+/* Enter the main app once a sheet is selected */
+async function enterMainApp() {
+  document.getElementById('login-screen').style.display  = 'none';
+  document.getElementById('sheet-chooser').style.display = 'none';
+  document.getElementById('app').style.display           = 'flex';
+
+  setLoading('Loading your expenses…');
+  try {
     await loadExpenses();
     clearLoading();
     buildAddView();
@@ -270,6 +309,126 @@ async function handleTokenResponse(resp) {
   } catch (e) {
     clearLoading();
     showToast('Error: ' + e.message, true);
+    console.error(e);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SHEET CHOOSER
+   ═══════════════════════════════════════════════════════════ */
+async function showSheetChooser() {
+  /* If user is not signed in yet, this should never be called — guard anyway */
+  if (!accessToken) { showToast('Please sign in first', true); return; }
+
+  /* Hide other screens, show chooser */
+  document.getElementById('login-screen').style.display  = 'none';
+  document.getElementById('app').style.display           = 'none';
+  document.getElementById('sheet-chooser').style.display = 'flex';
+
+  const loadingEl = document.getElementById('chooser-loading');
+  const listEl    = document.getElementById('chooser-list');
+  const emptyEl   = document.getElementById('chooser-empty');
+
+  loadingEl.style.display = 'flex';
+  listEl.style.display    = 'none';
+  emptyEl.style.display   = 'none';
+  listEl.innerHTML        = '';
+
+  try {
+    await ensureToken();
+    const sheets = await listMySheets();
+    loadingEl.style.display = 'none';
+
+    if (sheets.length === 0) {
+      emptyEl.style.display = 'block';
+      return;
+    }
+
+    listEl.style.display = 'flex';
+    listEl.innerHTML = sheets.map(s => {
+      const safeName = (s.name || 'Untitled').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      return `
+        <button class="chooser-item" onclick="chooseSheet('${s.id}')">
+          <div class="chooser-item-icon">📊</div>
+          <div class="chooser-item-text">
+            <div class="chooser-item-name">${safeName}</div>
+            <div class="chooser-item-meta">Updated ${formatRelative(s.modifiedTime)}</div>
+          </div>
+          <div class="chooser-item-arrow">›</div>
+        </button>
+      `;
+    }).join('');
+  } catch (e) {
+    loadingEl.style.display = 'none';
+    emptyEl.style.display   = 'block';
+    document.querySelector('#chooser-empty p').textContent = 'Could not list sheets — ' + e.message;
+    console.error(e);
+  }
+}
+
+/* List spreadsheets accessible via drive.file scope (created/opened by this app) */
+async function listMySheets() {
+  const params = new URLSearchParams({
+    q: "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false",
+    fields: 'files(id,name,modifiedTime)',
+    orderBy: 'modifiedTime desc',
+    pageSize: '50',
+  });
+  const r = await fetch(`https://www.googleapis.com/drive/v3/files?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(err.error?.message || `Drive HTTP ${r.status}`);
+  }
+  const data = await r.json();
+  return data.files || [];
+}
+
+/* Format an ISO timestamp as a friendly relative string */
+function formatRelative(iso) {
+  if (!iso) return '';
+  const then = new Date(iso).getTime();
+  const now  = Date.now();
+  const diff = Math.max(0, now - then);
+  const min  = Math.floor(diff / 60000);
+  if (min < 1)    return 'just now';
+  if (min < 60)   return `${min} min ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24)    return `${hr} hr ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 7)    return `${day} day${day !== 1 ? 's' : ''} ago`;
+  return new Date(iso).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+/* User picked an existing sheet from the list */
+async function chooseSheet(id) {
+  setLoading('Opening sheet…');
+  try {
+    await ensureToken();
+    await setActiveSheet(id);
+    clearLoading();
+    showToast('Sheet selected ✓');
+    await enterMainApp();
+  } catch (e) {
+    clearLoading();
+    showToast('Could not open: ' + e.message, true);
+    console.error(e);
+  }
+}
+
+/* User clicked "Create new sheet" in the chooser */
+async function createNewSheetFromChooser() {
+  setLoading('Creating new sheet…');
+  try {
+    await ensureToken();
+    await createNewSpreadsheet();
+    clearLoading();
+    showToast('New sheet created ✓');
+    await enterMainApp();
+  } catch (e) {
+    clearLoading();
+    showToast('Create failed: ' + e.message, true);
     console.error(e);
   }
 }
@@ -288,8 +447,9 @@ function signOut() {
   spreadsheetId = null;
   sheetGid      = -1;
   allExpenses   = [];
-  document.getElementById('app').style.display          = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display           = 'none';
+  document.getElementById('sheet-chooser').style.display = 'none';
+  document.getElementById('login-screen').style.display  = 'flex';
   destroyCharts();
 }
 

@@ -18,7 +18,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
   <title>Expense Tracker</title>
-  <link rel="stylesheet" href="style.css?v=11" />
+  <link rel="stylesheet" href="style.css?v=14" />
 
   <!-- Chart.js for the Dashboard -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
@@ -53,6 +53,36 @@
   <div id="loading-msg">Loading…</div>
 </div>
 
+<!-- ── Sheet Chooser Screen ── -->
+<div id="sheet-chooser" style="display:none;">
+  <div class="chooser-card">
+    <div class="chooser-header">
+      <span class="chooser-emoji">📑</span>
+      <h2 class="chooser-title">Pick your expense sheet</h2>
+      <p class="chooser-sub">Choose an existing Google Sheet to track expenses in, or create a brand-new one.</p>
+    </div>
+
+    <div id="chooser-loading" class="chooser-loading">
+      <div class="spinner"></div>
+      <p>Looking through your Google Drive…</p>
+    </div>
+
+    <div id="chooser-list" class="chooser-list" style="display:none;"></div>
+
+    <div id="chooser-empty" class="chooser-empty" style="display:none;">
+      <p>No spreadsheets created by this app yet.</p>
+      <p class="chooser-empty-sub">Create a new one below to get started.</p>
+    </div>
+
+    <button class="chooser-create-btn" id="chooser-create-btn" onclick="createNewSheetFromChooser()">
+      <span class="chooser-create-icon">＋</span>
+      <span>Create new "Track Expenses" sheet</span>
+    </button>
+
+    <button class="chooser-signout" onclick="signOut()">Sign out</button>
+  </div>
+</div>
+
 <!-- ── Main App ── -->
 <div id="app" style="display:none; flex-direction:column; height:100dvh;">
 
@@ -64,7 +94,10 @@
       <span id="header-month-label">Today</span>
       <button id="month-next" style="visibility:hidden">›</button>
     </div>
-    <button class="signout-btn" onclick="signOut()">Sign out</button>
+    <div class="header-actions">
+      <button class="header-icon-btn" title="Change sheet" onclick="showSheetChooser()">📑</button>
+      <button class="signout-btn" onclick="signOut()">Sign out</button>
+    </div>
   </header>
 
   <!-- ── Add View ── -->
@@ -243,6 +276,6 @@
   </div>
 </div>
 
-<script src="app.js?v=11"></script>
+<script src="app.js?v=14"></script>
 </body>
 </html>
