@@ -716,6 +716,81 @@ html, body {
 .confirm-cancel { background: var(--bg3); color: var(--text); }
 .confirm-ok     { background: var(--red); color: #fff; }
 .confirm-cancel:active, .confirm-ok:active { opacity: .8; }
+.confirm-ok:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── Add Category modal extras ──────────────────────────── */
+.add-cat-box { max-width: 340px; }
+.add-cat-fields {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.add-cat-icon-input {
+  width: 58px;
+  height: 52px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg3);
+  font-size: 1.5rem;
+  text-align: center;
+  outline: none;
+  flex-shrink: 0;
+  color: var(--text);
+}
+.add-cat-icon-input:focus { border-color: var(--accent); }
+.add-cat-name-input {
+  flex: 1;
+  height: 52px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg3);
+  font-size: .95rem;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 0 14px;
+  outline: none;
+  color: var(--text);
+}
+.add-cat-name-input:focus { border-color: var(--accent); }
+.add-cat-color-label {
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.color-picker-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.color-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  cursor: pointer;
+  transition: transform .15s, border-color .15s;
+  outline: none;
+}
+.color-swatch:hover   { transform: scale(1.15); }
+.color-swatch.selected {
+  border-color: var(--text);
+  transform: scale(1.15);
+  box-shadow: 0 0 0 2px var(--bg2), 0 0 0 4px var(--text);
+}
+
+/* ── "＋ New" button in cat grid ────────────────────────── */
+.add-cat-btn .cat-icon-wrap.add-cat-icon-wrap {
+  background: var(--bg3);
+  color: var(--accent);
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+.add-cat-btn { border-style: dashed; }
+.add-cat-btn .cat-name { color: var(--accent); }
 
 /* ══════════════════════════════════════════════════════════
    TOAST

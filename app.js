@@ -21,7 +21,24 @@ const CATEGORIES = [
   { key: 'gifts',    icon: '🎁', label: 'Gifts',    color: '#EC407A' },
   { key: 'other',    icon: '📦', label: 'Other',    color: '#78909C' },
 ];
-const CAT_MAP = Object.fromEntries(CATEGORIES.map(c => [c.key, c]));
+/* ── Custom categories (persisted in localStorage) ─────────── */
+let customCategories = JSON.parse(localStorage.getItem('customCategories') || '[]');
+
+function allCategories() { return [...CATEGORIES, ...customCategories]; }
+
+let CAT_MAP = buildCatMap();
+function buildCatMap() {
+  return Object.fromEntries(allCategories().map(c => [c.key, c]));
+}
+function rebuildCatMap() { CAT_MAP = buildCatMap(); }
+
+/* Colour palette for the "Add Category" picker */
+const CAT_COLOR_PALETTE = [
+  '#FF6B6B','#FF8A65','#FFCA28','#D4E157','#66BB6A',
+  '#26C6DA','#42A5F5','#5C6BC0','#7C5CFC','#AB47BC',
+  '#EC407A','#F06292','#78909C','#FFA726','#8D6E63',
+];
+let newCatColor = CAT_COLOR_PALETTE[0];
 
 /* ── State ─────────────────────────────────────────────────── */
 let tokenClient   = null;
@@ -295,13 +312,22 @@ function onGoogleLibraryLoad() { setTimeout(initGoogleAuth, 100); }
 /* ═══════════════════════════════════════════════════════════
    ADD VIEW
    ═══════════════════════════════════════════════════════════ */
+function buildCatGrid() {
+  document.getElementById('cat-grid').innerHTML =
+    allCategories().map(c => `
+      <button class="cat-btn" data-cat="${c.key}" onclick="selectCat('${c.key}')">
+        <div class="cat-icon-wrap" style="background:${c.color}22;">${c.icon}</div>
+        <span class="cat-name">${c.label}</span>
+      </button>
+    `).join('') +
+    `<button class="cat-btn add-cat-btn" onclick="openAddCatModal()">
+      <div class="cat-icon-wrap add-cat-icon-wrap">＋</div>
+      <span class="cat-name">New</span>
+    </button>`;
+}
+
 function buildAddView() {
-  document.getElementById('cat-grid').innerHTML = CATEGORIES.map(c => `
-    <button class="cat-btn" data-cat="${c.key}" onclick="selectCat('${c.key}')">
-      <div class="cat-icon-wrap">${c.icon}</div>
-      <span class="cat-name">${c.label}</span>
-    </button>
-  `).join('');
+  buildCatGrid();
   document.getElementById('date-input').value = todayStr();
   refreshAddBtn();
   renderTodayTotal();
@@ -403,6 +429,68 @@ async function confirmDelete() {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   ADD CATEGORY MODAL
+   ═══════════════════════════════════════════════════════════ */
+function openAddCatModal() {
+  /* Reset fields */
+  document.getElementById('new-cat-icon').value = '';
+  document.getElementById('new-cat-name').value = '';
+  document.getElementById('add-cat-ok-btn').disabled = true;
+  newCatColor = CAT_COLOR_PALETTE[0];
+
+  /* Build colour picker */
+  document.getElementById('new-cat-color-grid').innerHTML = CAT_COLOR_PALETTE.map(col => `
+    <button class="color-swatch${col === newCatColor ? ' selected' : ''}"
+            style="background:${col};"
+            onclick="pickCatColor('${col}')"></button>
+  `).join('');
+
+  document.getElementById('add-cat-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('new-cat-icon').focus(), 80);
+}
+
+function pickCatColor(col) {
+  newCatColor = col;
+  /* Rebuild picker to reliably reflect selection (avoids hex vs rgb mismatch) */
+  document.getElementById('new-cat-color-grid').innerHTML = CAT_COLOR_PALETTE.map(c => `
+    <button class="color-swatch${c === col ? ' selected' : ''}"
+            style="background:${c};"
+            onclick="pickCatColor('${c}')"></button>
+  `).join('');
+}
+
+function closeAddCatModal() {
+  document.getElementById('add-cat-modal').style.display = 'none';
+}
+
+function validateNewCat() {
+  const icon = document.getElementById('new-cat-icon').value.trim();
+  const name = document.getElementById('new-cat-name').value.trim();
+  document.getElementById('add-cat-ok-btn').disabled = !(icon && name);
+}
+
+function saveNewCategory() {
+  const icon  = document.getElementById('new-cat-icon').value.trim();
+  const name  = document.getElementById('new-cat-name').value.trim();
+  if (!icon || !name) { showToast('Enter both an icon and a name', true); return; }
+
+  /* Guard duplicates */
+  const key = 'custom_' + name.toLowerCase().replace(/\s+/g, '_');
+  if (allCategories().find(c => c.key === key)) {
+    showToast('Category "' + name + '" already exists', true); return;
+  }
+
+  const newCat = { key, icon, label: name, color: newCatColor };
+  customCategories.push(newCat);
+  localStorage.setItem('customCategories', JSON.stringify(customCategories));
+  rebuildCatMap();
+
+  closeAddCatModal();
+  buildCatGrid();          /* rebuild cat grid with new button */
+  showToast(`"${name}" added ✓`);
+}
+
+/* ═══════════════════════════════════════════════════════════
    SUMMARY VIEW
    ═══════════════════════════════════════════════════════════ */
 function monthExpenses() {
@@ -447,7 +535,7 @@ function renderSummary() {
   `;
 
   /* Category breakdown */
-  const sorted = CATEGORIES
+  const sorted = allCategories()
     .map(c => ({ ...c, amount: byCategory[c.key] || 0 }))
     .filter(c => c.amount > 0)
     .sort((a, b) => b.amount - a.amount);
@@ -578,7 +666,7 @@ function renderDashboard() {
   });
 
   /* ── Donut chart: this month categories ── */
-  const catSorted = CATEGORIES
+  const catSorted = allCategories()
     .map(c => ({ ...c, amount: byCategory[c.key] || 0 }))
     .filter(c => c.amount > 0)
     .sort((a,b) => b.amount - a.amount);
@@ -833,5 +921,10 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('confirm-modal').addEventListener('click', function(e) {
     if (e.target === this) closeConfirm();
   });
+  document.getElementById('add-cat-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeAddCatModal();
+  });
+  document.getElementById('new-cat-icon').addEventListener('input', validateNewCat);
+  document.getElementById('new-cat-name').addEventListener('input', validateNewCat);
   if (typeof google !== 'undefined' && google.accounts) initGoogleAuth();
 });

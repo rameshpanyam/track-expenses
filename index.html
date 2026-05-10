@@ -217,6 +217,26 @@
   </div>
 </div>
 
+<!-- Add Category modal -->
+<div id="add-cat-modal" class="confirm-modal" style="display:none;">
+  <div class="confirm-box add-cat-box">
+    <p class="confirm-msg">New Category</p>
+    <p class="confirm-sub">Pick an emoji, give it a name, choose a colour.</p>
+    <div class="add-cat-fields">
+      <input id="new-cat-icon" class="add-cat-icon-input" type="text"
+             placeholder="😊" maxlength="4" autocomplete="off" />
+      <input id="new-cat-name" class="add-cat-name-input" type="text"
+             placeholder="Category name" maxlength="20" autocomplete="off" />
+    </div>
+    <p class="add-cat-color-label">Colour</p>
+    <div id="new-cat-color-grid" class="color-picker-grid"></div>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" onclick="closeAddCatModal()">Cancel</button>
+      <button class="confirm-ok" id="add-cat-ok-btn" onclick="saveNewCategory()" disabled>Add</button>
+    </div>
+  </div>
+</div>
+
 <script src="app.js"></script>
 </body>
 </html>
