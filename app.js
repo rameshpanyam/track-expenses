@@ -4,10 +4,7 @@
 const CLIENT_ID = '1093636568303-n89biq36ui8as34r9dblglcd91o44crq.apps.googleusercontent.com';
 
 /* ── Sheets config ─────────────────────────────────────────── */
-/* drive.readonly lets us search ALL Drive files by name on every sign-in,
-   not just files created in the current session (drive.file was the problem).
-   spreadsheets scope alone is sufficient to create + read + write sheets. */
-const SCOPES           = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly';
+const SCOPES           = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
 const SPREADSHEET_NAME = 'Track Expenses';
 const TAB_NAME         = 'Expenses';
 const HEADERS          = ['Date', 'Category', 'Amount', 'Note', 'CreatedAt'];
@@ -253,7 +250,6 @@ async function handleTokenResponse(resp) {
   if (resp.error) { showToast('Sign-in failed: ' + resp.error, true); clearLoading(); return; }
   accessToken = resp.access_token;
   tokenExpiry = Date.now() + resp.expires_in * 1000;
-  localStorage.setItem('scopeGranted_v2', '1'); /* new scope accepted — skip consent next time */
 
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display          = 'flex';
@@ -275,22 +271,21 @@ async function handleTokenResponse(resp) {
 
 function signIn() {
   if (!tokenClient) { showToast('Google Sign-In loading, try again.', true); return; }
-  /* prompt:'consent' ensures the new drive.readonly scope is granted,
-     even if user previously authorised with the old drive.file scope. */
-  const needsConsent = !localStorage.getItem('scopeGranted_v2');
-  tokenClient.requestAccessToken({ prompt: needsConsent ? 'consent' : '' });
+  tokenClient.requestAccessToken({ prompt: '' });
 }
 
 function signOut() {
-  google.accounts.oauth2.revoke(accessToken, () => {
-    accessToken    = null;
-    spreadsheetId  = null;   /* cleared — next sign-in resolves fresh from Drive */
-    sheetGid       = -1;
-    allExpenses    = [];
-    document.getElementById('app').style.display          = 'none';
-    document.getElementById('login-screen').style.display = 'flex';
-    destroyCharts();
-  });
+  /* Do NOT call revoke() — revoking destroys the drive.file association so
+     next sign-in can't find the existing sheet and creates a duplicate.
+     Just clear local state; the access token expires naturally in ~1 hour. */
+  google.accounts.id.disableAutoSelect(); /* prevent silent re-sign-in */
+  accessToken   = null;
+  spreadsheetId = null;
+  sheetGid      = -1;
+  allExpenses   = [];
+  document.getElementById('app').style.display          = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  destroyCharts();
 }
 
 async function ensureToken() {
