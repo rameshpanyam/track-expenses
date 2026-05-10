@@ -69,8 +69,30 @@
 
   <!-- ── Add View ── -->
   <div id="view-add" class="view active">
-    <p class="add-view-greeting">How much did you spend?</p>
 
+    <!-- Voice section -->
+    <div class="voice-section">
+      <div id="voice-idle">
+        <button class="voice-btn" id="voice-btn" onclick="startVoice()">
+          <span class="voice-btn-mic">🎤</span>
+        </button>
+        <p class="voice-hint">Tap to add by voice</p>
+        <p class="voice-hint-eg">e.g. "200 rupees food today"</p>
+      </div>
+      <div id="voice-listening" style="display:none;">
+        <div class="voice-wave-wrap">
+          <div class="voice-wave">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+        </div>
+        <p class="voice-transcript-text" id="voice-transcript-text">Listening…</p>
+        <button class="voice-stop-btn" onclick="stopVoice()">■ Stop</button>
+      </div>
+    </div>
+
+    <div class="voice-divider"><span>or add manually</span></div>
+
+    <!-- Manual form -->
     <div class="amount-input-wrap">
       <span class="amount-currency">₹</span>
       <input id="amount-input" class="amount-input" type="number"
@@ -90,28 +112,6 @@
 
     <button class="add-btn" onclick="saveExpense()" disabled>+ Add Expense</button>
     <div id="today-total"></div>
-  </div>
-
-  <!-- ── Summary View ── -->
-  <div id="view-summary" class="view">
-    <!-- Hero -->
-    <div class="summary-hero">
-      <div class="summary-hero-label">Total spent</div>
-      <div class="summary-hero-amount" id="summary-total-amount">₹0</div>
-      <div class="summary-hero-meta" id="summary-total-count">0 expenses</div>
-    </div>
-
-    <!-- Quick stats -->
-    <div class="stat-row" id="summary-stat-row"></div>
-
-    <!-- By category -->
-    <p class="section-label">By category</p>
-    <div id="cat-summary-list" class="cat-summary-list"></div>
-
-    <!-- All entries -->
-    <p class="section-label mt16">All entries</p>
-    <div id="summary-expense-list" class="expense-list"></div>
-    <div style="height:16px;"></div>
   </div>
 
   <!-- ── Dashboard View ── -->
@@ -175,28 +175,20 @@
     <p class="dash-section-title">Financial insights</p>
     <div class="insights-list" id="insights-list"></div>
 
+    <!-- All entries for the month -->
+    <p class="dash-section-title">All entries</p>
+    <div id="dash-entries" class="expense-list"></div>
+
     <div style="height:16px;"></div>
   </div>
 
-  <!-- ── History View ── -->
-  <div id="view-history" class="view">
-    <div id="history-list"></div>
-    <div style="height:16px;"></div>
-  </div>
-
-  <!-- Bottom nav (4 tabs) -->
+  <!-- Bottom nav (2 tabs) -->
   <nav class="bottom-nav">
     <button id="nav-add" class="nav-btn active" onclick="switchView('add')">
       <span class="nav-icon">➕</span><span>Add</span>
     </button>
-    <button id="nav-summary" class="nav-btn" onclick="switchView('summary')">
-      <span class="nav-icon">📋</span><span>Summary</span>
-    </button>
     <button id="nav-dashboard" class="nav-btn" onclick="switchView('dashboard')">
       <span class="nav-icon">📊</span><span>Dashboard</span>
-    </button>
-    <button id="nav-history" class="nav-btn" onclick="switchView('history')">
-      <span class="nav-icon">🗓️</span><span>History</span>
     </button>
   </nav>
 
@@ -204,6 +196,20 @@
 
 <!-- Toast -->
 <div id="toast" class="toast"></div>
+
+<!-- Voice result card (slides up from bottom) -->
+<div id="voice-result-card" class="voice-result-card" style="display:none;">
+  <div class="voice-result-header">
+    <span class="voice-result-title">🎤 I heard you say…</span>
+    <button class="voice-result-close" onclick="cancelVoice()">✕</button>
+  </div>
+  <p class="voice-heard-text" id="voice-heard-text"></p>
+  <div class="voice-chips-row" id="voice-parsed-row"></div>
+  <div class="voice-result-actions">
+    <button class="voice-edit-btn" onclick="editVoiceResult()">Edit manually</button>
+    <button class="voice-confirm-btn" id="voice-confirm-btn" onclick="confirmVoiceAdd()">+ Add Expense</button>
+  </div>
+</div>
 
 <!-- Delete confirm modal -->
 <div id="confirm-modal" class="confirm-modal" style="display:none;">

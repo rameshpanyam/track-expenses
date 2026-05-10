@@ -407,9 +407,7 @@ async function confirmDelete() {
     await ensureToken();
     await deleteSheetRow(row);
     await loadExpenses();
-    if (currentView === 'summary')   renderSummary();
     if (currentView === 'dashboard') renderDashboard();
-    if (currentView === 'history')   renderHistory();
     renderTodayTotal();
     clearLoading();
     showToast('Deleted — undo in Google Sheets ✓');
@@ -483,7 +481,7 @@ function saveNewCategory() {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   SUMMARY VIEW
+   MONTH HELPERS
    ═══════════════════════════════════════════════════════════ */
 function monthExpenses() {
   const y = viewMonth.getFullYear(), m = viewMonth.getMonth() + 1;
@@ -553,11 +551,6 @@ function renderSummary() {
       </div>
     `).join('');
   }
-
-  /* Expense list */
-  document.getElementById('summary-expense-list').innerHTML = expenses.length === 0 ? '' :
-    expenses.map(e => expenseRowHTML(e)).join('');
-}
 
 /* ═══════════════════════════════════════════════════════════
    DASHBOARD VIEW
@@ -713,6 +706,28 @@ function renderDashboard() {
       ${i.val ? `<div class="insight-val">${i.val}</div>` : ''}
     </div>
   `).join('');
+
+  /* ── All entries for this month (date-grouped) ── */
+  const byDate = {};
+  [...expenses].sort((a,b) => b.date.localeCompare(a.date)).forEach(e => {
+    if (!byDate[e.date]) byDate[e.date] = [];
+    byDate[e.date].push(e);
+  });
+  const dates = Object.keys(byDate);
+  document.getElementById('dash-entries').innerHTML = dates.length === 0
+    ? `<div class="empty-state"><div class="empty-icon">📭</div><p>No entries for ${monthLabel(viewMonth)}.<br/>Tap <strong>Add</strong> to record one.</p></div>`
+    : dates.map(date => {
+        const rows     = byDate[date];
+        const dayTotal = rows.reduce((s,e) => s + e.amount, 0);
+        return `
+          <div class="month-group">
+            <div class="month-group-header">
+              <span>${fmtDate(date)}</span>
+              <span class="month-group-total">${fmt(dayTotal)}</span>
+            </div>
+            ${rows.map(e => expenseRowHTML(e, true)).join('')}
+          </div>`;
+      }).join('');
 }
 
 function buildInsights(expenses, total, dailyAvg, topCat, topCatEntry, prevTotal, momPct) {
@@ -802,38 +817,6 @@ function buildInsights(expenses, total, dailyAvg, topCat, topCatEntry, prevTotal
   return insights;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   HISTORY VIEW
-   ═══════════════════════════════════════════════════════════ */
-function renderHistory() {
-  const expenses = monthExpenses();
-  const byDate   = {};
-  expenses.forEach(e => { if (!byDate[e.date]) byDate[e.date] = []; byDate[e.date].push(e); });
-  const dates     = Object.keys(byDate).sort().reverse();
-  const container = document.getElementById('history-list');
-
-  if (dates.length === 0) {
-    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>No expenses for ${monthLabel(viewMonth)}.<br/>Tap <strong>Add</strong> to record one.</p></div>`;
-    return;
-  }
-
-  container.innerHTML = dates.map(date => {
-    const rows     = byDate[date].sort((a,b) => b.createdAt.localeCompare(a.createdAt));
-    const dayTotal = rows.reduce((s,e) => s + e.amount, 0);
-    return `
-      <div class="month-group">
-        <div class="month-group-header">
-          <span>${fmtDate(date)}</span>
-          <span class="month-group-total">${fmt(dayTotal)}</span>
-        </div>
-        <div class="expense-list">
-          ${rows.map(e => expenseRowHTML(e, true)).join('')}
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
 /* ── Shared expense row HTML ───────────────────────────────── */
 function expenseRowHTML(e, hideDate = false) {
   const cat = CAT_MAP[e.category] || { icon: '📦', label: e.category, color: '#78909C' };
@@ -865,9 +848,7 @@ function switchView(view) {
   updateHeaderMonth();
 
   if (view === 'add')       renderTodayTotal();
-  if (view === 'summary')   renderSummary();
   if (view === 'dashboard') renderDashboard();
-  if (view === 'history')   renderHistory();
 }
 
 function updateHeaderMonth() {
@@ -889,9 +870,178 @@ function updateHeaderMonth() {
 function changeMonth(delta) {
   viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + delta, 1);
   updateHeaderMonth();
-  if (currentView === 'summary')   renderSummary();
   if (currentView === 'dashboard') { destroyCharts(); renderDashboard(); }
-  if (currentView === 'history')   renderHistory();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   VOICE ENTRY ENGINE
+   ═══════════════════════════════════════════════════════════ */
+let recognition = null;
+let voiceParsed = null;
+
+/* Keyword map — covers common Indian English phrases */
+const VOICE_KEYWORDS = {
+  food:     ['food','lunch','dinner','breakfast','meal','eat','eating','restaurant','hotel','biryani','swiggy','zomato','snack','snacks','chai','tea','coffee','tiffin'],
+  grocery:  ['grocery','groceries','supermarket','kirana','big bazaar','dmart','reliance','zepto','blinkit','instamart'],
+  market:   ['market','vegetable','vegetables','fruit','fruits','sabzi','mandi'],
+  medicine: ['medicine','medicines','medical','pharmacy','pharmacist','doctor','hospital','tablet','tablets','capsule','drug','health','apollo'],
+  petrol:   ['petrol','fuel','diesel','gas','pump','filling'],
+  recharge: ['recharge','mobile','phone','internet','data','sim','jio','airtel','vi','bsnl','broadband','wifi'],
+  water:    ['water','aqua','bisleri','mineral'],
+  gifts:    ['gift','gifts','present','birthday','anniversary','wedding'],
+  other:    ['other','misc','miscellaneous'],
+};
+
+const MONTH_MAP = {
+  january:1, jan:1, february:2, feb:2, march:3, mar:3,
+  april:4, apr:4, may:5, june:6, jun:6, july:7, jul:7,
+  august:8, aug:8, september:9, sep:9, october:10, oct:10,
+  november:11, nov:11, december:12, dec:12,
+};
+
+function parseVoiceCommand(text) {
+  const lower = text.toLowerCase().trim();
+
+  /* ── Amount: first number found ── */
+  const amountMatch = lower.match(/\b(\d+(?:\.\d+)?)\b/);
+  const amount = amountMatch ? parseFloat(amountMatch[1]) : null;
+
+  /* ── Category: keyword match (built-in first, then custom) ── */
+  let category = null;
+  for (const [cat, keywords] of Object.entries(VOICE_KEYWORDS)) {
+    if (keywords.some(kw => lower.includes(kw))) { category = cat; break; }
+  }
+  if (!category) {
+    for (const c of customCategories) {
+      if (lower.includes(c.label.toLowerCase())) { category = c.key; break; }
+    }
+  }
+
+  /* ── Date: default today, then check keywords ── */
+  let date = todayStr();
+  if (lower.includes('yesterday')) {
+    const d = new Date(); d.setDate(d.getDate() - 1);
+    date = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  } else {
+    /* Match "12th january", "12 jan", "january 12", "jan 12" */
+    const monthNames = 'january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec';
+    const p1 = new RegExp(`(\\d{1,2})(?:st|nd|rd|th)?\\s+(${monthNames})`, 'i');
+    const p2 = new RegExp(`(${monthNames})\\s+(\\d{1,2})`, 'i');
+    let dm = lower.match(p1) || lower.match(p2);
+    if (dm) {
+      let day, monthStr;
+      if (/^\d/.test(dm[1])) { day = parseInt(dm[1]); monthStr = dm[2]; }
+      else                   { monthStr = dm[1]; day = parseInt(dm[2]); }
+      const month = MONTH_MAP[monthStr.toLowerCase()];
+      if (month && day >= 1 && day <= 31) {
+        const now = new Date();
+        let year  = now.getFullYear();
+        /* If the specified month is in the future this year, use last year */
+        if (month > now.getMonth() + 1) year -= 1;
+        date = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      }
+    }
+  }
+
+  return { amount, category, date };
+}
+
+function startVoice() {
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) {
+    showToast('Voice not supported — try Safari on iPhone', true);
+    return;
+  }
+  recognition = new SpeechRec();
+  recognition.lang           = 'en-IN';
+  recognition.continuous     = false;
+  recognition.interimResults = true;
+
+  document.getElementById('voice-idle').style.display      = 'none';
+  document.getElementById('voice-listening').style.display = 'flex';
+  document.getElementById('voice-transcript-text').textContent = 'Listening…';
+
+  recognition.onresult = e => {
+    const t = Array.from(e.results).map(r => r[0].transcript).join('');
+    document.getElementById('voice-transcript-text').textContent = t || 'Listening…';
+  };
+
+  recognition.onend = () => {
+    const text = document.getElementById('voice-transcript-text').textContent.trim();
+    document.getElementById('voice-idle').style.display      = 'flex';
+    document.getElementById('voice-listening').style.display = 'none';
+    if (text && text !== 'Listening…') handleVoiceResult(text);
+  };
+
+  recognition.onerror = e => {
+    document.getElementById('voice-idle').style.display      = 'flex';
+    document.getElementById('voice-listening').style.display = 'none';
+    if (e.error !== 'no-speech') showToast('Mic error: ' + e.error, true);
+  };
+
+  recognition.start();
+}
+
+function stopVoice() {
+  if (recognition) { recognition.stop(); recognition = null; }
+}
+
+function handleVoiceResult(transcript) {
+  const parsed = parseVoiceCommand(transcript);
+  voiceParsed  = { ...parsed, transcript };
+
+  const cat         = parsed.category ? CAT_MAP[parsed.category] : null;
+  const dateDisplay = (() => {
+    if (parsed.date === todayStr()) return 'Today';
+    const [y, m, d] = parsed.date.split('-');
+    return `${parseInt(d)} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(m)-1]} ${y}`;
+  })();
+
+  document.getElementById('voice-heard-text').textContent = `"${transcript}"`;
+  document.getElementById('voice-parsed-row').innerHTML = `
+    <div class="voice-chip ${parsed.amount ? 'ok' : 'err'}">
+      💰 ${parsed.amount ? fmt(parsed.amount) : 'Amount?'}
+    </div>
+    <div class="voice-chip ${cat ? 'ok' : 'err'}">
+      ${cat ? cat.icon + ' ' + cat.label : '❓ Category?'}
+    </div>
+    <div class="voice-chip ok">📅 ${dateDisplay}</div>
+  `;
+
+  document.getElementById('voice-confirm-btn').disabled = !(parsed.amount && parsed.category);
+  document.getElementById('voice-result-card').style.display = 'flex';
+}
+
+function cancelVoice() {
+  voiceParsed = null;
+  document.getElementById('voice-result-card').style.display = 'none';
+}
+
+function editVoiceResult() {
+  if (!voiceParsed) return;
+  if (voiceParsed.amount)   { document.getElementById('amount-input').value = voiceParsed.amount; refreshAddBtn(); }
+  if (voiceParsed.category) selectCat(voiceParsed.category);
+  if (voiceParsed.date)     document.getElementById('date-input').value = voiceParsed.date;
+  cancelVoice();
+}
+
+async function confirmVoiceAdd() {
+  if (!voiceParsed?.amount || !voiceParsed?.category) return;
+  const { amount, category, date } = voiceParsed;
+  cancelVoice();
+  setLoading('Saving to Google Sheets…');
+  try {
+    await ensureToken();
+    await appendExpenseRow({ date, category, amount, note: '', createdAt: new Date().toISOString() });
+    await loadExpenses();
+    renderTodayTotal();
+    clearLoading();
+    showToast('Saved ✓');
+  } catch (e) {
+    clearLoading();
+    showToast('Save failed: ' + e.message, true);
+    console.error(e);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
