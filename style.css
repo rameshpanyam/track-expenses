@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════
-   EXPENSE TRACKER — Light theme (EasyPay-inspired)
-   IBM Plex Sans · Warm cream bg · Dark hero cards
+   EXPENSE TRACKER — Zomato food-delivery theme
+   IBM Plex Sans · Warm peach bg · Signature red CTAs
    ═══════════════════════════════════════════════════════════ */
 
 /* ── Reset ─────────────────────────────────────────────────── */
@@ -8,39 +8,42 @@
 
 /* ── Design tokens ─────────────────────────────────────────── */
 :root {
-  --bg:          #F5F4EF;
+  --bg:          #FFF5F2;        /* warm peach white */
   --bg2:         #FFFFFF;
-  --bg3:         #EDECEA;
-  --border:      rgba(0,0,0,.07);
-  --text:        #1A1A2E;
-  --muted:       #9098B1;
-  --accent:      #7C5CFC;
-  --accent-lt:   rgba(124,92,252,.12);
-  --dark-card:   #1A1A2E;
-  --green:       #16A34A;
-  --green-lt:    rgba(22,163,74,.12);
+  --bg3:         #FFEEE6;        /* peachy surface */
+  --border:      rgba(226,55,68,.10);
+  --text:        #1C1C1C;
+  --muted:       #696B7A;
+  --accent:      #E23744;        /* Zomato signature red */
+  --accent-2:    #FF5A4E;        /* coral for gradient */
+  --accent-lt:   rgba(226,55,68,.10);
+  --accent-grad: linear-gradient(135deg, #E23744 0%, #FF5A4E 100%);
+  --dark-card:   #2D1B1F;        /* warm dark for hero */
+  --dark-grad:   linear-gradient(135deg, #2D1B1F 0%, #4A1F26 100%);
+  --green:       #1BA672;
+  --green-lt:    rgba(27,166,114,.12);
   --red:         #DC2626;
   --red-lt:      rgba(220,38,38,.12);
-  --amber:       #D97706;
-  --amber-lt:    rgba(217,119,6,.12);
-  --shadow:      0 2px 16px rgba(0,0,0,.07);
-  --shadow-md:   0 4px 24px rgba(0,0,0,.10);
-  --shadow-lg:   0 8px 40px rgba(0,0,0,.14);
+  --amber:       #F4A340;
+  --amber-lt:    rgba(244,163,64,.14);
+  --shadow:      0 2px 16px rgba(226,55,68,.08);
+  --shadow-md:   0 4px 24px rgba(226,55,68,.12);
+  --shadow-lg:   0 8px 40px rgba(226,55,68,.18);
   --radius:      20px;
   --radius-sm:   12px;
   --radius-xs:   8px;
   --safe-top:    env(safe-area-inset-top,  0px);
   --safe-bot:    env(safe-area-inset-bottom, 0px);
 
-  /* Category palette */
-  --c-food:     #FF6B6B;
-  --c-grocery:  #26C6DA;
-  --c-market:   #66BB6A;
-  --c-medicine: #AB47BC;
-  --c-petrol:   #FFA726;
-  --c-recharge: #7C5CFC;
-  --c-water:    #42A5F5;
-  --c-gifts:    #EC407A;
+  /* Category palette — warm food-delivery vibe */
+  --c-food:     #E23744;        /* Zomato red */
+  --c-grocery:  #1BA672;        /* fresh green */
+  --c-market:   #F4A340;        /* mango */
+  --c-medicine: #8E44AD;        /* purple */
+  --c-petrol:   #FF7E36;        /* tangerine */
+  --c-recharge: #2C7BE5;        /* blue (was purple/conflict) */
+  --c-water:    #2DB6F0;        /* sky */
+  --c-gifts:    #EC407A;        /* pink */
   --c-other:    #78909C;
 }
 
@@ -78,10 +81,13 @@ html, body {
   box-shadow: 0 1px 0 var(--border);
 }
 .app-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: -.3px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  background: var(--accent-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -.4px;
 }
 .header-month {
   display: flex;
@@ -384,8 +390,8 @@ html, body {
   content: '';
   position: absolute;
   top: 0; left: 50%; transform: translateX(-50%);
-  width: 32px; height: 2px;
-  background: var(--accent);
+  width: 36px; height: 3px;
+  background: var(--accent-grad);
   border-radius: 0 0 4px 4px;
 }
 
@@ -417,24 +423,24 @@ html, body {
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--accent-grad);
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 20px rgba(124,92,252,.45);
+  box-shadow: 0 6px 22px rgba(226,55,68,.50);
   transition: transform .15s, box-shadow .15s;
   -webkit-tap-highlight-color: transparent;
   position: relative;
 }
-.voice-btn:active { transform: scale(.92); box-shadow: 0 2px 10px rgba(124,92,252,.3); }
+.voice-btn:active { transform: scale(.92); box-shadow: 0 2px 10px rgba(226,55,68,.35); }
 .voice-btn::before {
   content: '';
   position: absolute;
   inset: -6px;
   border-radius: 50%;
-  border: 2px solid rgba(124,92,252,.25);
+  border: 2px solid rgba(226,55,68,.30);
   animation: voice-ring 2s ease-in-out infinite;
 }
 .voice-btn-mic { font-size: 2rem; line-height: 1; }
@@ -724,7 +730,7 @@ html, body {
 .cat-btn[data-cat="market"]   .cat-icon-wrap { background: rgba(102,187,106,.15); }
 .cat-btn[data-cat="medicine"] .cat-icon-wrap { background: rgba(171,71,188,.15); }
 .cat-btn[data-cat="petrol"]   .cat-icon-wrap { background: rgba(255,167,38,.15); }
-.cat-btn[data-cat="recharge"] .cat-icon-wrap { background: rgba(124,92,252,.15); }
+.cat-btn[data-cat="recharge"] .cat-icon-wrap { background: rgba(44,123,229,.15); }
 .cat-btn[data-cat="water"]    .cat-icon-wrap { background: rgba(66,165,245,.15); }
 .cat-btn[data-cat="gifts"]    .cat-icon-wrap { background: rgba(236,64,122,.15); }
 .cat-btn[data-cat="other"]    .cat-icon-wrap { background: rgba(120,144,156,.15); }
@@ -769,7 +775,7 @@ html, body {
 .add-btn {
   width: 100%;
   padding: 18px;
-  background: var(--dark-card);
+  background: var(--accent-grad);
   color: #fff;
   border: none;
   border-radius: var(--radius);
@@ -778,13 +784,13 @@ html, body {
   cursor: pointer;
   letter-spacing: -.2px;
   font-family: inherit;
-  transition: opacity .15s, transform .1s, background .15s;
+  transition: opacity .15s, transform .1s, filter .15s;
   -webkit-tap-highlight-color: transparent;
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 6px 20px rgba(226,55,68,.32);
 }
-.add-btn:not(:disabled):active { opacity: .85; transform: scale(.98); }
-.add-btn:not(:disabled):hover { background: #2d2d4e; }
-.add-btn:disabled { opacity: .35; cursor: default; background: var(--muted); }
+.add-btn:not(:disabled):active { opacity: .9; transform: scale(.98); }
+.add-btn:not(:disabled):hover { filter: brightness(1.05); }
+.add-btn:disabled { opacity: .4; cursor: default; background: var(--muted); box-shadow: none; }
 
 #today-total {
   text-align: center;
@@ -798,11 +804,11 @@ html, body {
    SUMMARY VIEW
 ══════════════════════════════════════════════════════════ */
 .summary-hero {
-  background: var(--dark-card);
+  background: var(--accent-grad);
   border-radius: var(--radius);
   padding: 24px 20px;
   margin-bottom: 16px;
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 10px 32px rgba(226,55,68,.28);
   position: relative;
   overflow: hidden;
 }
@@ -810,9 +816,17 @@ html, body {
   content: '';
   position: absolute;
   top: -30px; right: -30px;
-  width: 120px; height: 120px;
+  width: 140px; height: 140px;
   border-radius: 50%;
-  background: rgba(124,92,252,.2);
+  background: rgba(255,255,255,.18);
+}
+.summary-hero::after {
+  content: '';
+  position: absolute;
+  bottom: -40px; left: -20px;
+  width: 100px; height: 100px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.10);
 }
 .summary-hero-label { font-size: .8rem; color: rgba(255,255,255,.6); font-weight: 500; margin-bottom: 6px; }
 .summary-hero-amount { font-size: 2.2rem; font-weight: 800; color: #fff; letter-spacing: -.5px; margin-bottom: 4px; }
@@ -925,11 +939,11 @@ html, body {
 
 /* Hero spend card */
 .dash-hero {
-  background: var(--dark-card);
+  background: var(--accent-grad);
   border-radius: var(--radius);
   padding: 22px 20px 20px;
   margin-bottom: 10px;
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 12px 36px rgba(226,55,68,.32);
   position: relative;
   overflow: hidden;
 }
@@ -937,17 +951,17 @@ html, body {
   content: '';
   position: absolute;
   bottom: -40px; right: -40px;
-  width: 130px; height: 130px;
+  width: 150px; height: 150px;
   border-radius: 50%;
-  background: rgba(124,92,252,.15);
+  background: rgba(255,255,255,.16);
 }
 .dash-hero::before {
   content: '';
   position: absolute;
   top: -20px; left: 60%;
-  width: 80px; height: 80px;
+  width: 90px; height: 90px;
   border-radius: 50%;
-  background: rgba(255,255,255,.04);
+  background: rgba(255,255,255,.10);
 }
 .dash-hero-month { font-size: .78rem; color: rgba(255,255,255,.55); font-weight: 600; margin-bottom: 4px; }
 .dash-hero-amount { font-size: 2.4rem; font-weight: 800; color: #fff; letter-spacing: -.6px; line-height: 1.1; }
@@ -964,9 +978,9 @@ html, body {
   color: rgba(255,255,255,.85);
   margin-top: 10px;
 }
-.dash-hero-badge.up   { background: rgba(220,38,38,.25);  color: #fca5a5; }
-.dash-hero-badge.down { background: rgba(22,163,74,.25);  color: #86efac; }
-.dash-hero-badge.flat { background: rgba(255,255,255,.1); color: rgba(255,255,255,.7); }
+.dash-hero-badge.up   { background: rgba(255,255,255,.22); color: #FFE2B5; }
+.dash-hero-badge.down { background: rgba(255,255,255,.22); color: #B7F2D5; }
+.dash-hero-badge.flat { background: rgba(255,255,255,.15); color: rgba(255,255,255,.85); }
 
 /* Stat pills row */
 .dash-pills {
