@@ -18,7 +18,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
   <title>Expense Tracker</title>
-  <link rel="stylesheet" href="style.css?v=20" />
+  <link rel="stylesheet" href="style.css?v=21" />
 
   <!-- Chart.js for the Dashboard -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
@@ -115,6 +115,7 @@
       <button id="month-next" style="visibility:hidden">›</button>
     </div>
     <div class="header-actions">
+      <button class="header-icon-btn" title="Set monthly budget" onclick="openBudgetModal()">🎯</button>
       <button class="header-icon-btn" title="Change sheet" onclick="showSheetChooser()">📑</button>
       <button class="signout-btn" onclick="signOut()">Sign out</button>
     </div>
@@ -176,7 +177,24 @@
       <div class="dash-hero-amount" id="dash-hero-amount">₹0</div>
       <div class="dash-hero-sub" id="dash-hero-sub">No expenses yet</div>
       <div class="dash-hero-badge flat" id="dash-mom-badge">— vs last month</div>
+      <!-- Budget progress (shown only when a budget exists for the month) -->
+      <div class="dash-hero-budget" id="dash-hero-budget" style="display:none;">
+        <div class="dash-hero-budget-bar"><div class="dash-hero-budget-fill" id="dash-hero-budget-fill"></div></div>
+        <div class="dash-hero-budget-meta" id="dash-hero-budget-meta"></div>
+      </div>
+      <!-- Overspent badge -->
+      <div class="dash-hero-overspent" id="dash-hero-overspent" style="display:none;">💸 OVERSPENT</div>
     </div>
+
+    <!-- Set-budget CTA (shown only when no budget exists for the month) -->
+    <button class="budget-cta" id="budget-cta" style="display:none;" onclick="openBudgetModal()">
+      <div class="budget-cta-icon">🎯</div>
+      <div class="budget-cta-info">
+        <div class="budget-cta-title">Set a budget for <span id="budget-cta-month">this month</span></div>
+        <div class="budget-cta-sub">Track green/red months & spillover automatically</div>
+      </div>
+      <div class="budget-cta-chev">›</div>
+    </button>
 
     <!-- 3 stat pills -->
     <div class="dash-pills" id="dash-pills">
@@ -235,13 +253,43 @@
     <div style="height:16px;"></div>
   </div>
 
-  <!-- Bottom nav (2 tabs) -->
+  <!-- ── Insights View ── -->
+  <div id="view-insights" class="view">
+    <p class="dash-section-title" style="margin-top:0;">Monthly Verdict</p>
+    <p class="insights-tagline">Tap any month to jump to its dashboard.</p>
+    <div class="verdict-strip" id="verdict-strip"></div>
+
+    <p class="dash-section-title">Streak</p>
+    <div class="streak-card" id="streak-card">
+      <div class="streak-emoji" id="streak-emoji">🆕</div>
+      <div class="streak-info">
+        <div class="streak-title" id="streak-title">No history yet</div>
+        <div class="streak-sub"  id="streak-sub">Set a budget to start tracking your verdict streak.</div>
+      </div>
+    </div>
+
+    <p class="dash-section-title">Ask by voice</p>
+    <button class="ask-voice-btn" onclick="startVoiceAsk()">
+      <span class="ask-voice-mic">🎤</span>
+      <div class="ask-voice-info">
+        <div class="ask-voice-title">Tap to ask a question</div>
+        <div class="ask-voice-sub">e.g. "How much budget left?" · "Did I overspend in April?"</div>
+      </div>
+    </button>
+
+    <div style="height:16px;"></div>
+  </div>
+
+  <!-- Bottom nav (3 tabs) -->
   <nav class="bottom-nav">
     <button id="nav-add" class="nav-btn active" onclick="switchView('add')">
       <span class="nav-icon">➕</span><span>Add</span>
     </button>
     <button id="nav-dashboard" class="nav-btn" onclick="switchView('dashboard')">
       <span class="nav-icon">📊</span><span>Dashboard</span>
+    </button>
+    <button id="nav-insights" class="nav-btn" onclick="switchView('insights')">
+      <span class="nav-icon">💡</span><span>Insights</span>
     </button>
   </nav>
 
@@ -296,6 +344,33 @@
   </div>
 </div>
 
-<script src="app.js?v=20"></script>
+<!-- Budget modal -->
+<div id="budget-modal" class="confirm-modal" style="display:none;">
+  <div class="confirm-box budget-box">
+    <p class="confirm-msg" id="budget-modal-title">Set monthly budget</p>
+    <p class="confirm-sub" id="budget-modal-sub">For <span id="budget-modal-month">this month</span>. Track green/red verdict & spillover.</p>
+    <div class="budget-input-wrap">
+      <span class="budget-input-currency">₹</span>
+      <input id="budget-amount-input" class="budget-amount-input" type="number"
+             inputmode="numeric" placeholder="50000" autocomplete="off" />
+    </div>
+    <div class="budget-quick-row">
+      <button class="budget-quick-btn" onclick="fillBudgetQuick(20000)">₹20K</button>
+      <button class="budget-quick-btn" onclick="fillBudgetQuick(35000)">₹35K</button>
+      <button class="budget-quick-btn" onclick="fillBudgetQuick(50000)">₹50K</button>
+      <button class="budget-quick-btn" onclick="fillBudgetQuick(75000)">₹75K</button>
+      <button class="budget-quick-btn" onclick="fillBudgetQuick(100000)">₹1L</button>
+    </div>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" onclick="closeBudgetModal()">Cancel</button>
+      <button class="confirm-ok" id="budget-save-btn" onclick="saveBudgetFromModal()">Save</button>
+    </div>
+    <button id="budget-clear-btn" class="budget-clear-btn" style="display:none;" onclick="clearBudgetFromModal()">
+      Remove budget for this month
+    </button>
+  </div>
+</div>
+
+<script src="app.js?v=21"></script>
 </body>
 </html>

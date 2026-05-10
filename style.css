@@ -1487,6 +1487,355 @@ html, body {
 }
 
 /* ══════════════════════════════════════════════════════════
+   BUDGET — hero variants, badge, progress bar, CTA card
+══════════════════════════════════════════════════════════ */
+/* Good month: cool green gradient overrides the default red hero */
+.dash-hero.hero--good {
+  background: linear-gradient(135deg, #0F8A5F 0%, #1BA672 60%, #2BC48B 100%);
+  box-shadow: 0 12px 36px rgba(27,166,114,.32);
+}
+.dash-hero.hero--good .dash-hero-month,
+.dash-hero.hero--good .dash-hero-sub  { color: rgba(255,255,255,.62); }
+
+/* Bad month: deeper, more urgent red */
+.dash-hero.hero--bad {
+  background: linear-gradient(135deg, #C81E2C 0%, #E23744 50%, #FF5A4E 100%);
+  box-shadow: 0 12px 36px rgba(220,38,38,.4);
+}
+
+/* Budget progress bar inside the hero */
+.dash-hero-budget {
+  margin-top: 14px;
+  position: relative;
+  z-index: 1;
+}
+.dash-hero-budget-bar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255,255,255,.18);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.dash-hero-budget-fill {
+  height: 100%;
+  width: 0;
+  background: rgba(255,255,255,.85);
+  border-radius: 4px;
+  transition: width .5s cubic-bezier(.4,0,.2,1);
+}
+.dash-hero.hero--bad .dash-hero-budget-fill {
+  background: #FFD7D9;
+}
+.dash-hero-budget-meta {
+  margin-top: 8px;
+  font-size: .78rem;
+  font-weight: 600;
+  color: rgba(255,255,255,.88);
+}
+.dash-hero-budget-meta strong { color: #fff; font-weight: 800; }
+.dash-hero-budget-meta .budget-over { color: #FFD7D9; font-weight: 800; }
+.dash-hero-budget-meta .budget-left { color: #B7F2D5; font-weight: 800; }
+
+/* OVERSPENT badge — pulses gently to draw the eye */
+.dash-hero-overspent {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(255,255,255,.95);
+  color: var(--red);
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .4px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.2);
+  animation: badgePulse 2.4s ease-in-out infinite;
+  z-index: 2;
+}
+@keyframes badgePulse {
+  0%, 100% { transform: scale(1);    box-shadow: 0 4px 14px rgba(0,0,0,.2); }
+  50%      { transform: scale(1.06); box-shadow: 0 4px 18px rgba(0,0,0,.3); }
+}
+
+/* Set-budget CTA card (shown when no budget exists for the month) */
+.budget-cta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  background: var(--bg2);
+  border: 1.5px dashed var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: all .15s ease;
+  box-shadow: var(--shadow);
+}
+.budget-cta:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.budget-cta:active { transform: scale(.98); }
+.budget-cta-icon {
+  font-size: 1.6rem;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  background: var(--accent-lt);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.budget-cta-info { flex: 1; min-width: 0; }
+.budget-cta-title {
+  font-size: .92rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.budget-cta-sub {
+  font-size: .76rem;
+  color: var(--muted);
+}
+.budget-cta-chev {
+  font-size: 1.6rem;
+  color: var(--accent);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════════════════════
+   BUDGET MODAL
+══════════════════════════════════════════════════════════ */
+.budget-box { max-width: 360px; }
+.budget-input-wrap {
+  position: relative;
+  margin: 16px 0 12px;
+}
+.budget-input-currency {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--accent);
+  pointer-events: none;
+}
+.budget-amount-input {
+  width: 100%;
+  padding: 14px 14px 14px 36px;
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-family: inherit;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  transition: border-color .15s ease;
+}
+.budget-amount-input:focus { border-color: var(--accent); }
+.budget-quick-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  justify-content: center;
+}
+.budget-quick-btn {
+  padding: 7px 12px;
+  font-size: .78rem;
+  font-weight: 700;
+  font-family: inherit;
+  background: var(--accent-lt);
+  color: var(--accent);
+  border: none;
+  border-radius: 18px;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.budget-quick-btn:hover  { background: var(--accent); color: #fff; }
+.budget-quick-btn:active { transform: scale(.94); }
+.budget-clear-btn {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  background: transparent;
+  border: none;
+  color: var(--red);
+  font-size: .82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-xs);
+  transition: background .15s ease;
+}
+.budget-clear-btn:hover { background: var(--red-lt); }
+
+/* ══════════════════════════════════════════════════════════
+   INSIGHTS — verdict strip, streak card, ask-by-voice
+══════════════════════════════════════════════════════════ */
+.insights-tagline {
+  font-size: .82rem;
+  color: var(--muted);
+  margin: -4px 0 12px;
+}
+
+/* Horizontal scrollable strip of monthly verdict cards (Option A layout) */
+.verdict-strip {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 4px 12px;
+  margin: 0 -4px 12px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.verdict-strip::-webkit-scrollbar { display: none; }
+.verdict-card {
+  flex-shrink: 0;
+  min-width: 96px;
+  background: var(--bg2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .15s ease;
+  box-shadow: var(--shadow);
+}
+.verdict-card:hover  { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.verdict-card:active { transform: scale(.96); }
+.verdict-card-month { font-size: .68rem; font-weight: 700; color: var(--muted); letter-spacing: .4px; text-transform: uppercase; }
+.verdict-card-dot   { font-size: 1.3rem; margin: 4px 0 2px; }
+.verdict-card-amt   { font-size: .9rem;  font-weight: 800; color: var(--text); }
+.verdict-card-sub   { font-size: .66rem; color: var(--muted); margin-top: 2px; text-transform: lowercase; }
+
+.verdict-card--good {
+  background: linear-gradient(135deg, rgba(27,166,114,.08) 0%, rgba(27,166,114,.18) 100%);
+  border-color: rgba(27,166,114,.32);
+}
+.verdict-card--good .verdict-card-amt { color: var(--green); }
+
+.verdict-card--bad {
+  background: linear-gradient(135deg, rgba(220,38,38,.08) 0%, rgba(220,38,38,.18) 100%);
+  border-color: rgba(220,38,38,.32);
+}
+.verdict-card--bad .verdict-card-amt { color: var(--red); }
+
+.verdict-card--no-budget {
+  background: var(--bg3);
+  border-style: dashed;
+  border-color: rgba(0,0,0,.12);
+  opacity: .85;
+}
+
+.verdict-card--current {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.verdict-strip-empty {
+  flex: 1;
+  text-align: center;
+  padding: 28px 16px;
+  color: var(--muted);
+  font-size: .85rem;
+  background: var(--bg2);
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-sm);
+}
+
+/* Streak card */
+.streak-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--bg2);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  margin-bottom: 4px;
+}
+.streak-emoji {
+  font-size: 2rem;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  background: var(--accent-lt);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.streak-info { flex: 1; min-width: 0; }
+.streak-title {
+  font-size: .98rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+.streak-sub {
+  font-size: .8rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+/* Ask-by-voice button (Insights tab) */
+.ask-voice-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  background: var(--accent-grad);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  text-align: left;
+  cursor: pointer;
+  color: #fff;
+  font-family: inherit;
+  box-shadow: 0 8px 24px rgba(226,55,68,.28);
+  transition: all .15s ease;
+}
+.ask-voice-btn:hover  { transform: translateY(-1px); box-shadow: 0 10px 28px rgba(226,55,68,.36); }
+.ask-voice-btn:active { transform: scale(.98); }
+.ask-voice-mic {
+  font-size: 1.6rem;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  background: rgba(255,255,255,.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ask-voice-info { flex: 1; min-width: 0; }
+.ask-voice-title {
+  font-size: .95rem;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.ask-voice-sub {
+  font-size: .76rem;
+  color: rgba(255,255,255,.85);
+}
+
+/* Inline empty state used inside cards (smaller than full empty-state) */
+.empty-state-inline {
+  text-align: center;
+  padding: 18px 12px;
+  color: var(--muted);
+  font-size: .85rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-hero-overspent { animation: none; }
+}
+
+/* ══════════════════════════════════════════════════════════
    UTILITY
 ══════════════════════════════════════════════════════════ */
 .soft { color: var(--muted); }

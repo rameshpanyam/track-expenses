@@ -15,6 +15,10 @@ const SPREADSHEET_NAME = 'Track Expenses';
 const TAB_NAME         = 'Expenses';
 const HEADERS          = ['Date', 'Category', 'Amount', 'Note', 'CreatedAt'];
 
+/* Budget tab — auto-created on first budget save */
+const BUDGET_TAB_NAME  = 'Budgets';
+const BUDGET_HEADERS   = ['Month', 'Year', 'Budget', 'Spent', 'Status', 'Spillover', 'UpdatedAt'];
+
 /* ── Categories ────────────────────────────────────────────── */
 const CATEGORIES = [
   { key: 'food',     icon: '🍽️', label: 'Food',     color: '#FF6B6B' },
@@ -52,7 +56,10 @@ let accessToken   = null;
 let tokenExpiry   = 0;
 let spreadsheetId = localStorage.getItem('expenseSheetId') || null;
 let sheetGid      = Number(localStorage.getItem('expenseSheetGid') ?? -1);
+let budgetGid     = Number(localStorage.getItem('budgetSheetGid') ?? -1);
 let allExpenses   = [];
+let allBudgets    = [];          /* { rowIndex, month, year, budget, spent, status, spillover, updatedAt } */
+let lastWrapMonth = localStorage.getItem('lastWrapMonth') || '';   /* yyyy-mm of last shown wrap-up */
 let currentView   = 'add';
 let selectedCat   = null;
 let viewMonth     = new Date(); viewMonth.setDate(1);
@@ -298,6 +305,142 @@ async function deleteSheetRow(rowIndex) {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   BUDGET DATA LAYER
+   - Lazy-creates a "Budgets" tab the first time a budget is saved.
+   - Schema: Month | Year | Budget | Spent | Status | Spillover | UpdatedAt
+   - One row per (year, month). Upserts only — no destructive deletes
+     unless user explicitly removes a budget.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Ensure the Budgets tab exists; create + write headers if not. */
+async function ensureBudgetTab() {
+  if (!spreadsheetId) return false;
+  const meta = await sheetsRequest('GET', `/${spreadsheetId}?fields=sheets.properties`);
+  const tab  = meta.sheets.find(s => s.properties.title === BUDGET_TAB_NAME);
+  if (tab) {
+    budgetGid = tab.properties.sheetId;
+    localStorage.setItem('budgetSheetGid', budgetGid);
+    /* Ensure headers row exists */
+    const data = await sheetsRequest('GET', `/${spreadsheetId}/values/${BUDGET_TAB_NAME}!A1:G1`);
+    if (!data.values || data.values.length === 0) {
+      await sheetsRequest('POST',
+        `/${spreadsheetId}/values/${BUDGET_TAB_NAME}!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+        { values: [BUDGET_HEADERS] });
+    }
+    return true;
+  }
+  /* Create tab + headers */
+  const res = await sheetsRequest('POST', `/${spreadsheetId}:batchUpdate`, {
+    requests: [{ addSheet: { properties: { title: BUDGET_TAB_NAME } } }]
+  });
+  budgetGid = res.replies[0].addSheet.properties.sheetId;
+  localStorage.setItem('budgetSheetGid', budgetGid);
+  await sheetsRequest('POST',
+    `/${spreadsheetId}/values/${BUDGET_TAB_NAME}!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+    { values: [BUDGET_HEADERS] });
+  return true;
+}
+
+/* Load all budget rows into memory. Tolerates missing tab (returns empty). */
+async function loadBudgets() {
+  if (!spreadsheetId) { allBudgets = []; return; }
+  try {
+    const data = await sheetsRequest('GET', `/${spreadsheetId}/values/${BUDGET_TAB_NAME}!A:G`);
+    const rows = data.values || [];
+    allBudgets = rows.slice(1)
+      .map((row, i) => ({
+        rowIndex:  i + 2,
+        month:     parseInt(row[0]) || 0,
+        year:      parseInt(row[1]) || 0,
+        budget:    parseFloat(row[2]) || 0,
+        spent:     parseFloat(row[3]) || 0,
+        status:    row[4] || 'good',
+        spillover: parseFloat(row[5]) || 0,
+        updatedAt: row[6] || '',
+      }))
+      .filter(b => b.month > 0 && b.year > 0);
+  } catch (e) {
+    /* Tab doesn't exist yet — that's fine, just means no budgets set */
+    allBudgets = [];
+  }
+}
+
+/* Find budget for a given (year, month). Returns null if not set. */
+function getBudgetForMonth(year, month) {
+  return allBudgets.find(b => b.year === year && b.month === month) || null;
+}
+
+/* Compute spent for a given calendar month from in-memory expenses. */
+function computeSpentForMonth(year, month) {
+  return allExpenses.reduce((sum, e) => {
+    if (!e.date) return sum;
+    const [ey, em] = e.date.split('-').map(Number);
+    return (ey === year && em === month) ? sum + e.amount : sum;
+  }, 0);
+}
+
+/* Derive verdict for a budget row (live for current month, locked for past). */
+function deriveVerdict(year, month, budget, spent) {
+  if (!budget || budget <= 0) return { status: 'no-budget', spillover: 0 };
+  const spillover = Math.max(0, spent - budget);
+  return { status: spillover > 0 ? 'bad' : 'good', spillover };
+}
+
+/* Upsert a budget row: write Month, Year, Budget, recomputed Spent/Status/Spillover. */
+async function upsertBudgetRow(year, month, budgetAmount) {
+  await ensureBudgetTab();
+  const spent      = computeSpentForMonth(year, month);
+  const v          = deriveVerdict(year, month, budgetAmount, spent);
+  const updatedAt  = new Date().toISOString();
+  const row        = [month, year, budgetAmount, spent, v.status, v.spillover, updatedAt];
+
+  const existing = getBudgetForMonth(year, month);
+  if (existing) {
+    /* Update existing row in place */
+    await sheetsRequest('PUT',
+      `/${spreadsheetId}/values/${BUDGET_TAB_NAME}!A${existing.rowIndex}:G${existing.rowIndex}?valueInputOption=RAW`,
+      { values: [row] });
+  } else {
+    /* Append new row */
+    await sheetsRequest('POST',
+      `/${spreadsheetId}/values/${BUDGET_TAB_NAME}!A:G:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+      { values: [row] });
+  }
+  await loadBudgets();
+}
+
+/* Recompute Spent/Status/Spillover for any budget row whose month matches an
+   added/deleted expense. Called after every expense write so the Budgets tab
+   stays in sync without the user having to do anything. */
+async function recomputeBudgetForMonth(year, month) {
+  const existing = getBudgetForMonth(year, month);
+  if (!existing) return;             /* No budget set for that month — nothing to sync */
+  const spent     = computeSpentForMonth(year, month);
+  const v         = deriveVerdict(year, month, existing.budget, spent);
+  const updatedAt = new Date().toISOString();
+  const row       = [month, year, existing.budget, spent, v.status, v.spillover, updatedAt];
+  await sheetsRequest('PUT',
+    `/${spreadsheetId}/values/${BUDGET_TAB_NAME}!A${existing.rowIndex}:G${existing.rowIndex}?valueInputOption=RAW`,
+    { values: [row] });
+  /* Update in-memory copy so UI re-renders correctly without a full refetch */
+  Object.assign(existing, { spent, status: v.status, spillover: v.spillover, updatedAt });
+}
+
+/* Remove a budget row entirely (user clicked "Remove budget for this month"). */
+async function deleteBudgetRow(year, month) {
+  const existing = getBudgetForMonth(year, month);
+  if (!existing) return;
+  if (budgetGid < 0) await ensureBudgetTab();
+  await sheetsRequest('POST', `/${spreadsheetId}:batchUpdate`, {
+    requests: [{ deleteDimension: {
+      range: { sheetId: budgetGid, dimension: 'ROWS',
+               startIndex: existing.rowIndex - 1, endIndex: existing.rowIndex }
+    }}]
+  });
+  await loadBudgets();
+}
+
+/* ═══════════════════════════════════════════════════════════
    GOOGLE AUTH
    ═══════════════════════════════════════════════════════════ */
 function initGoogleAuth() {
@@ -351,9 +494,12 @@ async function enterMainApp() {
   setLoading('Loading your expenses…');
   try {
     await loadExpenses();
+    await loadBudgets();
     clearLoading();
     buildAddView();
     switchView('add');
+    /* Show wrap-up toast if we just rolled into a new month (non-blocking) */
+    setTimeout(() => maybeShowMonthWrapUp(), 600);
   } catch (e) {
     clearLoading();
     showToast('Error: ' + e.message, true);
@@ -585,8 +731,12 @@ async function saveExpense() {
   setLoading('Saving to Google Sheets…');
   try {
     await ensureToken();
-    await appendExpenseRow({ date: dateEl.value, category: selectedCat, amount, note: noteEl.value.trim(), createdAt: new Date().toISOString() });
+    const dateValue = dateEl.value;
+    await appendExpenseRow({ date: dateValue, category: selectedCat, amount, note: noteEl.value.trim(), createdAt: new Date().toISOString() });
     await loadExpenses();
+    /* Keep Budgets tab in sync if a budget exists for this expense's month */
+    const [ey, em] = dateValue.split('-').map(Number);
+    try { await recomputeBudgetForMonth(ey, em); } catch (err) { console.warn('Budget sync failed:', err); }
 
     amountEl.value = '';
     noteEl.value   = '';
@@ -623,11 +773,18 @@ async function confirmDelete() {
   if (row === null || row === undefined) return;
 
   setLoading('Deleting…');
+  /* Capture the expense's month before deletion so we can resync its budget */
+  const target  = allExpenses.find(e => e.rowIndex === row);
+  const monthOf = target?.date ? target.date.split('-').map(Number) : null;
   try {
     await ensureToken();
     await deleteSheetRow(row);
     await loadExpenses();
+    if (monthOf) {
+      try { await recomputeBudgetForMonth(monthOf[0], monthOf[1]); } catch (err) { console.warn('Budget sync failed:', err); }
+    }
     if (currentView === 'dashboard') renderDashboard();
+    if (currentView === 'insights')  renderInsights();
     renderTodayTotal();
     clearLoading();
     showToast('Deleted — undo in Google Sheets ✓');
@@ -752,6 +909,9 @@ function renderDashboard() {
     badge.className   = `dash-hero-badge ${up ? 'up' : 'down'}`;
     badge.textContent = `${up ? '↑' : '↓'} ${Math.abs(momPct)}% vs last month (${fmt(prevTotal)})`;
   }
+
+  /* Budget hero overlay — green / red / no-budget CTA */
+  applyBudgetToHero(viewMonth, total);
 
   /* Stat pills */
   document.getElementById('pill-daily').textContent   = fmt(dailyAvg);
@@ -1038,6 +1198,276 @@ function expenseRowHTML(e, hideDate = false, inCatGroup = false) {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   BUDGET HERO + MODAL + INSIGHTS
+   ═══════════════════════════════════════════════════════════ */
+
+/* Apply budget state to the dashboard hero. Mutates DOM in-place. */
+function applyBudgetToHero(monthDate, spent) {
+  const y = monthDate.getFullYear();
+  const m = monthDate.getMonth() + 1;
+  const hero        = document.getElementById('dash-hero');
+  const cta         = document.getElementById('budget-cta');
+  const overspent   = document.getElementById('dash-hero-overspent');
+  const budgetBox   = document.getElementById('dash-hero-budget');
+  const budgetFill  = document.getElementById('dash-hero-budget-fill');
+  const budgetMeta  = document.getElementById('dash-hero-budget-meta');
+  const subEl       = document.getElementById('dash-hero-sub');
+
+  /* Reset hero classes */
+  hero.classList.remove('hero--good', 'hero--bad');
+  overspent.style.display = 'none';
+  budgetBox.style.display = 'none';
+
+  const b = getBudgetForMonth(y, m);
+  if (!b) {
+    /* No budget set — show CTA card below hero */
+    cta.style.display = 'flex';
+    document.getElementById('budget-cta-month').textContent = monthLabel(monthDate);
+    return;
+  }
+
+  cta.style.display = 'none';
+  const v       = deriveVerdict(y, m, b.budget, spent);
+  const pct     = Math.min(100, b.budget > 0 ? (spent / b.budget) * 100 : 0);
+  budgetBox.style.display     = 'block';
+  budgetFill.style.width      = pct + '%';
+
+  if (v.status === 'bad') {
+    hero.classList.add('hero--bad');
+    overspent.style.display = 'inline-flex';
+    budgetMeta.innerHTML =
+      `<strong>${fmt(spent)}</strong> spent of ${fmt(b.budget)} ` +
+      `· <span class="budget-over">${fmt(v.spillover)} over</span>`;
+    subEl.textContent =
+      `${monthExpensesCount(y, m)} expense${monthExpensesCount(y, m) !== 1 ? 's' : ''} · day ${daysElapsedInMonth(monthDate)} of ${daysInMonth(monthDate)}`;
+  } else {
+    hero.classList.add('hero--good');
+    const remaining = b.budget - spent;
+    budgetMeta.innerHTML =
+      `<strong>${fmt(spent)}</strong> spent of ${fmt(b.budget)} ` +
+      `· <span class="budget-left">${fmt(remaining)} left</span>`;
+    subEl.textContent =
+      `${monthExpensesCount(y, m)} expense${monthExpensesCount(y, m) !== 1 ? 's' : ''} · day ${daysElapsedInMonth(monthDate)} of ${daysInMonth(monthDate)}`;
+  }
+}
+
+function monthExpensesCount(y, m) {
+  return allExpenses.filter(e => {
+    const [ey, em] = (e.date || '').split('-').map(Number);
+    return ey === y && em === m;
+  }).length;
+}
+
+function daysInMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+}
+
+/* ── Budget modal ───────────────────────────────────────────── */
+function openBudgetModal() {
+  const y     = viewMonth.getFullYear();
+  const m     = viewMonth.getMonth() + 1;
+  const b     = getBudgetForMonth(y, m);
+  const input = document.getElementById('budget-amount-input');
+  document.getElementById('budget-modal-title').textContent = b ? 'Edit monthly budget' : 'Set monthly budget';
+  document.getElementById('budget-modal-month').textContent = monthLabel(viewMonth);
+  document.getElementById('budget-clear-btn').style.display = b ? 'block' : 'none';
+  input.value = b ? b.budget : '';
+  document.getElementById('budget-modal').style.display = 'flex';
+  setTimeout(() => input.focus(), 50);
+}
+
+function closeBudgetModal() {
+  document.getElementById('budget-modal').style.display = 'none';
+}
+
+function fillBudgetQuick(amt) {
+  document.getElementById('budget-amount-input').value = amt;
+  document.getElementById('budget-amount-input').focus();
+}
+
+async function saveBudgetFromModal() {
+  const raw = document.getElementById('budget-amount-input').value;
+  const amt = parseFloat(raw);
+  if (!amt || amt <= 0) { showToast('Enter a budget amount', true); return; }
+  const y = viewMonth.getFullYear();
+  const m = viewMonth.getMonth() + 1;
+  closeBudgetModal();
+  setLoading('Saving budget…');
+  try {
+    await ensureToken();
+    await upsertBudgetRow(y, m, amt);
+    clearLoading();
+    showToast(`Budget for ${monthLabel(viewMonth)} set to ${fmt(amt)} ✓`);
+    if (currentView === 'dashboard') renderDashboard();
+    if (currentView === 'insights')  renderInsights();
+    /* Voice reply if user enabled — keep silent on manual save */
+  } catch (e) {
+    clearLoading();
+    showToast('Save failed: ' + e.message, true);
+    console.error(e);
+  }
+}
+
+async function clearBudgetFromModal() {
+  const y = viewMonth.getFullYear();
+  const m = viewMonth.getMonth() + 1;
+  closeBudgetModal();
+  setLoading('Removing budget…');
+  try {
+    await ensureToken();
+    await deleteBudgetRow(y, m);
+    clearLoading();
+    showToast('Budget removed for ' + monthLabel(viewMonth));
+    if (currentView === 'dashboard') renderDashboard();
+    if (currentView === 'insights')  renderInsights();
+  } catch (e) {
+    clearLoading();
+    showToast('Remove failed: ' + e.message, true);
+    console.error(e);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   INSIGHTS VIEW — Monthly Verdict horizontal strip + streak
+   ═══════════════════════════════════════════════════════════ */
+function renderInsights() {
+  renderVerdictStrip();
+  renderStreakCard();
+}
+
+/* Build a list of months from the earliest expense to the current month, with
+   their verdict computed live (current month uses live spend; past months use
+   whatever's stored in Budgets tab, recomputed against actual expenses). */
+function buildMonthlyVerdicts() {
+  if (!allExpenses.length && !allBudgets.length) {
+    /* Show at least the current month */
+    const now = new Date();
+    return [verdictForMonth(now.getFullYear(), now.getMonth() + 1)];
+  }
+  /* Determine earliest month from expenses + budgets */
+  let earliestY = 9999, earliestM = 12;
+  const consider = (y, m) => {
+    if (y < earliestY || (y === earliestY && m < earliestM)) { earliestY = y; earliestM = m; }
+  };
+  allExpenses.forEach(e => {
+    if (!e.date) return;
+    const [y, m] = e.date.split('-').map(Number);
+    consider(y, m);
+  });
+  allBudgets.forEach(b => consider(b.year, b.month));
+  const now = new Date();
+  const latestY = now.getFullYear(), latestM = now.getMonth() + 1;
+
+  const result = [];
+  let y = earliestY, m = earliestM;
+  while (y < latestY || (y === latestY && m <= latestM)) {
+    result.push(verdictForMonth(y, m));
+    m++;
+    if (m > 12) { m = 1; y++; }
+  }
+  /* Newest first */
+  return result.reverse();
+}
+
+function verdictForMonth(year, month) {
+  const spent = computeSpentForMonth(year, month);
+  const b     = getBudgetForMonth(year, month);
+  if (!b) return { year, month, status: 'no-budget', spent, budget: 0, spillover: 0, savings: 0 };
+  const v = deriveVerdict(year, month, b.budget, spent);
+  const savings = v.status === 'good' ? Math.max(0, b.budget - spent) : 0;
+  return { year, month, status: v.status, spent, budget: b.budget, spillover: v.spillover, savings };
+}
+
+function renderVerdictStrip() {
+  const strip    = document.getElementById('verdict-strip');
+  const verdicts = buildMonthlyVerdicts();
+  const now      = new Date();
+  const isCurr   = (v) => v.year === now.getFullYear() && v.month === now.getMonth() + 1;
+
+  strip.innerHTML = verdicts.map(v => {
+    const monthName = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][v.month - 1];
+    const dot       = v.status === 'good' ? '🟢' : v.status === 'bad' ? '🔴' : '⚪';
+    const statusCls = `verdict-card--${v.status}`;
+    let primary, secondary;
+    if (v.status === 'good') {
+      primary   = '−' + fmt(v.savings);
+      secondary = isCurr(v) ? 'left' : 'saved';
+    } else if (v.status === 'bad') {
+      primary   = '+' + fmt(v.spillover);
+      secondary = 'over';
+    } else {
+      primary   = fmt(v.spent);
+      secondary = 'no budget';
+    }
+    return `
+      <button class="verdict-card ${statusCls} ${isCurr(v) ? 'verdict-card--current' : ''}"
+              onclick="jumpToMonth(${v.year}, ${v.month})">
+        <div class="verdict-card-month">${monthName} '${String(v.year).slice(-2)}</div>
+        <div class="verdict-card-dot">${dot}</div>
+        <div class="verdict-card-amt">${primary}</div>
+        <div class="verdict-card-sub">${secondary}</div>
+      </button>`;
+  }).join('') || '<p class="empty-state-inline">Nothing to show yet — add an expense or set a budget.</p>';
+}
+
+function jumpToMonth(year, month) {
+  viewMonth = new Date(year, month - 1, 1);
+  switchView('dashboard');
+  destroyCharts();
+  renderDashboard();
+}
+
+function renderStreakCard() {
+  const verdicts = buildMonthlyVerdicts().filter(v => v.status !== 'no-budget');
+  const emojiEl  = document.getElementById('streak-emoji');
+  const titleEl  = document.getElementById('streak-title');
+  const subEl    = document.getElementById('streak-sub');
+  if (!verdicts.length) {
+    emojiEl.textContent = '🆕';
+    titleEl.textContent = 'No history yet';
+    subEl.textContent   = 'Set a budget for this month to start tracking your verdict streak.';
+    return;
+  }
+  /* Streak = consecutive same-status months from newest backward */
+  const newest = verdicts[0].status;
+  let streak = 0;
+  for (const v of verdicts) {
+    if (v.status === newest) streak++;
+    else break;
+  }
+  if (newest === 'good') {
+    emojiEl.textContent = '🔥';
+    titleEl.textContent = `${streak} good month${streak === 1 ? '' : 's'} in a row`;
+    subEl.textContent   = streak >= 3 ? 'Excellent discipline. Keep it going!' : 'Nice work — consistency builds savings.';
+  } else {
+    emojiEl.textContent = '⚠️';
+    titleEl.textContent = `${streak} bad month${streak === 1 ? '' : 's'} in a row`;
+    subEl.textContent   = 'Time to revisit your spending — small changes compound.';
+  }
+}
+
+/* ── Month rollover: detect a new calendar month and announce verdict ── */
+function maybeShowMonthWrapUp() {
+  const now      = new Date();
+  const thisYM   = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  if (lastWrapMonth === thisYM) return;
+  /* Mark current month as "seen" so we don't toast again until next month rolls over */
+  lastWrapMonth = thisYM;
+  localStorage.setItem('lastWrapMonth', thisYM);
+
+  /* Show wrap-up for the PREVIOUS calendar month */
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const v    = verdictForMonth(prev.getFullYear(), prev.getMonth() + 1);
+  if (v.status === 'no-budget') return;
+  const label = monthLabel(prev);
+  if (v.status === 'good') {
+    showToast(`🎉 ${label}: Good month — saved ${fmt(v.savings)}`);
+  } else {
+    showToast(`💸 ${label}: Bad month — over by ${fmt(v.spillover)}`, true);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
    VIEW ROUTER
    ═══════════════════════════════════════════════════════════ */
 function switchView(view) {
@@ -1050,6 +1480,7 @@ function switchView(view) {
 
   if (view === 'add')       renderTodayTotal();
   if (view === 'dashboard') renderDashboard();
+  if (view === 'insights')  renderInsights();
 }
 
 function updateHeaderMonth() {
@@ -1059,6 +1490,11 @@ function updateHeaderMonth() {
 
   if (currentView === 'add') {
     el.textContent          = 'Today';
+    prev.style.visibility   = 'hidden';
+    next.style.visibility   = 'hidden';
+  } else if (currentView === 'insights') {
+    /* Insights tab is global — no per-month context, hide chevrons */
+    el.textContent          = 'All months';
     prev.style.visibility   = 'hidden';
     next.style.visibility   = 'hidden';
   } else {
@@ -1072,6 +1508,7 @@ function changeMonth(delta) {
   viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + delta, 1);
   updateHeaderMonth();
   if (currentView === 'dashboard') { destroyCharts(); renderDashboard(); }
+  if (currentView === 'insights')  renderInsights();
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1295,6 +1732,268 @@ function parseVoiceCommand(text) {
   return { amount, category, date, note };
 }
 
+/* ═══════════════════════════════════════════════════════════
+   VOICE INTENT — budget commands & budget queries
+   ═══════════════════════════════════════════════════════════ */
+
+/* Parse a spoken amount like "fifty thousand", "1.5 lakh", "25k", "50000".
+   Handles Indian conventions (lakh/crore, k for thousand) plus plain digits. */
+function parseSpokenAmount(text) {
+  const t = text.toLowerCase().replace(/[,₹]/g, '').trim();
+
+  /* Pattern 1: "1.5 lakh" / "2 lakhs" / "1 lac" */
+  let m = t.match(/(\d+(?:\.\d+)?)\s*(?:lakh|lakhs|lac|lacs)/);
+  if (m) return Math.round(parseFloat(m[1]) * 100000);
+
+  /* Pattern 2: "1 crore" / "1.2 crores" */
+  m = t.match(/(\d+(?:\.\d+)?)\s*(?:crore|crores|cr)\b/);
+  if (m) return Math.round(parseFloat(m[1]) * 10000000);
+
+  /* Pattern 3: "25k" / "50 k" / "1.5k" */
+  m = t.match(/(\d+(?:\.\d+)?)\s*k\b/);
+  if (m) return Math.round(parseFloat(m[1]) * 1000);
+
+  /* Pattern 4: "fifty thousand" / "twenty five thousand" — handle a few common
+     spoken forms by digit conversion from word numbers. We keep it light: only
+     convert standalone "X thousand" where X is a word number 1..99. */
+  const WORD_NUMS = {
+    one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9,
+    ten:10, eleven:11, twelve:12, thirteen:13, fourteen:14, fifteen:15,
+    sixteen:16, seventeen:17, eighteen:18, nineteen:19,
+    twenty:20, thirty:30, forty:40, fifty:50, sixty:60, seventy:70,
+    eighty:80, ninety:90, hundred:100
+  };
+  m = t.match(/((?:[a-z]+\s+){0,3}[a-z]+)\s+(thousand|hundred)/);
+  if (m) {
+    const words = m[1].split(/\s+/);
+    let n = 0;
+    for (const w of words) {
+      if (WORD_NUMS[w] != null) n = (w === 'hundred') ? n * 100 : n + WORD_NUMS[w];
+      else { n = NaN; break; }
+    }
+    if (!isNaN(n) && n > 0) {
+      return m[2] === 'thousand' ? n * 1000 : n * 100;
+    }
+  }
+
+  /* Pattern 5: plain digits — pick the largest standalone number. */
+  const nums = (t.match(/\b\d+(?:\.\d+)?\b/g) || []).map(parseFloat);
+  if (nums.length) return Math.round(Math.max(...nums));
+
+  return null;
+}
+
+/* Classify a spoken transcript into budget-set | budget-query | none. */
+function classifyVoiceIntent(transcript) {
+  const t = transcript.toLowerCase().trim();
+
+  /* ── BUDGET-SET intents ──
+        "set [my] [monthly] budget [to] 50000"
+        "[my] monthly budget is 50000"
+        "this month budget 50000"
+        "budget 50000" / "make budget 50000" */
+  const setPatterns = [
+    /\b(?:set|make|update|change)\s+(?:my\s+)?(?:monthly\s+)?budget(?:\s+(?:to|as|of|at))?\s+(.+)$/,
+    /\b(?:my\s+)?(?:monthly\s+)?budget\s+(?:is|to|=)\s+(.+)$/,
+    /\bthis\s+month(?:'s)?\s+budget\s+(?:is\s+)?(.+)$/,
+    /\bbudget\s+(?:to\s+)?(\d[\d.\s]*(?:k|lakh|lac|crore|cr|thousand|hundred)?.*)$/,
+  ];
+  for (const re of setPatterns) {
+    const m = t.match(re);
+    if (m && m[1]) {
+      const amount = parseSpokenAmount(m[1]);
+      if (amount && amount > 0) return { type: 'budget-set', amount };
+    }
+  }
+
+  /* ── BUDGET-QUERY intents ──
+        Direct triggers — leave parsing of the question to the handler. */
+  const queryTriggers = [
+    /\bhow\s+much\s+(?:budget\s+)?(?:is\s+)?(?:left|remaining|remain)\b/,
+    /\bbudget\s+(?:left|remaining|remain)\b/,
+    /\bhow\s+much\s+(?:can\s+i|do\s+i\s+have(?:\s+to\s+spend)?)\b/,
+    /\bwhat(?:'s| is)\s+my\s+budget\b/,
+    /\bdid\s+i\s+(?:overspend|over\s*spend|go\s+over)/,
+    /\bam\s+i\s+(?:over|under)\s+budget\b/,
+    /\bgood\s+month\s+or\s+bad\s+month\b/,
+    /\bhow\s+(?:am\s+i|is\s+(?:my\s+)?(?:budget|spending))\s+doing\b/,
+    /\b(?:show|tell)\s+me\s+(?:my\s+)?(?:budget|spending|verdict)\b/,
+    /\bhow\s+much\s+(?:have\s+i\s+)?spent\b/,
+  ];
+  if (queryTriggers.some(re => re.test(t))) {
+    return { type: 'budget-query', query: t };
+  }
+
+  return { type: 'none' };
+}
+
+/* Speech synthesis helper. Respects an opt-out flag in localStorage so users
+   can mute voice replies (set `voiceMuted=1` to disable). */
+function speak(text) {
+  if (!('speechSynthesis' in window)) return;
+  if (localStorage.getItem('voiceMuted') === '1') return;
+  try {
+    /* Cancel any in-flight utterance so replies don't queue up */
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang   = 'en-IN';
+    u.rate   = 1.0;
+    u.pitch  = 1.0;
+    u.volume = 1.0;
+    /* Prefer an Indian English voice if one is available */
+    const voices = window.speechSynthesis.getVoices();
+    const inVoice = voices.find(v => /en[-_]IN/i.test(v.lang)) ||
+                    voices.find(v => /en[-_]GB/i.test(v.lang));
+    if (inVoice) u.voice = inVoice;
+    window.speechSynthesis.speak(u);
+  } catch (e) {
+    console.warn('Speech synthesis failed:', e);
+  }
+}
+
+/* Format currency for spoken output (no ₹ symbol — TTS pronounces it weirdly).
+   Uses "rupees" suffix and groups Indian-style. */
+function fmtSpoken(amount) {
+  const n = Math.round(amount);
+  return `${n.toLocaleString('en-IN')} rupees`;
+}
+
+/* Handle "set budget X" voice command. Confirms, persists, and speaks back. */
+async function handleVoiceBudgetSet(amount, transcript) {
+  /* Echo the heard transcript in the result card so the user has visual confirmation */
+  const card = document.getElementById('voice-result-card');
+  document.getElementById('voice-heard-text').textContent = `"${transcript}"`;
+  document.getElementById('voice-parsed-row').innerHTML = `
+    <div class="voice-chip ok">🎯 Set budget</div>
+    <div class="voice-chip ok">💰 ${fmt(amount)}</div>
+    <div class="voice-chip ok">📅 ${monthLabel(viewMonth)}</div>
+  `;
+  /* Hide the Add-Expense confirm button since this isn't an expense */
+  document.getElementById('voice-confirm-btn').style.display = 'none';
+  card.style.display = 'flex';
+
+  setLoading('Saving budget…');
+  try {
+    await ensureToken();
+    const y = viewMonth.getFullYear();
+    const m = viewMonth.getMonth() + 1;
+    await upsertBudgetRow(y, m, amount);
+    clearLoading();
+    /* Restore confirm button for next voice use & dismiss this card */
+    setTimeout(() => {
+      card.style.display = 'none';
+      document.getElementById('voice-confirm-btn').style.display = '';
+    }, 1500);
+
+    /* Re-render any view that shows budget info */
+    if (currentView === 'dashboard') renderDashboard();
+    if (currentView === 'insights')  renderInsights();
+
+    /* Speak confirmation */
+    const spent = computeSpentForMonth(y, m);
+    const left  = Math.max(0, amount - spent);
+    const msg   = spent > amount
+      ? `Budget set to ${fmtSpoken(amount)}. You're already over by ${fmtSpoken(spent - amount)} this month.`
+      : `Budget set to ${fmtSpoken(amount)}. You have ${fmtSpoken(left)} left for ${monthLabel(viewMonth)}.`;
+    showToast(`Budget saved — ${fmt(amount)}`);
+    speak(msg);
+    burstConfetti(document.querySelector('.voice-btn'));
+  } catch (e) {
+    clearLoading();
+    document.getElementById('voice-confirm-btn').style.display = '';
+    showToast('Budget save failed: ' + e.message, true);
+    speak('Sorry, I could not save your budget.');
+    console.error(e);
+  }
+}
+
+/* Handle a budget-status question. Computes the answer for the relevant month
+   (defaults to current viewMonth, but understands "last month" / "in April"). */
+function handleVoiceBudgetQuery(query, transcript) {
+  /* Determine which month the question is about */
+  const q = query.toLowerCase();
+  let target = new Date(viewMonth);
+
+  if (/\blast\s+month\b/.test(q)) {
+    target = new Date(target.getFullYear(), target.getMonth() - 1, 1);
+  } else if (/\bthis\s+month\b/.test(q) || /\bcurrent\s+month\b/.test(q)) {
+    const now = new Date();
+    target = new Date(now.getFullYear(), now.getMonth(), 1);
+  } else {
+    /* Try to match a month name (e.g. "in April", "for March 2025") */
+    const MONTH_NAMES = ['january','february','march','april','may','june',
+                         'july','august','september','october','november','december'];
+    for (let i = 0; i < 12; i++) {
+      const re = new RegExp(`\\b${MONTH_NAMES[i].slice(0,3)}[a-z]*\\b`);
+      if (re.test(q)) {
+        const yMatch = q.match(/\b(20\d{2})\b/);
+        const year   = yMatch ? parseInt(yMatch[1]) : (new Date()).getFullYear();
+        target = new Date(year, i, 1);
+        break;
+      }
+    }
+  }
+
+  const y      = target.getFullYear();
+  const m      = target.getMonth() + 1;
+  const label  = monthLabel(target);
+  const budget = getBudgetForMonth(y, m);
+  const spent  = computeSpentForMonth(y, m);
+
+  /* Echo the heard transcript */
+  const card = document.getElementById('voice-result-card');
+  document.getElementById('voice-heard-text').textContent = `"${transcript}"`;
+
+  let answer, chips;
+  if (!budget || budget.budget <= 0) {
+    answer = `No budget set for ${label}. Try saying "set budget fifty thousand" to add one.`;
+    chips  = `
+      <div class="voice-chip err">🎯 No budget</div>
+      <div class="voice-chip ok">📅 ${label}</div>
+      <div class="voice-chip ok">💸 Spent ${fmt(spent)}</div>
+    `;
+  } else {
+    const left      = budget.budget - spent;
+    const overspent = left < 0;
+    if (overspent) {
+      answer = `Bad month for ${label}. You overspent by ${fmtSpoken(-left)} on a budget of ${fmtSpoken(budget.budget)}.`;
+    } else {
+      answer = `Good month so far. You have ${fmtSpoken(left)} left out of ${fmtSpoken(budget.budget)} for ${label}.`;
+    }
+    chips = `
+      <div class="voice-chip ${overspent ? 'err' : 'ok'}">${overspent ? '💸 OVERSPENT' : '✅ ON TRACK'}</div>
+      <div class="voice-chip ok">🎯 Budget ${fmt(budget.budget)}</div>
+      <div class="voice-chip ok">💰 Spent ${fmt(spent)}</div>
+      <div class="voice-chip ${overspent ? 'err' : 'ok'}">
+        ${overspent ? '⚠️ Over by ' + fmt(-left) : '🟢 ' + fmt(left) + ' left'}
+      </div>
+      <div class="voice-chip ok">📅 ${label}</div>
+    `;
+  }
+
+  document.getElementById('voice-parsed-row').innerHTML = chips;
+  /* Hide the Add-Expense confirm button — this is just an answer card */
+  document.getElementById('voice-confirm-btn').style.display = 'none';
+  card.style.display = 'flex';
+
+  /* Auto-dismiss after a short read window so it doesn't linger on the screen */
+  setTimeout(() => {
+    card.style.display = 'none';
+    document.getElementById('voice-confirm-btn').style.display = '';
+  }, 6000);
+
+  speak(answer);
+}
+
+/* Voice entry point biased toward queries — used by Insights "Ask by voice"
+   button. Same recognition pipeline as startVoice(); the result is routed
+   through the existing intent classifier in handleVoiceResult(). */
+function startVoiceAsk() {
+  /* Friendly hint so the user knows what kinds of questions work */
+  showToast('Ask: "How much budget left?" or "Did I overspend?"');
+  startVoice();
+}
+
 function startVoice() {
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRec) {
@@ -1396,6 +2095,18 @@ function stopVoice() {
 }
 
 function handleVoiceResult(transcript) {
+  /* ── Intent routing — try budget-command and budget-query first.
+        If neither matches, fall through to the original "add expense" path.  */
+  const intent = classifyVoiceIntent(transcript);
+  if (intent.type === 'budget-set') {
+    handleVoiceBudgetSet(intent.amount, transcript);
+    return;
+  }
+  if (intent.type === 'budget-query') {
+    handleVoiceBudgetQuery(intent.query, transcript);
+    return;
+  }
+
   const parsed = parseVoiceCommand(transcript);
   voiceParsed  = { ...parsed, transcript };
 
@@ -1445,7 +2156,12 @@ async function confirmVoiceAdd() {
     await ensureToken();
     await appendExpenseRow({ date, category, amount, note, createdAt: new Date().toISOString() });
     await loadExpenses();
+    /* Keep Budgets tab in sync if a budget exists for this expense's month */
+    const [ey, em] = date.split('-').map(Number);
+    try { await recomputeBudgetForMonth(ey, em); } catch (err) { console.warn('Budget sync failed:', err); }
     renderTodayTotal();
+    if (currentView === 'dashboard') renderDashboard();
+    if (currentView === 'insights')  renderInsights();
     clearLoading();
     showToast('Saved ✓');
     burstConfetti(document.querySelector('.voice-btn') || document.getElementById('add-btn'));
