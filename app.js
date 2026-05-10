@@ -494,66 +494,6 @@ function monthExpenses() {
   });
 }
 
-function renderSummary() {
-  const expenses = monthExpenses().sort((a, b) => b.date.localeCompare(a.date));
-  const total    = expenses.reduce((s, e) => s + e.amount, 0);
-
-  document.getElementById('summary-total-amount').textContent = fmt(total);
-  document.getElementById('summary-total-count').textContent  =
-    `${expenses.length} expense${expenses.length !== 1 ? 's' : ''}`;
-
-  /* Quick stat cards */
-  const byCategory = {};
-  expenses.forEach(e => { byCategory[e.category] = (byCategory[e.category] || 0) + e.amount; });
-  const topCat = Object.entries(byCategory).sort((a,b) => b[1]-a[1])[0];
-  const days   = daysElapsedInMonth(viewMonth);
-  const dailyAvg = days > 0 ? total / days : 0;
-
-  const prevMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1);
-  const prevTotal = expensesForMonth(prevMonth).reduce((s, e) => s + e.amount, 0);
-  const momDiff   = prevTotal > 0 ? ((total - prevTotal) / prevTotal * 100).toFixed(1) : null;
-
-  document.getElementById('summary-stat-row').innerHTML = `
-    <div class="stat-card purple">
-      <div class="stat-card-label">Daily Avg</div>
-      <div class="stat-card-value">${fmt(dailyAvg)}</div>
-      <div class="stat-card-sub">over ${days} days</div>
-    </div>
-    <div class="stat-card ${momDiff === null ? '' : Number(momDiff) > 0 ? 'red' : 'green'}">
-      <div class="stat-card-label">vs Last Month</div>
-      <div class="stat-card-value">${momDiff === null ? '—' : (Number(momDiff) > 0 ? '↑' : '↓') + Math.abs(momDiff) + '%'}</div>
-      <div class="stat-card-sub">${prevTotal > 0 ? fmt(prevTotal) + ' last month' : 'no prior data'}</div>
-    </div>
-  `;
-
-  /* Category breakdown */
-  const sorted = allCategories()
-    .map(c => ({ ...c, amount: byCategory[c.key] || 0 }))
-    .filter(c => c.amount > 0)
-    .sort((a, b) => b.amount - a.amount);
-
-  const listEl = document.getElementById('cat-summary-list');
-  if (sorted.length === 0) {
-    listEl.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>No expenses for ${monthLabel(viewMonth)}.</p></div>`;
-  } else {
-    const maxAmt = sorted[0].amount;
-    listEl.innerHTML = sorted.map(c => `
-      <div class="cat-summary-row">
-        <div class="cat-icon-badge" style="background:${c.color}22;">${c.icon}</div>
-        <div class="cat-summary-info">
-          <div class="cat-summary-name">${c.label}</div>
-          <div class="cat-summary-bar-track">
-            <div class="cat-summary-bar-fill" style="width:${Math.round(c.amount/maxAmt*100)}%;background:${c.color};"></div>
-          </div>
-        </div>
-        <div class="cat-summary-right">
-          <div class="cat-summary-amount">${fmt(c.amount)}</div>
-          <div class="cat-summary-pct">${total > 0 ? Math.round(c.amount/total*100) : 0}%</div>
-        </div>
-      </div>
-    `).join('');
-  }
-
 /* ═══════════════════════════════════════════════════════════
    DASHBOARD VIEW
    ═══════════════════════════════════════════════════════════ */
