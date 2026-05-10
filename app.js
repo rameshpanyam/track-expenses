@@ -1022,81 +1022,121 @@ function ymd(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-/* Try to extract a date from a phrase. Returns { date, matched } where
-   matched is the substring that was consumed (so the caller can strip it
-   before running the amount regex). Returns null if no date phrase found. */
+/* Try to extract a date from a phrase. Returns { date, stripped } where
+   stripped is the original text with the matched date phrase(s) removed,
+   so the caller can run amount/category detection on a clean string.
+   Returns null if no date phrase found. */
 function extractDateFromVoice(lower) {
   const now = new Date();
   const monthNames = 'january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec';
 
+  /* Step 1 — pre-extract an explicit year mention if present.
+     Only treat a 4-digit number as a year when it's adjacent to a
+     year-context word (in / of / year). This avoids confusing a 4-digit
+     amount like "2024 rupees" with the year. */
+  const stripParts = [];
+  let explicitYear = null;
+  const yearCtxPatterns = [
+    /\b(\d{4})\s+year\b/,        /* "1956 year"   */
+    /\byear\s+(\d{4})\b/,        /* "year 1956"   */
+    /\bin\s+(\d{4})\b/,          /* "in 1956"     */
+    /\bof\s+(\d{4})\b/,          /* "of 1956"     */
+  ];
+  for (const p of yearCtxPatterns) {
+    const ym = lower.match(p);
+    if (ym) {
+      const y = parseInt(ym[1]);
+      if (y >= 1900 && y <= 2099) {
+        explicitYear = y;
+        stripParts.push(ym[0]);
+        break;
+      }
+    }
+  }
+  let work = stripParts.length
+    ? lower.replace(stripParts[0], ' ').replace(/\s+/g, ' ').trim()
+    : lower;
+
+  /* bundle helper: returns { date, stripped } with all matched portions
+     removed from the original `lower` input so amount detection is clean. */
+  function bundle(date, dateText) {
+    stripParts.push(dateText);
+    let stripped = lower;
+    for (const part of stripParts) stripped = stripped.replace(part, ' ');
+    return { date, stripped: stripped.replace(/\s+/g, ' ').trim() };
+  }
+
   /* day before yesterday — check before "yesterday" */
-  let m = lower.match(/\bday\s+before\s+yesterday\b/);
-  if (m) {
-    const d = new Date(); d.setDate(d.getDate() - 2);
-    return { date: ymd(d), matched: m[0] };
-  }
+  let m = work.match(/\bday\s+before\s+yesterday\b/);
+  if (m) { const d = new Date(); d.setDate(d.getDate() - 2); return bundle(ymd(d), m[0]); }
 
-  /* yesterday */
-  m = lower.match(/\byesterday\b/);
-  if (m) {
-    const d = new Date(); d.setDate(d.getDate() - 1);
-    return { date: ymd(d), matched: m[0] };
-  }
+  m = work.match(/\byesterday\b/);
+  if (m) { const d = new Date(); d.setDate(d.getDate() - 1); return bundle(ymd(d), m[0]); }
 
-  /* today */
-  m = lower.match(/\btoday\b/);
-  if (m) return { date: todayStr(), matched: m[0] };
+  m = work.match(/\btoday\b/);
+  if (m) return bundle(todayStr(), m[0]);
 
-  /* "5th of this month" / "5 this month" / "5 of this month" */
-  m = lower.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?this\s+month\b/);
-  /* "this month 5th" / "this month on 5" */
-  if (!m) m = lower.match(/\bthis\s+month\s+(?:on\s+)?(\d{1,2})(?:st|nd|rd|th)?\b/);
-  if (m) {
-    const day = parseInt(m[1]);
-    if (day >= 1 && day <= 31) {
-      const d = new Date(now.getFullYear(), now.getMonth(), day);
-      return { date: ymd(d), matched: m[0] };
+  /* this/last/next month — only if no explicit year was given */
+  if (!explicitYear) {
+    m = work.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?this\s+month\b/);
+    if (!m) m = work.match(/\bthis\s+month\s+(?:on\s+)?(\d{1,2})(?:st|nd|rd|th)?\b/);
+    if (m) {
+      const day = parseInt(m[1]);
+      if (day >= 1 && day <= 31) {
+        return bundle(ymd(new Date(now.getFullYear(), now.getMonth(), day)), m[0]);
+      }
+    }
+
+    m = work.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?last\s+month\b/);
+    if (!m) m = work.match(/\blast\s+month\s+(?:on\s+)?(\d{1,2})(?:st|nd|rd|th)?\b/);
+    if (m) {
+      const day = parseInt(m[1]);
+      if (day >= 1 && day <= 31) {
+        return bundle(ymd(new Date(now.getFullYear(), now.getMonth() - 1, day)), m[0]);
+      }
+    }
+
+    m = work.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?next\s+month\b/);
+    if (!m) m = work.match(/\bnext\s+month\s+(?:on\s+)?(\d{1,2})(?:st|nd|rd|th)?\b/);
+    if (m) {
+      const day = parseInt(m[1]);
+      if (day >= 1 && day <= 31) {
+        return bundle(ymd(new Date(now.getFullYear(), now.getMonth() + 1, day)), m[0]);
+      }
     }
   }
 
-  /* "25th of last month" / "last month 25th" */
-  m = lower.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?last\s+month\b/);
-  if (!m) m = lower.match(/\blast\s+month\s+(?:on\s+)?(\d{1,2})(?:st|nd|rd|th)?\b/);
-  if (m) {
-    const day = parseInt(m[1]);
-    if (day >= 1 && day <= 31) {
-      const d = new Date(now.getFullYear(), now.getMonth() - 1, day);
-      return { date: ymd(d), matched: m[0] };
-    }
-  }
-
-  /* "5 of next month" / "next month 5th" */
-  m = lower.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:of\s+)?next\s+month\b/);
-  if (!m) m = lower.match(/\bnext\s+month\s+(?:on\s+)?(\d{1,2})(?:st|nd|rd|th)?\b/);
-  if (m) {
-    const day = parseInt(m[1]);
-    if (day >= 1 && day <= 31) {
-      const d = new Date(now.getFullYear(), now.getMonth() + 1, day);
-      return { date: ymd(d), matched: m[0] };
-    }
-  }
-
-  /* "15th march", "15 march", "15 of march", "15th of march" */
-  let dm = lower.match(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?(${monthNames})\\b`, 'i'));
-  /* "march 15", "march 15th", "march the 15th" */
-  if (!dm) dm = lower.match(new RegExp(`\\b(${monthNames})\\s+(?:the\\s+)?(\\d{1,2})(?:st|nd|rd|th)?\\b`, 'i'));
+  /* day + month (with optional inline trailing year):
+     "23 june", "23rd june", "23 of june", "23rd of june",
+     "23 june 2020", "23rd june 2020" */
+  let dm = work.match(new RegExp(
+    `\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?(${monthNames})(?:[,\\s]+(\\d{4}))?\\b`,
+    'i'
+  ));
+  /* "june 23", "june 23rd", "june the 23rd", "june 23 2020" */
+  if (!dm) dm = work.match(new RegExp(
+    `\\b(${monthNames})\\s+(?:the\\s+)?(\\d{1,2})(?:st|nd|rd|th)?(?:[,\\s]+(\\d{4}))?\\b`,
+    'i'
+  ));
   if (dm) {
-    let day, monthStr;
-    if (/^\d/.test(dm[1])) { day = parseInt(dm[1]); monthStr = dm[2]; }
-    else                   { monthStr = dm[1]; day = parseInt(dm[2]); }
+    let day, monthStr, inlineYear;
+    if (/^\d/.test(dm[1])) { day = parseInt(dm[1]); monthStr = dm[2]; inlineYear = dm[3]; }
+    else                   { monthStr = dm[1]; day = parseInt(dm[2]); inlineYear = dm[3]; }
     const month = MONTH_MAP[monthStr.toLowerCase()];
     if (month && day >= 1 && day <= 31) {
-      let year = now.getFullYear();
-      /* If specified month is in the future relative to current month,
-         assume the user meant LAST year (e.g. in May, "October 12" → last Oct) */
-      if (month > now.getMonth() + 1) year -= 1;
-      const d = new Date(year, month - 1, day);
-      return { date: ymd(d), matched: dm[0] };
+      let year;
+      if (explicitYear) {
+        year = explicitYear;
+      } else if (inlineYear) {
+        const yi = parseInt(inlineYear);
+        year = (yi >= 1900 && yi <= 2099) ? yi : now.getFullYear();
+      } else {
+        year = now.getFullYear();
+        /* If candidate is in the future, default to LAST year
+           (e.g. in May 2026, "October 12" → 2025-10-12) */
+        if (new Date(year, month - 1, day) > now) year -= 1;
+      }
+      return bundle(ymd(new Date(year, month - 1, day)), dm[0]);
     }
   }
 
@@ -1109,11 +1149,7 @@ function parseVoiceCommand(text) {
   /* ── Date: parse first so we can strip it before amount detection ── */
   const dateRes = extractDateFromVoice(lower);
   const date    = dateRes ? dateRes.date : todayStr();
-
-  /* Strip the date phrase so e.g. "12 january 200 food" doesn't make amount=12 */
-  const cleaned = dateRes
-    ? lower.replace(dateRes.matched, ' ').replace(/\s+/g, ' ').trim()
-    : lower;
+  const cleaned = dateRes ? dateRes.stripped : lower;
 
   /* ── Amount: first number in the cleaned string ── */
   const amountMatch = cleaned.match(/\b(\d+(?:\.\d+)?)\b/);
