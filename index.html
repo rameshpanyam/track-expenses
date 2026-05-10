@@ -18,7 +18,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
   <title>Expense Tracker</title>
-  <link rel="stylesheet" href="style.css?v=14" />
+  <link rel="stylesheet" href="style.css?v=15" />
 
   <!-- Chart.js for the Dashboard -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
@@ -74,10 +74,16 @@
       <p class="chooser-empty-sub">Create a new one below to get started.</p>
     </div>
 
-    <button class="chooser-create-btn" id="chooser-create-btn" onclick="createNewSheetFromChooser()">
-      <span class="chooser-create-icon">＋</span>
-      <span>Create new "Track Expenses" sheet</span>
-    </button>
+    <div class="chooser-create-wrap">
+      <p class="chooser-or">or create a new one</p>
+      <input id="chooser-new-name" class="chooser-new-name"
+             type="text" maxlength="80" autocomplete="off"
+             placeholder='Sheet name (e.g. "My Expenses 2026")' />
+      <button class="chooser-create-btn" id="chooser-create-btn" onclick="createNewSheetFromChooser()">
+        <span class="chooser-create-icon">＋</span>
+        <span>Create new sheet</span>
+      </button>
+    </div>
 
     <button class="chooser-signout" onclick="signOut()">Sign out</button>
   </div>
@@ -276,6 +282,6 @@
   </div>
 </div>
 
-<script src="app.js?v=14"></script>
+<script src="app.js?v=15"></script>
 </body>
 </html>

@@ -280,6 +280,40 @@ html, body {
   color: var(--muted);
   opacity: .8;
 }
+.chooser-create-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+}
+.chooser-or {
+  text-align: center;
+  font-size: .8rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.chooser-new-name {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: .95rem;
+  font-family: inherit;
+  color: var(--text);
+  outline: none;
+  transition: border-color .15s, background .15s;
+}
+.chooser-new-name:focus {
+  border-color: var(--accent);
+  background: var(--bg2);
+}
+.chooser-new-name::placeholder { color: var(--muted); opacity: .8; }
 .chooser-create-btn {
   display: flex;
   align-items: center;
@@ -297,7 +331,6 @@ html, body {
   cursor: pointer;
   transition: background .15s, transform .15s;
   -webkit-tap-highlight-color: transparent;
-  margin-top: 4px;
 }
 .chooser-create-btn:active { transform: scale(.98); opacity: .9; }
 .chooser-create-icon {

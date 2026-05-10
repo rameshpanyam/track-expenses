@@ -4,7 +4,13 @@
 const CLIENT_ID = '1093636568303-n89biq36ui8as34r9dblglcd91o44crq.apps.googleusercontent.com';
 
 /* ── Sheets config ─────────────────────────────────────────── */
-const SCOPES           = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
+/* Scopes:
+   - spreadsheets        → full r/w on any sheet by ID (used by all CRUD ops)
+   - drive.metadata.readonly → list every spreadsheet in the user's Drive
+     (metadata only — names, IDs, modifiedTime — no file contents)
+   NOTE: drive.metadata.readonly must be added to the OAuth consent screen in
+   Google Cloud Console for project 1093636568303. */
+const SCOPES           = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.metadata.readonly';
 const SPREADSHEET_NAME = 'Track Expenses';
 const TAB_NAME         = 'Expenses';
 const HEADERS          = ['Date', 'Category', 'Amount', 'Note', 'CreatedAt'];
@@ -196,9 +202,10 @@ async function setActiveSheet(id) {
 }
 
 /* ── Create a brand-new spreadsheet ───────────────────────── */
-async function createNewSpreadsheet() {
+async function createNewSpreadsheet(customName) {
+  const title = (customName && customName.trim()) || SPREADSHEET_NAME;
   const created = await sheetsRequest('POST', '', {
-    properties: { title: SPREADSHEET_NAME },
+    properties: { title },
     sheets:     [{ properties: { title: TAB_NAME } }],
   });
   spreadsheetId = created.spreadsheetId;
@@ -419,10 +426,14 @@ async function chooseSheet(id) {
 
 /* User clicked "Create new sheet" in the chooser */
 async function createNewSheetFromChooser() {
-  setLoading('Creating new sheet…');
+  const nameInput = document.getElementById('chooser-new-name');
+  const name      = (nameInput?.value || '').trim() || SPREADSHEET_NAME;
+
+  setLoading(`Creating "${name}"…`);
   try {
     await ensureToken();
-    await createNewSpreadsheet();
+    await createNewSpreadsheet(name);
+    if (nameInput) nameInput.value = '';
     clearLoading();
     showToast('New sheet created ✓');
     await enterMainApp();
