@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f0f13" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Expenses" />
+  <meta name="description" content="Track monthly expenses by category — offline, on your iPhone." />
+
+  <!-- Icons for iOS "Add to Home Screen" -->
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+
+  <!-- PWA manifest -->
+  <link rel="manifest" href="manifest.json" />
+
+  <title>Expense Tracker</title>
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Dexie (IndexedDB wrapper) — loaded from CDN, cached by SW -->
+  <script src="https://unpkg.com/dexie@3.2.7/dist/dexie.min.js"></script>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Header ── -->
+  <header class="app-header">
+    <span class="app-title">💸 Expenses</span>
+    <div class="header-month">
+      <button id="month-prev" style="visibility:hidden">‹</button>
+      <span id="header-month-label">Today</span>
+      <button id="month-next" style="visibility:hidden">›</button>
+    </div>
+  </header>
+
+  <!-- ── View: Add Expense ── -->
+  <div id="view-add" class="view active">
+
+    <!-- Big amount input -->
+    <div class="amount-input-wrap">
+      <span class="amount-currency">₹</span>
+      <input
+        id="amount-input"
+        class="amount-input"
+        type="number"
+        inputmode="decimal"
+        placeholder="0"
+        autocomplete="off"
+      />
+    </div>
+
+    <!-- Category picker -->
+    <p class="section-label">Category</p>
+    <div id="cat-grid" class="cat-grid"></div>
+
+    <!-- Note -->
+    <input
+      id="note-input"
+      class="note-input"
+      type="text"
+      placeholder="Note (optional) — e.g. Big Bazaar"
+      autocomplete="off"
+    />
+
+    <!-- Date -->
+    <div class="date-row">
+      <label for="date-input">Date</label>
+      <input id="date-input" class="date-input" type="date" />
+    </div>
+
+    <!-- Submit -->
+    <button class="add-btn" onclick="saveExpense()" disabled>+ Add Expense</button>
+
+    <!-- Today's running total -->
+    <div id="today-total" style="display:none; text-align:center; margin-top:14px; font-size:.82rem; color:var(--muted);"></div>
+  </div>
+
+  <!-- ── View: Summary ── -->
+  <div id="view-summary" class="view">
+    <!-- Total card -->
+    <div class="summary-total-card">
+      <div>
+        <div class="summary-total-label">Total spent</div>
+        <div class="summary-total-amount" id="summary-total-amount">₹0</div>
+      </div>
+      <div class="summary-total-right">
+        <div class="summary-total-count" id="summary-total-count">0 expenses</div>
+      </div>
+    </div>
+
+    <!-- Category breakdown -->
+    <p class="section-label">By category</p>
+    <div id="cat-summary-list" class="cat-summary-list"></div>
+
+    <!-- Expense list -->
+    <p class="section-label mt16">All expenses</p>
+    <div id="summary-expense-list" class="expense-list"></div>
+    <div style="height:16px;"></div>
+  </div>
+
+  <!-- ── View: History ── -->
+  <div id="view-history" class="view">
+    <div id="history-list"></div>
+    <div style="height:16px;"></div>
+  </div>
+
+  <!-- ── Bottom nav ── -->
+  <nav class="bottom-nav">
+    <button id="nav-add" class="nav-btn active" onclick="switchView('add')">
+      <span class="nav-icon">➕</span>
+      <span>Add</span>
+    </button>
+    <button id="nav-summary" class="nav-btn" onclick="switchView('summary')">
+      <span class="nav-icon">📊</span>
+      <span>Summary</span>
+    </button>
+    <button id="nav-history" class="nav-btn" onclick="switchView('history')">
+      <span class="nav-icon">🗓️</span>
+      <span>History</span>
+    </button>
+  </nav>
+
+</div>
+
+<!-- Toast notification -->
+<div id="toast" class="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
