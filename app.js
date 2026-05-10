@@ -44,8 +44,8 @@ let newCatColor = CAT_COLOR_PALETTE[0];
 let tokenClient   = null;
 let accessToken   = null;
 let tokenExpiry   = 0;
-let spreadsheetId = null;   /* always resolved fresh from Drive on sign-in */
-let sheetGid      = -1;
+let spreadsheetId = localStorage.getItem('expenseSheetId') || null;
+let sheetGid      = Number(localStorage.getItem('expenseSheetGid') ?? -1);
 let allExpenses   = [];
 let currentView   = 'add';
 let selectedCat   = null;
@@ -139,52 +139,57 @@ async function sheetsRequest(method, path, body) {
 
 /* ── Find / create the spreadsheet ────────────────────────── */
 async function initSpreadsheet() {
-  /* Always resolve fresh from Drive — no localStorage dependency.
-     This means deleting/renaming the sheet in Google Drive is always
-     handled correctly without any manual cache clearing. */
-  spreadsheetId = null;
-  sheetGid      = -1;
+  /* Strategy:
+     1. Use localStorage ID + verify it directly via Drive API (trashed? deleted?)
+        drive.file allows direct-by-ID access across sessions without revocation.
+        drive.file SEARCH does NOT work across sessions — so we never search.
+     2. If stored ID is gone or inaccessible → create brand-new sheet.
+     Sign-out does NOT revoke the token, so drive.file access persists. */
 
-  /* 1️⃣  Search Drive for an existing, non-trashed sheet by name */
-  try {
-    const q    = encodeURIComponent(
-      `name="${SPREADSHEET_NAME}" and mimeType="application/vnd.google-apps.spreadsheet" and trashed=false`
-    );
-    const res  = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&orderBy=createdTime`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
-    const data = await res.json();
+  if (spreadsheetId) {
+    try {
+      /* Direct Drive check — works with drive.file across sessions */
+      const dr = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${spreadsheetId}?fields=id,trashed`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      if (!dr.ok) throw new Error(`Drive HTTP ${dr.status}`);
+      const info = await dr.json();
+      if (info.trashed) throw new Error('Sheet is in Trash');
 
-    if (data.files?.length) {
-      /* Use the oldest matching sheet (most likely the original one) */
-      spreadsheetId = data.files[0].id;
-
+      /* Sheet is live — get tab info */
       const meta = await sheetsRequest('GET', `/${spreadsheetId}?fields=sheets.properties`);
       const tab  = meta.sheets.find(s => s.properties.title === TAB_NAME);
       if (tab) {
         sheetGid = tab.properties.sheetId;
-        return;                             /* ✅ Found & ready */
+        localStorage.setItem('expenseSheetGid', sheetGid);
+        return;                             /* ✅ All good */
       }
-      /* Spreadsheet exists but the Expenses tab is missing — add it */
-      const addRes = await sheetsRequest('POST', `/${spreadsheetId}:batchUpdate`, {
+      /* Tab missing — add it */
+      const res = await sheetsRequest('POST', `/${spreadsheetId}:batchUpdate`, {
         requests: [{ addSheet: { properties: { title: TAB_NAME } } }]
       });
-      sheetGid = addRes.replies[0].addSheet.properties.sheetId;
+      sheetGid = res.replies[0].addSheet.properties.sheetId;
+      localStorage.setItem('expenseSheetGid', sheetGid);
       await writeHeaders();
       return;
+    } catch (e) {
+      console.warn('Stored sheet inaccessible — creating new:', e.message);
+      spreadsheetId = null; sheetGid = -1;
+      localStorage.removeItem('expenseSheetId');
+      localStorage.removeItem('expenseSheetGid');
     }
-  } catch (e) {
-    console.warn('Drive search failed, will create new sheet:', e.message);
   }
 
-  /* 2️⃣  Nothing found — create a brand-new spreadsheet */
+  /* Create brand-new spreadsheet */
   const created = await sheetsRequest('POST', '', {
     properties: { title: SPREADSHEET_NAME },
     sheets:     [{ properties: { title: TAB_NAME } }],
   });
   spreadsheetId = created.spreadsheetId;
   sheetGid      = created.sheets[0].properties.sheetId;
+  localStorage.setItem('expenseSheetId', spreadsheetId);
+  localStorage.setItem('expenseSheetGid', sheetGid);
   await writeHeaders();
 }
 
