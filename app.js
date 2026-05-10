@@ -44,8 +44,8 @@ let newCatColor = CAT_COLOR_PALETTE[0];
 let tokenClient   = null;
 let accessToken   = null;
 let tokenExpiry   = 0;
-let spreadsheetId = localStorage.getItem('expenseSheetId') || null;
-let sheetGid      = Number(localStorage.getItem('expenseSheetGid') ?? -1);
+let spreadsheetId = null;   /* always resolved fresh from Drive on sign-in */
+let sheetGid      = -1;
 let allExpenses   = [];
 let currentView   = 'add';
 let selectedCat   = null;
@@ -139,74 +139,52 @@ async function sheetsRequest(method, path, body) {
 
 /* ── Find / create the spreadsheet ────────────────────────── */
 async function initSpreadsheet() {
-  /* 1️⃣  Try localStorage ID — but first verify it isn't trashed/deleted */
-  if (spreadsheetId) {
-    try {
-      /* Drive check: 404 = permanently deleted, trashed = in Trash bin.
-         Both mean we must start fresh. */
-      const driveResp = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${spreadsheetId}?fields=id,trashed`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-      if (!driveResp.ok) throw new Error(`Drive file not found (HTTP ${driveResp.status})`);
-      const driveInfo = await driveResp.json();
-      if (driveInfo.trashed) throw new Error('Sheet has been moved to Trash');
+  /* Always resolve fresh from Drive — no localStorage dependency.
+     This means deleting/renaming the sheet in Google Drive is always
+     handled correctly without any manual cache clearing. */
+  spreadsheetId = null;
+  sheetGid      = -1;
 
-      /* File exists and is not trashed — load its tabs */
-      const meta = await sheetsRequest('GET', `/${spreadsheetId}?fields=spreadsheetId,sheets.properties`);
-      const tab  = meta.sheets.find(s => s.properties.title === TAB_NAME);
-      if (tab) {
-        sheetGid = tab.properties.sheetId;
-        localStorage.setItem('expenseSheetGid', sheetGid);
-        return;
-      }
-      // Tab missing — add it
-      const res = await sheetsRequest('POST', `/${spreadsheetId}:batchUpdate`, {
-        requests: [{ addSheet: { properties: { title: TAB_NAME } } }]
-      });
-      sheetGid = res.replies[0].addSheet.properties.sheetId;
-      localStorage.setItem('expenseSheetGid', sheetGid);
-      await writeHeaders();
-      return;
-    } catch (e) {
-      console.warn('Stored sheet unusable — will search Drive or create new:', e.message);
-      spreadsheetId = null; sheetGid = -1;
-      localStorage.removeItem('expenseSheetId');
-      localStorage.removeItem('expenseSheetGid');
-    }
-  }
-
-  /* 2️⃣  Search Drive for an existing non-trashed sheet by name */
+  /* 1️⃣  Search Drive for an existing, non-trashed sheet by name */
   try {
-    const q   = encodeURIComponent(
+    const q    = encodeURIComponent(
       `name="${SPREADSHEET_NAME}" and mimeType="application/vnd.google-apps.spreadsheet" and trashed=false`
     );
-    const res  = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, {
-      headers: { Authorization: `Bearer ${accessToken}` }
-    });
+    const res  = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&orderBy=createdTime`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
     const data = await res.json();
+
     if (data.files?.length) {
+      /* Use the oldest matching sheet (most likely the original one) */
       spreadsheetId = data.files[0].id;
-      localStorage.setItem('expenseSheetId', spreadsheetId);
+
       const meta = await sheetsRequest('GET', `/${spreadsheetId}?fields=sheets.properties`);
       const tab  = meta.sheets.find(s => s.properties.title === TAB_NAME);
       if (tab) {
         sheetGid = tab.properties.sheetId;
-        localStorage.setItem('expenseSheetGid', sheetGid);
-        return;
+        return;                             /* ✅ Found & ready */
       }
+      /* Spreadsheet exists but the Expenses tab is missing — add it */
+      const addRes = await sheetsRequest('POST', `/${spreadsheetId}:batchUpdate`, {
+        requests: [{ addSheet: { properties: { title: TAB_NAME } } }]
+      });
+      sheetGid = addRes.replies[0].addSheet.properties.sheetId;
+      await writeHeaders();
+      return;
     }
-  } catch (e) { console.warn('Drive search failed:', e.message); }
+  } catch (e) {
+    console.warn('Drive search failed, will create new sheet:', e.message);
+  }
 
-  /* 3️⃣  Nothing found — create a brand-new spreadsheet */
+  /* 2️⃣  Nothing found — create a brand-new spreadsheet */
   const created = await sheetsRequest('POST', '', {
     properties: { title: SPREADSHEET_NAME },
     sheets:     [{ properties: { title: TAB_NAME } }],
   });
   spreadsheetId = created.spreadsheetId;
   sheetGid      = created.sheets[0].properties.sheetId;
-  localStorage.setItem('expenseSheetId', spreadsheetId);
-  localStorage.setItem('expenseSheetGid', sheetGid);
   await writeHeaders();
 }
 
@@ -298,9 +276,10 @@ function signIn() {
 
 function signOut() {
   google.accounts.oauth2.revoke(accessToken, () => {
-    accessToken = null;
-    allExpenses = [];
-    // ✅ Keep sheet IDs in localStorage so next sign-in finds same sheet
+    accessToken    = null;
+    spreadsheetId  = null;   /* cleared — next sign-in resolves fresh from Drive */
+    sheetGid       = -1;
+    allExpenses    = [];
     document.getElementById('app').style.display          = 'none';
     document.getElementById('login-screen').style.display = 'flex';
     destroyCharts();
