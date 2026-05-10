@@ -4,7 +4,10 @@
 const CLIENT_ID = '1093636568303-n89biq36ui8as34r9dblglcd91o44crq.apps.googleusercontent.com';
 
 /* ── Sheets config ─────────────────────────────────────────── */
-const SCOPES           = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
+/* drive.readonly lets us search ALL Drive files by name on every sign-in,
+   not just files created in the current session (drive.file was the problem).
+   spreadsheets scope alone is sufficient to create + read + write sheets. */
+const SCOPES           = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly';
 const SPREADSHEET_NAME = 'Track Expenses';
 const TAB_NAME         = 'Expenses';
 const HEADERS          = ['Date', 'Category', 'Amount', 'Note', 'CreatedAt'];
@@ -250,6 +253,7 @@ async function handleTokenResponse(resp) {
   if (resp.error) { showToast('Sign-in failed: ' + resp.error, true); clearLoading(); return; }
   accessToken = resp.access_token;
   tokenExpiry = Date.now() + resp.expires_in * 1000;
+  localStorage.setItem('scopeGranted_v2', '1'); /* new scope accepted — skip consent next time */
 
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display          = 'flex';
@@ -271,7 +275,10 @@ async function handleTokenResponse(resp) {
 
 function signIn() {
   if (!tokenClient) { showToast('Google Sign-In loading, try again.', true); return; }
-  tokenClient.requestAccessToken({ prompt: '' });
+  /* prompt:'consent' ensures the new drive.readonly scope is granted,
+     even if user previously authorised with the old drive.file scope. */
+  const needsConsent = !localStorage.getItem('scopeGranted_v2');
+  tokenClient.requestAccessToken({ prompt: needsConsent ? 'consent' : '' });
 }
 
 function signOut() {
