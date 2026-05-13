@@ -1896,11 +1896,67 @@ function renderBydate() {
     `;
   }).join('');
 
-  /* Entries list — newest first, inline (per design decision) */
-  const sorted = expenses.slice().sort((a, b) =>
-    b.date.localeCompare(a.date) || (b.rowIndex - a.rowIndex)
-  );
-  entriesEl.innerHTML = sorted.map(e => expenseRowHTML(e)).join('');
+  /* Entries — grouped by category, collapsible, biggest spender first.
+     Mirrors the Dashboard accordion pattern so users get one consistent UX. */
+  const groups = {};
+  expenses.forEach(e => {
+    if (!groups[e.category]) groups[e.category] = [];
+    groups[e.category].push(e);
+  });
+  Object.keys(groups).forEach(k => {
+    groups[k].sort((a, b) => b.date.localeCompare(a.date) || b.rowIndex - a.rowIndex);
+  });
+  /* Order categories by total spend desc — top spender at the top */
+  const orderedKeys = Object.keys(groups).sort((a, b) => {
+    const ta = groups[a].reduce((s, e) => s + e.amount, 0);
+    const tb = groups[b].reduce((s, e) => s + e.amount, 0);
+    return tb - ta;
+  });
+
+  /* Track expanded state across re-renders. Auto-expand the top spender on
+     first paint of each range so the user immediately sees where money went. */
+  if (!window.expandedBydateGroups) window.expandedBydateGroups = new Set();
+  const rangeKey = `${bydateFrom}~${bydateTo}`;
+  if (window.lastBydateRangeKey !== rangeKey) {
+    window.expandedBydateGroups = new Set(orderedKeys.slice(0, 1));
+    window.lastBydateRangeKey = rangeKey;
+  }
+
+  entriesEl.innerHTML = orderedKeys.map((catKey, idx) => {
+    const rows  = groups[catKey];
+    const cat   = CAT_MAP[catKey] || { icon: '📦', label: catKey, color: '#78909C' };
+    const ctot  = rows.reduce((s, e) => s + e.amount, 0);
+    const ccnt  = rows.length;
+    const cpct  = total > 0 ? Math.round((ctot / total) * 100) : 0;
+    const open  = window.expandedBydateGroups.has(catKey) ? 'expanded' : '';
+    const crown = idx === 0 ? '<span class="cat-group-crown" title="Biggest spend">👑</span>' : '';
+    return `
+      <div class="cat-group ${open}" data-bydate-cat="${catKey}">
+        <button class="cat-group-header" onclick="toggleBydateCatGroup('${catKey.replace(/'/g, "\\'")}')">
+          <div class="cat-group-icon" style="background:${cat.color}22;">${cat.icon}</div>
+          <div class="cat-group-info">
+            <div class="cat-group-name">${crown}${cat.label}</div>
+            <div class="cat-group-meta">${ccnt} ${ccnt === 1 ? 'entry' : 'entries'} · ${cpct}% of total</div>
+          </div>
+          <div class="cat-group-total">${fmt(ctot)}</div>
+          <div class="cat-group-chevron">▾</div>
+        </button>
+        <div class="cat-group-body">
+          ${rows.map(e => expenseRowHTML(e, false, true)).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* Toggle a single category accordion inside the Insights By-Date list.
+   Kept separate from the Dashboard toggler so the two views don't share state. */
+function toggleBydateCatGroup(catKey) {
+  if (!window.expandedBydateGroups) window.expandedBydateGroups = new Set();
+  const el = document.querySelector(`.cat-group[data-bydate-cat="${CSS.escape(catKey)}"]`);
+  if (!el) return;
+  const isExpanded = el.classList.toggle('expanded');
+  if (isExpanded) window.expandedBydateGroups.add(catKey);
+  else            window.expandedBydateGroups.delete(catKey);
 }
 
 /* ═══════════════════════════════════════════════════════════

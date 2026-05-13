@@ -1168,6 +1168,17 @@ html, body {
   color: var(--text);
   letter-spacing: -.2px;
 }
+.cat-group-crown {
+  display: inline-block;
+  margin-right: 4px;
+  font-size: .9rem;
+  filter: drop-shadow(0 0 4px rgba(255,193,7,.6));
+  animation: crownPulse 2.4s ease-in-out infinite;
+}
+@keyframes crownPulse {
+  0%, 100% { transform: scale(1);    }
+  50%      { transform: scale(1.12); }
+}
 .cat-group-meta {
   font-size: .75rem;
   color: var(--muted);
