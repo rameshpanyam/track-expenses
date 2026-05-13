@@ -18,7 +18,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
   <title>Expense Tracker</title>
-  <link rel="stylesheet" href="style.css?v=21" />
+  <link rel="stylesheet" href="style.css?v=22" />
 
   <!-- Chart.js for the Dashboard -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
@@ -268,12 +268,60 @@
       </div>
     </div>
 
+    <!-- ── By Date — pick a day or a range and see total + categories ── -->
+    <p class="dash-section-title">By Date</p>
+    <p class="insights-tagline">See totals & category split for any day or range.</p>
+
+    <div class="bydate-chip-row" id="bydate-chip-row">
+      <button class="bydate-chip active" data-preset="today"     onclick="setBydatePreset('today')">Today</button>
+      <button class="bydate-chip"        data-preset="yesterday" onclick="setBydatePreset('yesterday')">Yesterday</button>
+      <button class="bydate-chip"        data-preset="this-week" onclick="setBydatePreset('this-week')">This week</button>
+      <button class="bydate-chip"        data-preset="last-7"    onclick="setBydatePreset('last-7')">Last 7 days</button>
+      <button class="bydate-chip"        data-preset="custom"    onclick="toggleBydateCustom()">📅 Custom</button>
+    </div>
+
+    <div class="bydate-custom" id="bydate-custom" style="display:none;">
+      <div class="bydate-custom-row">
+        <label class="bydate-custom-lbl">From
+          <input type="date" id="bydate-from" class="bydate-date-input" />
+        </label>
+        <label class="bydate-custom-lbl">To
+          <input type="date" id="bydate-to" class="bydate-date-input" />
+        </label>
+      </div>
+      <button class="bydate-apply-btn" onclick="applyBydateCustom()">Apply range</button>
+    </div>
+
+    <div class="bydate-card" id="bydate-card">
+      <div class="bydate-header">
+        <div class="bydate-range-label" id="bydate-range-label">Today</div>
+        <div class="bydate-total" id="bydate-total">₹0</div>
+        <div class="bydate-meta"  id="bydate-meta">No expenses</div>
+      </div>
+
+      <div class="bydate-donut-row" id="bydate-donut-row">
+        <div class="bydate-donut-wrap">
+          <canvas id="bydateDonutChart" width="110" height="110"></canvas>
+          <div class="bydate-donut-center">
+            <div class="bydate-donut-val" id="bydate-donut-val">₹0</div>
+            <div class="bydate-donut-lbl">total</div>
+          </div>
+        </div>
+        <div class="bydate-cats" id="bydate-cats"></div>
+      </div>
+
+      <div class="bydate-entries-section">
+        <p class="bydate-entries-title">Entries</p>
+        <div id="bydate-entries" class="expense-list"></div>
+      </div>
+    </div>
+
     <p class="dash-section-title">Ask by voice</p>
     <button class="ask-voice-btn" onclick="startVoiceAsk()">
       <span class="ask-voice-mic">🎤</span>
       <div class="ask-voice-info">
         <div class="ask-voice-title">Tap to ask a question</div>
-        <div class="ask-voice-sub">e.g. "How much budget left?" · "Did I overspend in April?"</div>
+        <div class="ask-voice-sub">e.g. "How much spent yesterday?" · "Show last 7 days" · "Did I overspend?"</div>
       </div>
     </button>
 
@@ -371,6 +419,6 @@
   </div>
 </div>
 
-<script src="app.js?v=21"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>

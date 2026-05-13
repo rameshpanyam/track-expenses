@@ -1333,6 +1333,7 @@ async function clearBudgetFromModal() {
 function renderInsights() {
   renderVerdictStrip();
   renderStreakCard();
+  renderBydate();
 }
 
 /* Build a list of months from the earliest expense to the current month, with
@@ -1468,6 +1469,260 @@ function maybeShowMonthWrapUp() {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   BY-DATE LENS (Insights → day / range summary)
+   ═══════════════════════════════════════════════════════════ */
+/* State — always reset to 'today' on each tab switch into Insights
+   (per design decision: no persistence across tab switches). */
+let bydatePreset = 'today';        /* today | yesterday | this-week | last-7 | custom */
+let bydateFrom   = todayStr();     /* yyyy-mm-dd */
+let bydateTo     = todayStr();
+let bydateChart  = null;           /* Chart.js doughnut instance */
+
+/* ── Date helpers (range math, all in local calendar time) ── */
+function dateToStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function strToDate(s) {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+function addDays(d, n) {
+  const r = new Date(d);
+  r.setDate(r.getDate() + n);
+  return r;
+}
+function startOfWeek(d) {
+  /* Monday = start of week (en-IN convention). 0 = Sun → shift back 6 */
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  return addDays(d, diff);
+}
+
+/* Map preset name → { from, to } strings */
+function rangeForPreset(preset) {
+  const now = new Date();
+  const today = dateToStr(now);
+  if (preset === 'today')     return { from: today, to: today };
+  if (preset === 'yesterday') {
+    const y = dateToStr(addDays(now, -1));
+    return { from: y, to: y };
+  }
+  if (preset === 'this-week') return { from: dateToStr(startOfWeek(now)), to: today };
+  if (preset === 'last-7')    return { from: dateToStr(addDays(now, -6)),  to: today };
+  /* 'custom' uses existing bydateFrom/bydateTo */
+  return { from: bydateFrom, to: bydateTo };
+}
+
+/* Filter allExpenses to those whose date falls within [from, to] inclusive. */
+function expensesInRange(fromStr, toStr) {
+  return allExpenses.filter(e => {
+    if (!e.date) return false;
+    return e.date >= fromStr && e.date <= toStr;
+  });
+}
+
+/* Produce a human-friendly label for the active range. */
+function formatRangeLabel(fromStr, toStr) {
+  const today     = todayStr();
+  const yesterday = dateToStr(addDays(new Date(), -1));
+  if (fromStr === toStr) {
+    if (fromStr === today)     return 'Today · ' + fmtFullDate(fromStr);
+    if (fromStr === yesterday) return 'Yesterday · ' + fmtFullDate(fromStr);
+    return fmtFullDate(fromStr);
+  }
+  const f = strToDate(fromStr), t = strToDate(toStr);
+  /* Same month — "1–10 May 2026" */
+  if (f.getFullYear() === t.getFullYear() && f.getMonth() === t.getMonth()) {
+    return `${f.getDate()}–${t.getDate()} ${monthLabel(f)}`;
+  }
+  /* Same year — "5 Apr – 12 May 2026" */
+  if (f.getFullYear() === t.getFullYear()) {
+    return `${fmtFullDate(fromStr, false)} – ${fmtFullDate(toStr)}`;
+  }
+  /* Different year */
+  return `${fmtFullDate(fromStr)} – ${fmtFullDate(toStr)}`;
+}
+
+/* Like fmtDate() but always includes year (configurable). */
+function fmtFullDate(dateStr, withYear = true) {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-');
+  const mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(m)-1];
+  return withYear ? `${parseInt(d)} ${mn} ${y}` : `${parseInt(d)} ${mn}`;
+}
+
+/* Compact range label for the app header (short form). */
+function formatHeaderRangeLabel(fromStr, toStr) {
+  const today     = todayStr();
+  const yesterday = dateToStr(addDays(new Date(), -1));
+  if (fromStr === toStr) {
+    if (fromStr === today)     return 'Today';
+    if (fromStr === yesterday) return 'Yesterday';
+    return fmtFullDate(fromStr, false);
+  }
+  const f = strToDate(fromStr), t = strToDate(toStr);
+  if (f.getFullYear() === t.getFullYear() && f.getMonth() === t.getMonth()) {
+    return `${f.getDate()}–${t.getDate()} ${monthShort(f)}`;
+  }
+  return `${fmtFullDate(fromStr, false)} – ${fmtFullDate(toStr, false)}`;
+}
+
+/* ── Chip & custom-picker handlers ── */
+function setBydatePreset(preset) {
+  bydatePreset = preset;
+  const r = rangeForPreset(preset);
+  bydateFrom = r.from;
+  bydateTo   = r.to;
+  /* Visual chip state */
+  document.querySelectorAll('.bydate-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.preset === preset);
+  });
+  /* Hide custom panel unless explicitly opened */
+  if (preset !== 'custom') document.getElementById('bydate-custom').style.display = 'none';
+  renderBydate();
+  updateHeaderMonth();
+}
+
+function toggleBydateCustom() {
+  const panel = document.getElementById('bydate-custom');
+  const opening = panel.style.display !== 'block';
+  panel.style.display = opening ? 'block' : 'none';
+  if (opening) {
+    /* Pre-fill with current range to make tweaking easier */
+    document.getElementById('bydate-from').value = bydateFrom;
+    document.getElementById('bydate-to').value   = bydateTo;
+    /* Mark the custom chip as active visually */
+    document.querySelectorAll('.bydate-chip').forEach(c => {
+      c.classList.toggle('active', c.dataset.preset === 'custom');
+    });
+  }
+}
+
+function applyBydateCustom() {
+  const fromEl = document.getElementById('bydate-from');
+  const toEl   = document.getElementById('bydate-to');
+  const from = fromEl.value;
+  const to   = toEl.value;
+  if (!from || !to) { showToast('Pick both From and To dates', true); return; }
+  if (from > to)    { showToast('From date is after To date', true);   return; }
+  bydatePreset = 'custom';
+  bydateFrom   = from;
+  bydateTo     = to;
+  document.getElementById('bydate-custom').style.display = 'none';
+  renderBydate();
+  updateHeaderMonth();
+}
+
+function destroyBydateChart() {
+  if (bydateChart) { bydateChart.destroy(); bydateChart = null; }
+}
+
+/* Reset to today — called on every entry into the Insights tab. */
+function resetBydate() {
+  bydatePreset = 'today';
+  const r = rangeForPreset('today');
+  bydateFrom = r.from;
+  bydateTo   = r.to;
+  document.querySelectorAll('.bydate-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.preset === 'today');
+  });
+  const customPanel = document.getElementById('bydate-custom');
+  if (customPanel) customPanel.style.display = 'none';
+}
+
+/* ── Render the By-Date summary card ── */
+function renderBydate() {
+  const card        = document.getElementById('bydate-card');
+  if (!card) return;          /* Insights HTML not yet in DOM (defensive) */
+  const labelEl     = document.getElementById('bydate-range-label');
+  const totalEl     = document.getElementById('bydate-total');
+  const metaEl      = document.getElementById('bydate-meta');
+  const donutRow    = document.getElementById('bydate-donut-row');
+  const donutVal    = document.getElementById('bydate-donut-val');
+  const catsEl      = document.getElementById('bydate-cats');
+  const entriesEl   = document.getElementById('bydate-entries');
+
+  const expenses = expensesInRange(bydateFrom, bydateTo);
+  const total    = expenses.reduce((s, e) => s + e.amount, 0);
+  const count    = expenses.length;
+
+  labelEl.textContent = formatRangeLabel(bydateFrom, bydateTo);
+  totalEl.textContent = fmt(total);
+  donutVal.textContent = fmt(total);
+
+  /* Group by category for chart + list */
+  const byCat = {};
+  expenses.forEach(e => {
+    if (!byCat[e.category]) byCat[e.category] = { amount: 0, count: 0 };
+    byCat[e.category].amount += e.amount;
+    byCat[e.category].count  += 1;
+  });
+  const cats = Object.entries(byCat).map(([key, v]) => {
+    const c = CAT_MAP[key] || { icon: '📦', label: key, color: '#78909C' };
+    return { key, label: c.label, icon: c.icon, color: c.color, amount: v.amount, count: v.count };
+  }).sort((a, b) => b.amount - a.amount);
+
+  metaEl.textContent = count === 0
+    ? 'No expenses in this range'
+    : `${count} expense${count !== 1 ? 's' : ''} · ${cats.length} categor${cats.length !== 1 ? 'ies' : 'y'}`;
+
+  destroyBydateChart();
+
+  if (count === 0) {
+    donutRow.style.display = 'none';
+    catsEl.innerHTML       = '';   /* clear any stale chips from prior range */
+    entriesEl.innerHTML    = '<p class="empty-state-inline">Nothing here. Try another date or range.</p>';
+    return;
+  }
+  donutRow.style.display = 'flex';
+
+  /* Donut */
+  const donutCtx = document.getElementById('bydateDonutChart').getContext('2d');
+  bydateChart = new Chart(donutCtx, {
+    type: 'doughnut',
+    data: {
+      labels: cats.map(c => c.label),
+      datasets: [{
+        data:            cats.map(c => c.amount),
+        backgroundColor: cats.map(c => c.color),
+        borderWidth:     2,
+        borderColor:     '#FFFFFF',
+        borderRadius:    4,
+      }]
+    },
+    options: {
+      responsive: false,
+      cutout: '66%',
+      plugins: {
+        legend:  { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmt(ctx.raw)}` } }
+      }
+    }
+  });
+
+  /* Category list with %, ₹, ×count */
+  catsEl.innerHTML = cats.map(c => {
+    const pct = total > 0 ? Math.round((c.amount / total) * 100) : 0;
+    return `
+      <div class="bydate-cat-row">
+        <span class="bydate-cat-dot" style="background:${c.color};"></span>
+        <span class="bydate-cat-icon">${c.icon}</span>
+        <span class="bydate-cat-name">${c.label}</span>
+        <span class="bydate-cat-pct">${pct}%</span>
+        <span class="bydate-cat-amt">${fmt(c.amount)}</span>
+        <span class="bydate-cat-ct">×${c.count}</span>
+      </div>
+    `;
+  }).join('');
+
+  /* Entries list — newest first, inline (per design decision) */
+  const sorted = expenses.slice().sort((a, b) =>
+    b.date.localeCompare(a.date) || (b.rowIndex - a.rowIndex)
+  );
+  entriesEl.innerHTML = sorted.map(e => expenseRowHTML(e)).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════
    VIEW ROUTER
    ═══════════════════════════════════════════════════════════ */
 function switchView(view) {
@@ -1476,6 +1731,10 @@ function switchView(view) {
   document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
   document.getElementById('view-'  + view).classList.add('active');
   document.getElementById('nav-'   + view).classList.add('active');
+
+  /* By-Date lens always resets to "Today" on each Insights entry */
+  if (view === 'insights') resetBydate();
+
   updateHeaderMonth();
 
   if (view === 'add')       renderTodayTotal();
@@ -1493,8 +1752,8 @@ function updateHeaderMonth() {
     prev.style.visibility   = 'hidden';
     next.style.visibility   = 'hidden';
   } else if (currentView === 'insights') {
-    /* Insights tab is global — no per-month context, hide chevrons */
-    el.textContent          = 'All months';
+    /* Reflect the active By-Date range in the header for constant feedback */
+    el.textContent          = formatHeaderRangeLabel(bydateFrom, bydateTo);
     prev.style.visibility   = 'hidden';
     next.style.visibility   = 'hidden';
   } else {
@@ -1807,24 +2066,160 @@ function classifyVoiceIntent(transcript) {
   }
 
   /* ── BUDGET-QUERY intents ──
-        Direct triggers — leave parsing of the question to the handler. */
-  const queryTriggers = [
-    /\bhow\s+much\s+(?:budget\s+)?(?:is\s+)?(?:left|remaining|remain)\b/,
+        Must mention "budget" / "verdict" / "overspend" so they don't collide
+        with the more general DATE-QUERY patterns below. */
+  const budgetTriggers = [
     /\bbudget\s+(?:left|remaining|remain)\b/,
-    /\bhow\s+much\s+(?:can\s+i|do\s+i\s+have(?:\s+to\s+spend)?)\b/,
+    /\bhow\s+much\s+budget\s+(?:is\s+)?(?:left|remaining|remain)\b/,
     /\bwhat(?:'s| is)\s+my\s+budget\b/,
-    /\bdid\s+i\s+(?:overspend|over\s*spend|go\s+over)/,
+    /\bdid\s+i\s+(?:overspend|over\s*spend|go\s+over)\b/,
     /\bam\s+i\s+(?:over|under)\s+budget\b/,
     /\bgood\s+month\s+or\s+bad\s+month\b/,
-    /\bhow\s+(?:am\s+i|is\s+(?:my\s+)?(?:budget|spending))\s+doing\b/,
-    /\b(?:show|tell)\s+me\s+(?:my\s+)?(?:budget|spending|verdict)\b/,
-    /\bhow\s+much\s+(?:have\s+i\s+)?spent\b/,
+    /\bhow\s+is\s+(?:my\s+)?budget\s+doing\b/,
+    /\b(?:show|tell)\s+me\s+(?:my\s+)?(?:budget|verdict)\b/,
   ];
-  if (queryTriggers.some(re => re.test(t))) {
+  if (budgetTriggers.some(re => re.test(t))) {
     return { type: 'budget-query', query: t };
   }
 
+  /* ── DATE-QUERY intents ──
+        Anything that asks about historical spend tied to a date or range.
+        We attempt to extract { from, to, category? } here so the handler
+        is a pure renderer. */
+  const dateQuery = extractDateQueryRange(t);
+  if (dateQuery) {
+    return { type: 'date-query', query: t, ...dateQuery };
+  }
+
   return { type: 'none' };
+}
+
+/* Detect "show me spending today / yesterday / last 7 days / on May 5 / from X to Y"
+   and return { from, to, category?, presetName }. Null if no date intent found.
+
+   Disambiguation rule: ambiguous phrases like "yesterday" require an explicit
+   QUESTION marker (how much / what did / show / tell) so they don't collide with
+   expense-add commands ("spent 500 on food yesterday"). Unambiguous range
+   phrases ("this week", "last 7 days", "from X to Y") don't need the marker. */
+function extractDateQueryRange(t) {
+  const isQuestion = /\b(?:how\s+much|how\s+many|what\s+did\s+i|what(?:'s| is|\s+is)\s+(?:my|the)\s+(?:total|spend|spending|expenses?)|show(?:\s+me)?|tell\s+me|total\s+(?:for|of|spent|in|on)|expenses?\s+(?:for|of|on|in))\b/.test(t);
+
+  const now = new Date();
+  const today = dateToStr(now);
+
+  /* ── Ambiguous single-day phrases — require question marker AND not look
+        like an expense-add (amount+category in the same phrase). ── */
+  const looksLikeAdd = !isQuestion && hasAmountWithCategory(t);
+
+  if (/\btoday\b/.test(t) && isQuestion && !looksLikeAdd) {
+    return matchCategory(t, { from: today, to: today, presetName: 'today' });
+  }
+  if (/\byesterday\b/.test(t) && isQuestion && !looksLikeAdd) {
+    const y = dateToStr(addDays(now, -1));
+    return matchCategory(t, { from: y, to: y, presetName: 'yesterday' });
+  }
+
+  /* ── Unambiguous range phrases — fire regardless of question marker.
+        These are safe because "this week" / "last 7 days" / "from X to Y"
+        are never naturally part of an expense-add utterance. ── */
+  if (/\b(?:this\s+week|current\s+week)\b/.test(t)) {
+    return matchCategory(t, { from: dateToStr(startOfWeek(now)), to: today, presetName: 'this-week' });
+  }
+  if (/\blast\s+(?:7|seven)\s+days\b/.test(t)) {
+    return matchCategory(t, { from: dateToStr(addDays(now, -6)), to: today, presetName: 'last-7' });
+  }
+  if (/\blast\s+week\b/.test(t)) {
+    const lastWkStart = addDays(startOfWeek(now), -7);
+    const lastWkEnd   = addDays(startOfWeek(now), -1);
+    return matchCategory(t, { from: dateToStr(lastWkStart), to: dateToStr(lastWkEnd), presetName: 'custom' });
+  }
+  if (/\blast\s+(?:30|thirty)\s+days\b/.test(t)) {
+    return matchCategory(t, { from: dateToStr(addDays(now, -29)), to: today, presetName: 'custom' });
+  }
+
+  /* ── Explicit "from X to Y" — second group is greedy so multi-word dates
+        like "may 10" or "may 10 2026" are captured fully. ── */
+  const fromTo = t.match(/\bfrom\s+(.+?)\s+(?:to|till|until)\s+(.+)$/);
+  if (fromTo) {
+    const f  = parseSpokenDate(fromTo[1]);
+    const tt = parseSpokenDate(fromTo[2]);
+    if (f && tt) return matchCategory(t, { from: f, to: tt, presetName: 'custom' });
+  }
+
+  /* ── "show May 5" / "5th May spending" — single date needs question marker ── */
+  if (isQuestion && !looksLikeAdd) {
+    const single = parseSpokenDate(t);
+    if (single) return matchCategory(t, { from: single, to: single, presetName: 'custom' });
+  }
+
+  return null;
+}
+
+/* Quick check: does the transcript contain BOTH an amount and a category?
+   Used to bias away from date-query when the user is actually adding an expense. */
+function hasAmountWithCategory(t) {
+  /* parseSpokenAmount returns null if no amount; but it also matches year-like
+     numbers (2026). Cheap filter: only count amounts <= 999999 to skip years. */
+  const amt = parseSpokenAmount(t);
+  if (!amt || amt > 1000000) return false;
+  for (const c of allCategories()) {
+    if (new RegExp(`\\b${c.label.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(t)) return true;
+  }
+  for (const kws of Object.values(VOICE_KEYWORDS || {})) {
+    for (const kw of kws) if (new RegExp(`\\b${kw}\\b`, 'i').test(t)) return true;
+  }
+  return false;
+}
+
+/* Detect a category mention inside the transcript so we can do
+   "how much on food yesterday" drill-downs. */
+function matchCategory(t, range) {
+  for (const c of allCategories()) {
+    const label = c.label.toLowerCase();
+    const re = new RegExp(`\\b${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+    if (re.test(t)) return { ...range, category: c.key };
+  }
+  /* Also check the built-in voice keywords used for expense parsing */
+  for (const [cat, kws] of Object.entries(VOICE_KEYWORDS || {})) {
+    for (const kw of kws) {
+      const re = new RegExp(`\\b${kw}\\b`, 'i');
+      if (re.test(t)) return { ...range, category: cat };
+    }
+  }
+  return range;
+}
+
+/* Parse a single spoken date phrase to yyyy-mm-dd. Handles:
+     - "may 5", "5 may", "5th may 2026"
+     - "12/05" / "5-may" / numeric-only with month context
+   Returns null on no match. Uses current year unless year is spoken. */
+function parseSpokenDate(phrase) {
+  if (!phrase) return null;
+  const s = phrase.toLowerCase().trim();
+  const MONTHS = ['january','february','march','april','may','june',
+                  'july','august','september','october','november','december'];
+
+  /* Pattern: "5 may" / "5th may" / "5 may 2026" */
+  let m = s.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]+)(?:\s+(\d{4}))?/);
+  if (m) {
+    const day = parseInt(m[1]);
+    const monIdx = MONTHS.findIndex(mn => mn.startsWith(m[2].slice(0, 3)));
+    if (monIdx >= 0 && day >= 1 && day <= 31) {
+      const year = m[3] ? parseInt(m[3]) : new Date().getFullYear();
+      return `${year}-${String(monIdx + 1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    }
+  }
+  /* Pattern: "may 5" / "may 5th" / "may 5 2026" */
+  m = s.match(/\b([a-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s+(\d{4}))?/);
+  if (m) {
+    const monIdx = MONTHS.findIndex(mn => mn.startsWith(m[1].slice(0, 3)));
+    const day    = parseInt(m[2]);
+    if (monIdx >= 0 && day >= 1 && day <= 31) {
+      const year = m[3] ? parseInt(m[3]) : new Date().getFullYear();
+      return `${year}-${String(monIdx + 1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    }
+  }
+  return null;
 }
 
 /* Speech synthesis helper. Respects an opt-out flag in localStorage so users
@@ -1985,12 +2380,95 @@ function handleVoiceBudgetQuery(query, transcript) {
   speak(answer);
 }
 
+/* Handle a date-range voice query. Switches to Insights tab, drives the
+   By-Date lens to the matched range (and optional category filter), echoes a
+   visual chip card, then speaks the summary. */
+function handleVoiceDateQuery(intent, transcript) {
+  const { from, to, category } = intent;
+
+  /* Drive the By-Date lens to the matched range so the user can see + tweak */
+  if (intent.presetName && intent.presetName !== 'custom') {
+    /* Use preset path so the active chip highlights correctly */
+    if (currentView !== 'insights') switchView('insights');
+    /* switchView('insights') calls resetBydate() which forces 'today' — undo
+       by setting the requested preset AFTER the switch. */
+    setBydatePreset(intent.presetName);
+  } else {
+    if (currentView !== 'insights') switchView('insights');
+    bydatePreset = 'custom';
+    bydateFrom = from;
+    bydateTo   = to;
+    document.querySelectorAll('.bydate-chip').forEach(c => {
+      c.classList.toggle('active', c.dataset.preset === 'custom');
+    });
+    renderBydate();
+    updateHeaderMonth();
+  }
+
+  /* Now compute the answer — optionally filtered by category. */
+  let expenses = expensesInRange(from, to);
+  let categoryLabel = '';
+  if (category) {
+    const c = CAT_MAP[category];
+    categoryLabel = c ? c.label : category;
+    expenses = expenses.filter(e => e.category === category);
+  }
+  const total = expenses.reduce((s, e) => s + e.amount, 0);
+  const count = expenses.length;
+
+  /* Visual chip card */
+  const card = document.getElementById('voice-result-card');
+  document.getElementById('voice-heard-text').textContent = `"${transcript}"`;
+  const rangeLabel = formatRangeLabel(from, to);
+  const chips = [];
+  chips.push(`<div class="voice-chip ok">📅 ${rangeLabel}</div>`);
+  if (categoryLabel) chips.push(`<div class="voice-chip ok">${(CAT_MAP[category]?.icon) || '📦'} ${categoryLabel}</div>`);
+  chips.push(`<div class="voice-chip ${count ? 'ok' : 'err'}">💰 ${fmt(total)}</div>`);
+  chips.push(`<div class="voice-chip ok">📝 ${count} entr${count !== 1 ? 'ies' : 'y'}</div>`);
+
+  /* Top-category hint when no category was asked for */
+  if (!category && count > 0) {
+    const byCat = {};
+    expenses.forEach(e => { byCat[e.category] = (byCat[e.category] || 0) + e.amount; });
+    const top = Object.entries(byCat).sort((a, b) => b[1] - a[1])[0];
+    const tc  = CAT_MAP[top[0]];
+    if (tc) chips.push(`<div class="voice-chip ok">${tc.icon} Top: ${tc.label} ${fmt(top[1])}</div>`);
+  }
+
+  document.getElementById('voice-parsed-row').innerHTML = chips.join('');
+  document.getElementById('voice-confirm-btn').style.display = 'none';
+  card.style.display = 'flex';
+  setTimeout(() => {
+    card.style.display = 'none';
+    document.getElementById('voice-confirm-btn').style.display = '';
+  }, 6000);
+
+  /* Spoken summary */
+  let spoken;
+  if (count === 0) {
+    spoken = categoryLabel
+      ? `No ${categoryLabel} expenses for ${rangeLabel}.`
+      : `No expenses for ${rangeLabel}.`;
+  } else if (categoryLabel) {
+    spoken = `${rangeLabel}: you spent ${fmtSpoken(total)} on ${categoryLabel} across ${count} ${count === 1 ? 'entry' : 'entries'}.`;
+  } else {
+    /* Mention top category in the spoken summary for context */
+    const byCat = {};
+    expenses.forEach(e => { byCat[e.category] = (byCat[e.category] || 0) + e.amount; });
+    const top = Object.entries(byCat).sort((a, b) => b[1] - a[1])[0];
+    const tc  = top ? CAT_MAP[top[0]] : null;
+    const tail = tc ? `, most on ${tc.label.toLowerCase()} — ${fmtSpoken(top[1])}` : '';
+    spoken = `${rangeLabel}: ${fmtSpoken(total)} on ${count} ${count === 1 ? 'entry' : 'entries'}${tail}.`;
+  }
+  speak(spoken);
+}
+
 /* Voice entry point biased toward queries — used by Insights "Ask by voice"
    button. Same recognition pipeline as startVoice(); the result is routed
    through the existing intent classifier in handleVoiceResult(). */
 function startVoiceAsk() {
   /* Friendly hint so the user knows what kinds of questions work */
-  showToast('Ask: "How much budget left?" or "Did I overspend?"');
+  showToast('Ask: "Spent yesterday?" · "Last 7 days?" · "Budget left?"');
   startVoice();
 }
 
@@ -2104,6 +2582,10 @@ function handleVoiceResult(transcript) {
   }
   if (intent.type === 'budget-query') {
     handleVoiceBudgetQuery(intent.query, transcript);
+    return;
+  }
+  if (intent.type === 'date-query') {
+    handleVoiceDateQuery(intent, transcript);
     return;
   }
 
