@@ -1,6 +1,6 @@
 {
-  "total": 607,
-  "pass": 607,
+  "total": 587,
+  "pass": 587,
   "fail": 0,
   "results": [
     {
@@ -2352,126 +2352,6 @@
     {
       "id": "TC-V-025",
       "title": "forecast no budget → budget=0",
-      "status": "PASS",
-      "error": null
-    },
-    {
-      "id": "TC-W-001",
-      "title": "polyline 3 points",
-      "status": "PASS",
-      "error": null
-    },
-    {
-      "id": "TC-W-002",
-      "title": "polyline flat at top",
-      "status": "PASS",
-      "error": null
-    },
-    {
-      "id": "TC-W-003",
-      "title": "polyline flat at bottom",
-      "status": "PASS",
-      "error": null
-    },
-    {
-      "id": "TC-W-004",
-      "title": "sparkline delta +100%",
-      "status": "PASS",
-      "error": null
-    },
-    {
-      "id": "TC-W-005",
-      "title": "sparkline delta -50%",
-      "status": "PASS",
-      "error": null
-    },
-    {
-      "id": "TC-W-006",
-      "title": "sparkline delta 0% (flat)",
-      "status": "PASS",
-      "error": null
-    },
-    {
-      "id": "TC-W-007",
-      "title": "sparkline delta null when prev=0",
-      "status": "PASS",
-      "error": null
-    },
-    {
-      "id": "TC-W-008",
-      "title": "sparkline delta exact 25%",
-      "status": "PASS",
-      "error": null
-    },
-    {
-      "id": "TC-W-009",
-      "title": "sparkline delta -100%",
-      "status": "PASS",
-      "error": null
-    },
-    {
-      "id": "TC-W-010",
-      "title": "polyline middle point math",
-      "status": "PASS",
-      "error": null
-    },
-    {
-      "id": "TC-W-011",
-      "title": "sparkline delta rounding",
-      "status": "PASS",
-      "error": null
-    },
-    {
-      "id": "TC-W-012",
-      "title": "polyline empty points",
-      "status": "PASS",
-      "error": null
-    },
-    {
-      "id": "TC-W-013",
-      "title": "polyline single point",
-      "status": "PASS",
-      "error": null
-    },
-    {
-      "id": "TC-W-014",
-      "title": "sparkline delta with decimals",
-      "status": "PASS",
-      "error": null
-    },
-    {
-      "id": "TC-W-015",
-      "title": "sparkline delta small change",
-      "status": "PASS",
-      "error": null
-    },
-    {
-      "id": "TC-W-016",
-      "title": "sparkline delta negative",
-      "status": "PASS",
-      "error": null
-    },
-    {
-      "id": "TC-W-017",
-      "title": "sparkline delta huge ratio",
-      "status": "PASS",
-      "error": null
-    },
-    {
-      "id": "TC-W-018",
-      "title": "polyline y=0 maps to 23",
-      "status": "PASS",
-      "error": null
-    },
-    {
-      "id": "TC-W-019",
-      "title": "polyline y=1 maps to 1",
-      "status": "PASS",
-      "error": null
-    },
-    {
-      "id": "TC-W-020",
-      "title": "polyline x scale: x=2 → 60",
       "status": "PASS",
       "error": null
     },

@@ -2334,67 +2334,7 @@ html, body {
 .forecast-card.over .forecast-val { color: var(--red); }
 .forecast-card.safe .forecast-val { color: var(--green); }
 
-/* ── F11: Sparklines list ──────────────────────────────────── */
-.sparklines-list {
-  margin: 0 16px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.spark-row {
-  display: grid;
-  grid-template-columns: 28px 1fr 88px auto;
-  gap: 10px;
-  align-items: center;
-  padding: 10px 12px;
-  background: var(--bg2);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
-}
-.spark-icon { font-size: 1.1rem; }
-.spark-name {
-  font-size: .85rem;
-  font-weight: 700;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.spark-svg-wrap {
-  height: 28px;
-  width: 88px;
-  position: relative;
-}
-.spark-svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-.spark-meta { text-align: right; }
-.spark-amt {
-  font-size: .8rem;
-  font-weight: 800;
-  color: var(--text);
-  white-space: nowrap;
-}
-.spark-delta {
-  font-size: .65rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.spark-delta.up   { color: var(--red); }
-.spark-delta.down { color: var(--green); }
-.spark-delta.flat { color: var(--muted); }
-.spark-empty {
-  text-align: center;
-  padding: 16px;
-  color: var(--muted);
-  font-size: .8rem;
-  background: var(--bg2);
-  border-radius: var(--radius-sm);
-  border: 1px dashed var(--border);
-}
+/* (F11 sparklines CSS removed in v25.4 — feature retired) */
 
 /* ── F7: Heatmap toggle + grid ─────────────────────────────── */
 .heatmap-toggle-row {

@@ -765,14 +765,7 @@ function computeForecastPure(spentSoFar, daysElapsed, daysInMonth, budget /* may
   };
 }
 
-/* ---- Sparkline polyline ---- */
-function polylineFor(points) {
-  return points.map(p => `${(p.x / 2) * 60},${24 - p.y * 22 - 1}`).join(' ');
-}
-function sparklineDelta(prev, last) {
-  if (prev > 0) return ((last - prev) / prev) * 100;
-  return null;
-}
+/* (Sparkline helpers removed in v25.4 — feature retired) */
 
 /* ---- Heatmap level (0..4) ---- */
 function heatmapLevel(value, max) {
@@ -1172,29 +1165,7 @@ T('TC-V-023','forecast daysInMonth preserved', () => assert.strictEqual(computeF
 T('TC-V-024','forecast budget preserved', () => assert.strictEqual(computeForecastPure(900,3,31,10000).budget, 10000));
 T('TC-V-025','forecast no budget → budget=0', () => assert.strictEqual(computeForecastPure(900,3,31,null).budget, 0));
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   W.  SPARKLINE / DELTA MATH  (TC-W-001..W-020)
-   ═══════════════════════════════════════════════════════════════════════════ */
-T('TC-W-001','polyline 3 points', () => assert.strictEqual(polylineFor([{x:0,y:0},{x:1,y:0.5},{x:2,y:1}]), '0,23 30,12 60,1'));
-T('TC-W-002','polyline flat at top', () => assert.strictEqual(polylineFor([{x:0,y:1},{x:1,y:1},{x:2,y:1}]), '0,1 30,1 60,1'));
-T('TC-W-003','polyline flat at bottom', () => assert.strictEqual(polylineFor([{x:0,y:0},{x:1,y:0},{x:2,y:0}]), '0,23 30,23 60,23'));
-T('TC-W-004','sparkline delta +100%', () => assert.strictEqual(sparklineDelta(100, 200), 100));
-T('TC-W-005','sparkline delta -50%', () => assert.strictEqual(sparklineDelta(200, 100), -50));
-T('TC-W-006','sparkline delta 0% (flat)', () => assert.strictEqual(sparklineDelta(100, 100), 0));
-T('TC-W-007','sparkline delta null when prev=0', () => assert.strictEqual(sparklineDelta(0, 500), null));
-T('TC-W-008','sparkline delta exact 25%', () => assert.strictEqual(sparklineDelta(400, 500), 25));
-T('TC-W-009','sparkline delta -100%', () => assert.strictEqual(sparklineDelta(100, 0), -100));
-T('TC-W-010','polyline middle point math', () => { const p=polylineFor([{x:0,y:0.5},{x:1,y:0.5},{x:2,y:0.5}]); assert.ok(p.includes('30,12')); });
-T('TC-W-011','sparkline delta rounding', () => { const d=sparklineDelta(300,400); assert.ok(Math.abs(d - 33.33) < 0.01); });
-T('TC-W-012','polyline empty points', () => assert.strictEqual(polylineFor([]), ''));
-T('TC-W-013','polyline single point', () => assert.strictEqual(polylineFor([{x:0,y:0.5}]), '0,12'));
-T('TC-W-014','sparkline delta with decimals', () => assert.strictEqual(sparklineDelta(150, 300), 100));
-T('TC-W-015','sparkline delta small change', () => assert.strictEqual(sparklineDelta(1000, 1010), 1));
-T('TC-W-016','sparkline delta negative', () => assert.ok(sparklineDelta(1000, 990) < 0));
-T('TC-W-017','sparkline delta huge ratio', () => assert.strictEqual(sparklineDelta(1, 1000), 99900));
-T('TC-W-018','polyline y=0 maps to 23', () => { const p=polylineFor([{x:0,y:0}]); assert.strictEqual(p, '0,23'); });
-T('TC-W-019','polyline y=1 maps to 1', () => { const p=polylineFor([{x:0,y:1}]); assert.strictEqual(p, '0,1'); });
-T('TC-W-020','polyline x scale: x=2 → 60', () => { const p=polylineFor([{x:2,y:0}]); assert.strictEqual(p, '60,23'); });
+/* (W. Sparkline tests removed in v25.4 — feature retired) */
 
 /* ═══════════════════════════════════════════════════════════════════════════
    X.  HEATMAP LEVEL  (TC-X-001..X-020)

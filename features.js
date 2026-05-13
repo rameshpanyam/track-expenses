@@ -15,7 +15,7 @@
      F8  What-if budget simulator          (slider per category)
      F9  Year-in-review wrap               (replayable per year)
      F10 End-of-month forecast strip
-     F11 Category trends (3-month sparklines)
+     F11 Category trends (3-month sparklines) [REMOVED in v25.4]
      F12 Voice-first auto-save             (auto-save + 5s undo)
      F13 Savings goals                     (auto-credit + manual deposits)
      F14 Export CSV / PDF                  (jsPDF lazy-loaded)
@@ -71,7 +71,6 @@
   let pendingDepositGoalId = null;
 
   /* Charts created by features.js */
-  let sparkCharts   = [];
   let yearwrapCharts = [];
 
   /* ═══════════════════════════════════════════════════════════
@@ -664,90 +663,8 @@
     }
   }
 
-  /* ═══════════════════════════════════════════════════════════
-     F11 — CATEGORY SPARKLINES (last 3 months)
-     ═══════════════════════════════════════════════════════════ */
-  function destroySparkCharts() {
-    sparkCharts.forEach(c => { try { c.destroy(); } catch (_) {} });
-    sparkCharts = [];
-  }
-  function monthTotalForCat(year, month, catKey) {
-    return (window.allExpenses || []).reduce((s, e) => {
-      if (!e.date) return s;
-      if (e.category !== catKey) return s;
-      const [ey, em] = e.date.split('-').map(Number);
-      return (ey === year && em === month) ? s + e.amount : s;
-    }, 0);
-  }
-  function renderSparklines() {
-    const wrap = document.getElementById('sparklines-list');
-    if (!wrap) return;
-    destroySparkCharts();
-
-    const vm = window.viewMonth || new Date();
-    /* 3 months ending in vm */
-    const months = [
-      new Date(vm.getFullYear(), vm.getMonth() - 2, 1),
-      new Date(vm.getFullYear(), vm.getMonth() - 1, 1),
-      new Date(vm.getFullYear(), vm.getMonth(),     1),
-    ];
-
-    /* Aggregate per category */
-    const seenCats = new Set();
-    months.forEach(d => {
-      const y = d.getFullYear(), m = d.getMonth() + 1;
-      (window.allExpenses || []).forEach(e => {
-        if (!e.date) return;
-        const [ey, em] = e.date.split('-').map(Number);
-        if (ey === y && em === m && e.category) seenCats.add(e.category);
-      });
-    });
-    if (seenCats.size === 0) {
-      wrap.innerHTML = '<p class="search-empty">No data yet — keep adding expenses to see trends.</p>';
-      return;
-    }
-
-    /* Build list of { catKey, totals[3], delta } sorted by latest month spend desc */
-    const items = [...seenCats].map(catKey => {
-      const totals = months.map(d => monthTotalForCat(d.getFullYear(), d.getMonth() + 1, catKey));
-      const prev   = totals[1];
-      const last   = totals[2];
-      const delta  = prev > 0 ? ((last - prev) / prev) * 100 : null;
-      return { catKey, totals, delta };
-    }).sort((a, b) => b.totals[2] - a.totals[2]);
-
-    /* Render rows + canvas placeholders */
-    wrap.innerHTML = items.slice(0, 8).map(it => {
-      const c = (CAT_MAP || {})[it.catKey] || { icon:'📦', label: it.catKey, color: '#78909C' };
-      const max = Math.max(...it.totals, 1);
-      const points = it.totals.map((v, i) => ({ x: i, y: v / max }));
-      const dArrow = it.delta === null ? '—' : (it.delta >= 0 ? '↑' : '↓');
-      const dPct   = it.delta === null ? '' : Math.abs(Math.round(it.delta)) + '%';
-      const dCls   = it.delta === null ? 'flat' : (it.delta > 0 ? 'up' : (it.delta < 0 ? 'down' : 'flat'));
-      const polyline = polylineFor(points);
-      return `
-        <div class="spark-row">
-          <div class="spark-cat-icon" style="background:${c.color}22;">${c.icon}</div>
-          <div class="spark-info">
-            <div class="spark-name">${c.label}</div>
-            <div class="spark-meta">${months.map(m => m.toLocaleDateString('en-IN',{month:'short'})).join(' · ')}</div>
-          </div>
-          <svg class="spark-svg" viewBox="0 0 60 24" preserveAspectRatio="none" aria-hidden="true">
-            <polyline points="${polyline}" fill="none" stroke="${c.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-            ${points.map(p => `<circle cx="${(p.x/2)*60}" cy="${24 - p.y*22 - 1}" r="1.6" fill="${c.color}" />`).join('')}
-          </svg>
-          <div class="spark-right">
-            <div class="spark-val">${inrFmt(it.totals[2])}</div>
-            <div class="spark-delta ${dCls}">${dArrow} ${dPct}</div>
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-  function polylineFor(points) {
-    /* Map [0..2] x → [0..60], y in [0..1] → [22..2] (inverted, padded) */
-    return points.map(p => `${(p.x / 2) * 60},${24 - p.y * 22 - 1}`).join(' ');
-  }
+  /* F11 (Category sparklines) removed in v25.4 — was rarely used and
+     cluttered the Dashboard. Kept the heatmap and forecast strip. */
 
   /* ═══════════════════════════════════════════════════════════
      F7 — SPENDING CALENDAR HEATMAP
@@ -1962,14 +1879,14 @@
       };
     }
 
-    /* ── 3. Patch renderDashboard to also render forecast, sparklines, heatmap.
-                Today's Spend Hero moved to Insights tab in v25.2 ── */
+    /* ── 3. Patch renderDashboard to also render forecast + heatmap.
+                Today's Spend Hero moved to Insights tab in v25.2.
+                Category sparklines (F11) removed in v25.4. ── */
     if (typeof window.renderDashboard === 'function' && !window._origRenderDashboard) {
       window._origRenderDashboard = window.renderDashboard;
       window.renderDashboard = function () {
         window._origRenderDashboard.apply(this, arguments);
         renderForecast();
-        renderSparklines();
         renderHeatmap();
       };
     }
@@ -2112,8 +2029,8 @@
     openSearch, closeSearch,
     // AI suggest
     onNoteInput, acceptAiSuggestion, dismissAiSuggestion,
-    // forecast / sparklines / heatmap
-    renderForecast, renderSparklines, renderHeatmap, setHeatmapMode,
+    // forecast / heatmap
+    renderForecast, renderHeatmap, setHeatmapMode,
     // what-if
     openWhatIfModal, closeWhatIfModal, resetWhatIf, onWhatIfChange,
     // year-wrap
