@@ -18,7 +18,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
   <title>Expense Tracker</title>
-  <link rel="stylesheet" href="style.css?v=24" />
+  <link rel="stylesheet" href="style.css?v=25" />
 
   <!-- Chart.js for the Dashboard -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
@@ -115,6 +115,7 @@
       <button id="month-next" style="visibility:hidden">›</button>
     </div>
     <div class="header-actions">
+      <button class="header-icon-btn" title="Tools (search, recurring, goals, export)" onclick="openToolsMenu()">🛠️</button>
       <button class="header-icon-btn" title="Set monthly budget" onclick="openBudgetModal()">🎯</button>
       <button class="header-icon-btn" title="Change sheet" onclick="showSheetChooser()">📑</button>
       <button class="signout-btn" onclick="signOut()">Sign out</button>
@@ -157,7 +158,16 @@
     <div id="cat-grid" class="cat-grid"></div>
 
     <input id="note-input" class="note-input" type="text"
-           placeholder="Note (optional) — e.g. Big Bazaar, Swiggy…" autocomplete="off" />
+           placeholder="Note (optional) — e.g. Big Bazaar, Swiggy…" autocomplete="off"
+           oninput="onNoteInput()" />
+
+    <!-- AI Category Suggestion (F6) — shows when note matches a known keyword -->
+    <div id="ai-suggest" class="ai-suggest" style="display:none;">
+      <span class="ai-suggest-icon">🤖</span>
+      <span class="ai-suggest-text">Looks like <strong id="ai-suggest-cat">Food</strong></span>
+      <button class="ai-suggest-btn" id="ai-suggest-btn" onclick="acceptAiSuggestion()">Use it</button>
+      <button class="ai-suggest-dismiss" onclick="dismissAiSuggestion()" title="Dismiss">✕</button>
+    </div>
 
     <div class="date-row">
       <label for="date-input">Date</label>
@@ -170,6 +180,31 @@
 
   <!-- ── Dashboard View ── -->
   <div id="view-dashboard" class="view">
+
+    <!-- Today's Spend Hero Card (above month hero) -->
+    <div class="today-hero" id="today-hero">
+      <div class="today-hero-row">
+        <div class="today-hero-left">
+          <div class="today-hero-label">Today</div>
+          <div class="today-hero-amount" id="today-hero-amount">₹0</div>
+          <div class="today-hero-sub" id="today-hero-sub">No expenses yet today</div>
+        </div>
+        <div class="today-hero-right">
+          <div class="today-hero-allowance-label">Daily allowance</div>
+          <div class="today-hero-allowance" id="today-hero-allowance">—</div>
+        </div>
+      </div>
+      <div class="today-hero-bar"><div class="today-hero-bar-fill" id="today-hero-bar-fill"></div></div>
+      <div class="today-hero-meta" id="today-hero-meta"></div>
+    </div>
+
+    <!-- Search bar (slides down when opened from tools menu) -->
+    <div class="search-wrap" id="search-wrap" style="display:none;">
+      <span class="search-icon">🔍</span>
+      <input id="search-input" class="search-input" type="search" placeholder="Search by category, note, amount…" autocomplete="off" />
+      <button class="search-close" onclick="closeSearch()" title="Close">✕</button>
+    </div>
+    <div id="search-results" class="search-results" style="display:none;"></div>
 
     <!-- Hero spend card -->
     <div class="dash-hero" id="dash-hero">
@@ -245,6 +280,28 @@
     <!-- Smart financial insights -->
     <p class="dash-section-title">Financial insights</p>
     <div class="insights-list" id="insights-list"></div>
+
+    <!-- End-of-month forecast (F10) -->
+    <div class="forecast-card" id="forecast-card" style="display:none;">
+      <div class="forecast-icon" id="forecast-icon">📈</div>
+      <div class="forecast-body">
+        <div class="forecast-title" id="forecast-title">Forecast</div>
+        <div class="forecast-sub" id="forecast-sub"></div>
+      </div>
+      <div class="forecast-val" id="forecast-val">—</div>
+    </div>
+
+    <!-- Category sparklines: 3-month trend per category (F11) -->
+    <p class="dash-section-title">Category trends (last 3 months)</p>
+    <div id="sparklines-list" class="sparklines-list"></div>
+
+    <!-- Heatmap (F7) — month or 12-month with toggle -->
+    <p class="dash-section-title">Spending calendar</p>
+    <div class="heatmap-toggle-row">
+      <button class="heatmap-toggle-btn active" data-mode="month" onclick="setHeatmapMode('month')">This month</button>
+      <button class="heatmap-toggle-btn" data-mode="year" onclick="setHeatmapMode('year')">Last 12 months</button>
+    </div>
+    <div id="heatmap-wrap" class="heatmap-wrap"></div>
 
     <!-- All entries for the month -->
     <p class="dash-section-title">All entries</p>
@@ -419,6 +476,207 @@
   </div>
 </div>
 
-<script src="app.js?v=24"></script>
+<!-- ═══════════════════════════════════════════════════════════════
+     TOOLS MENU (single modal that opens individual feature modals)
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="tools-menu-modal" class="confirm-modal" style="display:none;">
+  <div class="confirm-box tools-menu-box">
+    <p class="confirm-msg">🛠️ Tools</p>
+    <div class="tools-grid">
+      <button class="tool-item" onclick="closeToolsMenu(); openSearch();">
+        <span class="tool-icon">🔍</span><span class="tool-label">Search</span>
+      </button>
+      <button class="tool-item" onclick="closeToolsMenu(); openRecurringModal();">
+        <span class="tool-icon">🔁</span><span class="tool-label">Recurring</span>
+      </button>
+      <button class="tool-item" onclick="closeToolsMenu(); openGoalsModal();">
+        <span class="tool-icon">🎯</span><span class="tool-label">Goals</span>
+      </button>
+      <button class="tool-item" onclick="closeToolsMenu(); openWhatIfModal();">
+        <span class="tool-icon">🧮</span><span class="tool-label">What-if</span>
+      </button>
+      <button class="tool-item" onclick="closeToolsMenu(); openYearWrapModal();">
+        <span class="tool-icon">🎉</span><span class="tool-label">Year wrap</span>
+      </button>
+      <button class="tool-item" onclick="closeToolsMenu(); openExportModal();">
+        <span class="tool-icon">📤</span><span class="tool-label">Export</span>
+      </button>
+    </div>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" onclick="closeToolsMenu()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     RECURRING EXPENSES MODAL
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="recurring-modal" class="confirm-modal" style="display:none;">
+  <div class="confirm-box recurring-box">
+    <p class="confirm-msg">🔁 Recurring</p>
+    <p class="confirm-sub">Set monthly subscriptions and bills that auto-log on their due date.</p>
+
+    <div class="recurring-form">
+      <input id="rec-label" type="text" class="add-cat-name-input" placeholder="Label (e.g. Netflix)" maxlength="40" />
+      <div class="rec-row">
+        <div class="rec-col">
+          <label class="rec-lbl">Amount</label>
+          <input id="rec-amount" type="number" inputmode="decimal" class="bydate-date-input" placeholder="649" />
+        </div>
+        <div class="rec-col">
+          <label class="rec-lbl">Day of month</label>
+          <input id="rec-day" type="number" inputmode="numeric" class="bydate-date-input" placeholder="1-28" min="1" max="28" />
+        </div>
+      </div>
+      <label class="rec-lbl">Category</label>
+      <select id="rec-cat" class="bydate-date-input"></select>
+      <button class="bydate-apply-btn" onclick="saveRecurring()">+ Add recurring</button>
+    </div>
+
+    <p class="add-cat-color-label">Your recurring expenses</p>
+    <div id="rec-list" class="rec-list"></div>
+
+    <div class="confirm-actions">
+      <button class="confirm-cancel" onclick="closeRecurringModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SAVINGS GOALS MODAL
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="goals-modal" class="confirm-modal" style="display:none;">
+  <div class="confirm-box goals-box">
+    <p class="confirm-msg">🎯 Savings Goals</p>
+    <p class="confirm-sub">Auto-credits the budget gap from each good month. You can also add manual savings.</p>
+
+    <div class="goals-form">
+      <input id="goal-label" type="text" class="add-cat-name-input" placeholder="Goal name (e.g. Goa trip)" maxlength="40" />
+      <div class="rec-row">
+        <div class="rec-col">
+          <label class="rec-lbl">Target ₹</label>
+          <input id="goal-target" type="number" inputmode="decimal" class="bydate-date-input" placeholder="50000" />
+        </div>
+        <div class="rec-col">
+          <label class="rec-lbl">Deadline (optional)</label>
+          <input id="goal-deadline" type="date" class="bydate-date-input" />
+        </div>
+      </div>
+      <button class="bydate-apply-btn" onclick="saveGoal()">+ Add goal</button>
+    </div>
+
+    <p class="add-cat-color-label">Your goals</p>
+    <div id="goal-list" class="goal-list"></div>
+
+    <div class="confirm-actions">
+      <button class="confirm-cancel" onclick="closeGoalsModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manual savings deposit modal -->
+<div id="goal-deposit-modal" class="confirm-modal" style="display:none;">
+  <div class="confirm-box">
+    <p class="confirm-msg" id="goal-deposit-title">Add to goal</p>
+    <p class="confirm-sub">Manually contribute to this goal.</p>
+    <div class="budget-input-wrap">
+      <span class="budget-input-currency">₹</span>
+      <input id="goal-deposit-amount" type="number" inputmode="decimal" class="budget-amount-input" placeholder="5000" />
+    </div>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" onclick="closeGoalDepositModal()">Cancel</button>
+      <button class="confirm-ok" onclick="saveGoalDeposit()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     WHAT-IF BUDGET SIMULATOR MODAL
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="whatif-modal" class="confirm-modal" style="display:none;">
+  <div class="confirm-box whatif-box">
+    <p class="confirm-msg">🧮 What-if simulator</p>
+    <p class="confirm-sub">Drag the sliders to see how trimming categories would change your spend.</p>
+    <div id="whatif-sliders" class="whatif-sliders"></div>
+    <div class="whatif-summary">
+      <div class="whatif-row">
+        <span>Current spend</span>
+        <strong id="whatif-current">₹0</strong>
+      </div>
+      <div class="whatif-row">
+        <span>What-if spend</span>
+        <strong id="whatif-newspend">₹0</strong>
+      </div>
+      <div class="whatif-row whatif-savings">
+        <span>You'd save</span>
+        <strong id="whatif-saved">₹0</strong>
+      </div>
+      <div class="whatif-row whatif-projection">
+        <span>Projected over 6 months</span>
+        <strong id="whatif-6mo">₹0</strong>
+      </div>
+    </div>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" onclick="closeWhatIfModal()">Close</button>
+      <button class="confirm-ok" onclick="resetWhatIf()">Reset</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     YEAR-IN-REVIEW MODAL
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="yearwrap-modal" class="confirm-modal" style="display:none;">
+  <div class="confirm-box yearwrap-box">
+    <div class="yearwrap-header">
+      <select id="yearwrap-year" class="bydate-date-input" onchange="renderYearWrap()"></select>
+      <button class="voice-result-close" onclick="closeYearWrapModal()">✕</button>
+    </div>
+    <div id="yearwrap-body" class="yearwrap-body"></div>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" onclick="closeYearWrapModal()">Close</button>
+      <button class="confirm-ok" onclick="exportYearWrapAsPDF()">📥 Save as PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     EXPORT MODAL
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="export-modal" class="confirm-modal" style="display:none;">
+  <div class="confirm-box export-box">
+    <p class="confirm-msg">📤 Export expenses</p>
+    <p class="confirm-sub">Download all expenses in your preferred format.</p>
+
+    <div class="export-form">
+      <label class="rec-lbl">Range</label>
+      <select id="export-range" class="bydate-date-input">
+        <option value="all">All time</option>
+        <option value="this-month">This month</option>
+        <option value="this-year">This year</option>
+        <option value="last-month">Last month</option>
+        <option value="last-year">Last year</option>
+      </select>
+    </div>
+
+    <div class="export-actions">
+      <button class="export-btn" onclick="exportAsCSV()">
+        <span>📄</span><span>CSV</span>
+      </button>
+      <button class="export-btn" onclick="exportAsPDF()">
+        <span>📕</span><span>PDF</span>
+      </button>
+    </div>
+
+    <div class="confirm-actions">
+      <button class="confirm-cancel" onclick="closeExportModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- jsPDF library for PDF export (loaded lazily — only when user opens Export) -->
+
+<script src="app.js?v=25"></script>
+<script src="features.js?v=25"></script>
 </body>
 </html>

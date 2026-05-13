@@ -20,5 +20,35 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Add Food",
+      "short_name": "Food",
+      "description": "Quickly log a food expense",
+      "url": "./?quickadd=food",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Add Grocery",
+      "short_name": "Grocery",
+      "description": "Quickly log a grocery expense",
+      "url": "./?quickadd=grocery",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Add Petrol",
+      "short_name": "Petrol",
+      "description": "Quickly log a petrol expense",
+      "url": "./?quickadd=petrol",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Voice Add",
+      "short_name": "Voice",
+      "description": "Add expense by voice",
+      "url": "./?quickadd=voice",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
   ]
 }

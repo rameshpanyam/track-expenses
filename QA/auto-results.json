@@ -1,6 +1,6 @@
 {
-  "total": 252,
-  "pass": 252,
+  "total": 577,
+  "pass": 577,
   "fail": 0,
   "results": [
     {
@@ -1512,6 +1512,1956 @@
     {
       "id": "TC-P-010",
       "title": "startOfWeek Sunday Jan 4 2026 → Mon Dec 29 2025",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Q-001",
+      "title": "yyyymm May 2026",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Q-002",
+      "title": "yyyymm Jan 2026",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Q-003",
+      "title": "yyyymm Dec 2025",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Q-004",
+      "title": "yyyymm pads single digit month",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Q-005",
+      "title": "yyyymm lexically sortable",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Q-006",
+      "title": "dToYMD May 1",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Q-007",
+      "title": "dToYMD Dec 31",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Q-008",
+      "title": "dToYMD pads single digit",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Q-009",
+      "title": "dToYMD round-trips strToDate",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Q-010",
+      "title": "clamp inside range",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Q-011",
+      "title": "clamp below min",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Q-012",
+      "title": "clamp above max",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Q-013",
+      "title": "clamp at min boundary",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Q-014",
+      "title": "clamp at max boundary",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Q-015",
+      "title": "clamp with negative range",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-R-001",
+      "title": "due when day=13, today=May 13, not yet run",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-R-002",
+      "title": "not due when day=14 (future)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-R-003",
+      "title": "not due when already run this month",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-R-004",
+      "title": "due when last run was previous month",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-R-005",
+      "title": "due on day=1 if today=1",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-R-006",
+      "title": "not due day=2 if today=1",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-R-007",
+      "title": "idempotent — same lastRun blocks re-fire",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-R-008",
+      "title": "due on day=28 (max valid)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-R-009",
+      "title": "not due day=28 if today=27",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-R-010",
+      "title": "due when last run was older month",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-R-011",
+      "title": "due day=13 today=13 prev-month run",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-R-012",
+      "title": "due bumps idempotent after success simulation",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-R-013",
+      "title": "RECURRING_HEADERS shape sanity",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-R-014",
+      "title": "recurring amount parse via float",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-R-015",
+      "title": "recurring day parse via int",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-R-016",
+      "title": "recurring filter discards empty id",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-R-017",
+      "title": "recurring filter discards 0 amount",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-R-018",
+      "title": "recurring across year boundary",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-R-019",
+      "title": "two recurring same day: both due",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-R-020",
+      "title": "recurring lastRun lexicographic compare",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-001",
+      "title": "single goal, single good month, full headroom",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-002",
+      "title": "single goal lastCreditedYYYYMM updated",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-003",
+      "title": "current month NOT eligible",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-004",
+      "title": "bad month NOT eligible",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-005",
+      "title": "zero budget NOT eligible",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-006",
+      "title": "splits across 2 active goals evenly",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-007",
+      "title": "already-credited goal skipped",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-008",
+      "title": "completed goal skipped",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-009",
+      "title": "headroom cap respected",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-010",
+      "title": "multiple eligible months stack",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-011",
+      "title": "multiple months but only last applies",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-012",
+      "title": "no eligible budgets → goals unchanged",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-013",
+      "title": "no goals → no error",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-014",
+      "title": "mixed completed + active: only active credited",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-015",
+      "title": "3 goals split equally",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-016",
+      "title": "goal headroom respected with split",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-017",
+      "title": "goalProgress 50%",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-018",
+      "title": "goalProgress 0%",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-019",
+      "title": "goalProgress 100%",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-020",
+      "title": "goalProgress clamps >100",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-021",
+      "title": "goalProgress zero target safe",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-022",
+      "title": "goalDone true at exact target",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-023",
+      "title": "goalDone true above target",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-024",
+      "title": "goalDone false below target",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-025",
+      "title": "goalDone false zero target",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-026",
+      "title": "GOALS_HEADERS shape",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-027",
+      "title": "lex compare 2026-04 < 2026-05",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-028",
+      "title": "already-credited-this-month idempotency",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-029",
+      "title": "partial savings → partial credit, not overflow",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-S-030",
+      "title": "huge headroom doesn't exceed savings",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-001",
+      "title": "keyword: \"swiggy\" → food",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-002",
+      "title": "keyword: \"zomato\" → food",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-003",
+      "title": "keyword: \"starbucks\" → food",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-004",
+      "title": "keyword: \"dominos pizza\" → food",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-005",
+      "title": "keyword: \"biryani\" → food",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-006",
+      "title": "keyword: \"dosa\" → food",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-007",
+      "title": "keyword: \"tea coffee\" → food",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-008",
+      "title": "keyword: \"zepto\" → grocery",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-009",
+      "title": "keyword: \"blinkit\" → grocery",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-010",
+      "title": "keyword: \"bigbasket\" → grocery",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-011",
+      "title": "keyword: \"dmart\" → grocery",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-012",
+      "title": "keyword: \"kirana\" → grocery",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-013",
+      "title": "keyword: \"vegetable\" → market",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-014",
+      "title": "keyword: \"sabzi\" → market",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-015",
+      "title": "keyword: \"fruit\" → market",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-016",
+      "title": "keyword: \"pharmacy\" → medicine",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-017",
+      "title": "keyword: \"doctor\" → medicine",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-018",
+      "title": "keyword: \"apollo\" → medicine",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-019",
+      "title": "keyword: \"dental\" → medicine",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-020",
+      "title": "keyword: \"petrol\" → petrol",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-021",
+      "title": "keyword: \"fuel\" → petrol",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-022",
+      "title": "keyword: \"diesel\" → petrol",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-023",
+      "title": "keyword: \"indianoil\" → petrol",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-024",
+      "title": "keyword: \"recharge\" → recharge",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-025",
+      "title": "keyword: \"jio\" → recharge",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-026",
+      "title": "keyword: \"airtel broadband\" → recharge",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-027",
+      "title": "keyword: \"wifi\" → recharge",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-028",
+      "title": "keyword: \"bisleri\" → water",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-029",
+      "title": "keyword: \"water\" → water",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-030",
+      "title": "keyword: \"kinley\" → water",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-031",
+      "title": "keyword: \"gift\" → gifts",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-032",
+      "title": "keyword: \"birthday\" → gifts",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-033",
+      "title": "keyword: \"anniversary\" → gifts",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-034",
+      "title": "merchant: \"uber\" → other",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-035",
+      "title": "merchant: \"ola\" → other",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-036",
+      "title": "merchant: \"amazon\" → other",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-037",
+      "title": "merchant: \"flipkart\" → other",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-038",
+      "title": "merchant: \"netflix\" → recharge",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-039",
+      "title": "merchant: \"spotify\" → recharge",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-040",
+      "title": "merchant: \"prime\" → recharge",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-041",
+      "title": "no match → null",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-042",
+      "title": "empty note → null",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-043",
+      "title": "null note → null",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-044",
+      "title": "history beats keyword",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-045",
+      "title": "history per-token: starbucks generalizes",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-046",
+      "title": "history records each token",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-047",
+      "title": "history ignores tokens shorter than 3 chars",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-048",
+      "title": "votes accumulate",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-049",
+      "title": "tie-breaker: first cat with highest vote",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-U-050",
+      "title": "history dominant cat wins on mixed input",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-001",
+      "title": "forecast null when daysElapsed < 3",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-002",
+      "title": "forecast OK when daysElapsed >= 3",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-003",
+      "title": "forecast dailyAvg = spend/days",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-004",
+      "title": "forecast projection = avg × monthLength",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-005",
+      "title": "forecast adds recurring remainder",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-006",
+      "title": "forecast overBy when over budget",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-007",
+      "title": "forecast underBy when under budget",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-008",
+      "title": "forecast under cap means overBy=0",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-009",
+      "title": "forecast over cap means underBy=0",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-010",
+      "title": "forecast no budget returns 0/0",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-011",
+      "title": "forecast last day = avg (no projection growth)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-012",
+      "title": "forecast exact budget edge: underBy=0",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-013",
+      "title": "forecast spends 0 → projection 0",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-014",
+      "title": "forecast with high recRemaining",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-015",
+      "title": "forecast 28-day month (Feb)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-016",
+      "title": "forecast 30-day month (Apr)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-017",
+      "title": "forecast 31-day month (Jul)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-018",
+      "title": "forecast small spend large month",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-019",
+      "title": "forecast huge spend",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-020",
+      "title": "forecast object shape",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-021",
+      "title": "forecast spentSoFar preserved",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-022",
+      "title": "forecast daysElapsed preserved",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-023",
+      "title": "forecast daysInMonth preserved",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-024",
+      "title": "forecast budget preserved",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-V-025",
+      "title": "forecast no budget → budget=0",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-W-001",
+      "title": "polyline 3 points",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-W-002",
+      "title": "polyline flat at top",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-W-003",
+      "title": "polyline flat at bottom",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-W-004",
+      "title": "sparkline delta +100%",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-W-005",
+      "title": "sparkline delta -50%",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-W-006",
+      "title": "sparkline delta 0% (flat)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-W-007",
+      "title": "sparkline delta null when prev=0",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-W-008",
+      "title": "sparkline delta exact 25%",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-W-009",
+      "title": "sparkline delta -100%",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-W-010",
+      "title": "polyline middle point math",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-W-011",
+      "title": "sparkline delta rounding",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-W-012",
+      "title": "polyline empty points",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-W-013",
+      "title": "polyline single point",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-W-014",
+      "title": "sparkline delta with decimals",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-W-015",
+      "title": "sparkline delta small change",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-W-016",
+      "title": "sparkline delta negative",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-W-017",
+      "title": "sparkline delta huge ratio",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-W-018",
+      "title": "polyline y=0 maps to 23",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-W-019",
+      "title": "polyline y=1 maps to 1",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-W-020",
+      "title": "polyline x scale: x=2 → 60",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-X-001",
+      "title": "heatmap value 0 → level 0",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-X-002",
+      "title": "heatmap value=max → level 4",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-X-003",
+      "title": "heatmap value 25% of max → level 1",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-X-004",
+      "title": "heatmap value 50% of max → level 2",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-X-005",
+      "title": "heatmap value 75% of max → level 3",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-X-006",
+      "title": "heatmap value 1% of max → level 1",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-X-007",
+      "title": "heatmap value capped at 4",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-X-008",
+      "title": "heatmap level 26% → 2 (ceil)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-X-009",
+      "title": "heatmap level 51% → 3 (ceil)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-X-010",
+      "title": "heatmap level 76% → 4 (ceil)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-X-011",
+      "title": "heatmap max=0 safe",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-X-012",
+      "title": "heatmap negative value yields non-positive level",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-X-013",
+      "title": "heatmap one tiny value",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-X-014",
+      "title": "heatmap level math: ceil(.5) = 1 → level 1",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-X-015",
+      "title": "heatmap level exactly at boundary 25%",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-X-016",
+      "title": "heatmap level just over 25%",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-X-017",
+      "title": "heatmap level just under 50%",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-X-018",
+      "title": "heatmap level just over 50%",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-X-019",
+      "title": "heatmap level just under 75%",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-X-020",
+      "title": "heatmap level just over 75%",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Y-001",
+      "title": "what-if zero cuts → current = after",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Y-002",
+      "title": "what-if 100% cut on one cat",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Y-003",
+      "title": "what-if 50% cut on all",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Y-004",
+      "title": "what-if saved = current - after",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Y-005",
+      "title": "what-if six-month projection = saved * 6",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Y-006",
+      "title": "what-if no cuts on empty cat → 0 saved",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Y-007",
+      "title": "what-if cut on non-existent cat ignored",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Y-008",
+      "title": "what-if 0% cut = no savings",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Y-009",
+      "title": "what-if large current",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Y-010",
+      "title": "what-if values are numeric",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Y-011",
+      "title": "what-if 1% cut precision",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Y-012",
+      "title": "what-if 99% cut leaves 1%",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Y-013",
+      "title": "what-if six-month with multiple cats",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Y-014",
+      "title": "what-if all 100% cuts → after=0",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Y-015",
+      "title": "what-if current sum matches input",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Y-016",
+      "title": "what-if 50% twice in summary",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Y-017",
+      "title": "what-if accepts strings via Number coercion via *",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Y-018",
+      "title": "what-if no cut object",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Y-019",
+      "title": "what-if six-month negative impossible (cuts can't increase)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Y-020",
+      "title": "what-if returns shape",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Z-001",
+      "title": "wrap returns null for empty year",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Z-002",
+      "title": "wrap total for 2025",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Z-003",
+      "title": "wrap entries count",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Z-004",
+      "title": "wrap top category = gifts",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Z-005",
+      "title": "wrap top category amount",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Z-006",
+      "title": "wrap biggest day",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Z-007",
+      "title": "wrap biggest day amount",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Z-008",
+      "title": "wrap months tracked count",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Z-009",
+      "title": "wrap avg per month",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Z-010",
+      "title": "wrap excludes other years",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Z-011",
+      "title": "wrap months[] length 12",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Z-012",
+      "title": "wrap months[0] Jan = 1000",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Z-013",
+      "title": "wrap months[1] Feb = 1500",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Z-014",
+      "title": "wrap months[2] Mar = 500+2000",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Z-015",
+      "title": "wrap months[11] Dec = 5000",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Z-016",
+      "title": "wrap months[3..10] are zero",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Z-017",
+      "title": "wrap byCat sum equals total",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Z-018",
+      "title": "wrap byDay sum equals total",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Z-019",
+      "title": "wrap empty list returns null",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-Z-020",
+      "title": "wrap byCat keys are category strings",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AA-001",
+      "title": "csvEscape plain string",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AA-002",
+      "title": "csvEscape with comma quoted",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AA-003",
+      "title": "csvEscape with quote doubled",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AA-004",
+      "title": "csvEscape with newline quoted",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AA-005",
+      "title": "csvEscape null → empty",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AA-006",
+      "title": "csvEscape undefined → empty",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AA-007",
+      "title": "csvEscape number coerced",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AA-008",
+      "title": "csvEscape empty string",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AA-009",
+      "title": "toCSV single row",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AA-010",
+      "title": "toCSV multiple rows",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AA-011",
+      "title": "toCSV mixed types",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AA-012",
+      "title": "toCSV header + data row",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AA-013",
+      "title": "toCSV with comma in cell",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AA-014",
+      "title": "toCSV with quote in cell",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AA-015",
+      "title": "toCSV with newline in cell",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AA-016",
+      "title": "toCSV empty rows",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AA-017",
+      "title": "toCSV preserves order",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AA-018",
+      "title": "csvEscape with all 3 special chars",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AA-019",
+      "title": "csvEscape preserves spaces",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AA-020",
+      "title": "csvEscape with leading/trailing space",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AB-001",
+      "title": "this-month from = 1st of month",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AB-002",
+      "title": "this-month to = last day of month",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AB-003",
+      "title": "last-month from",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AB-004",
+      "title": "last-month to = April 30",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AB-005",
+      "title": "this-year from = Jan 1",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AB-006",
+      "title": "this-year to = Dec 31",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AB-007",
+      "title": "last-year from = 2025-01-01",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AB-008",
+      "title": "last-year to = 2025-12-31",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AB-009",
+      "title": "all from = 0000-01-01",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AB-010",
+      "title": "all to = 9999-12-31",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AB-011",
+      "title": "unknown range falls to all",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AB-012",
+      "title": "last-month Feb leap year",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AB-013",
+      "title": "last-month Feb non-leap",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AB-014",
+      "title": "last-month from Jan = previous year Dec",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AB-015",
+      "title": "last-month to from Jan = 2025-12-31",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AC-001",
+      "title": "parse quickadd=food",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AC-002",
+      "title": "parse quickadd=grocery",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AC-003",
+      "title": "parse quickadd=petrol",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AC-004",
+      "title": "parse quickadd=voice",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AC-005",
+      "title": "parse missing param → null",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AC-006",
+      "title": "parse other params no quickadd",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AC-007",
+      "title": "parse multiple params first wins",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AC-008",
+      "title": "parse invalid URL → null",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AC-009",
+      "title": "parse with hash fragment",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AC-010",
+      "title": "parse with subdir",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AD-001",
+      "title": "no budget → allowance 0",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AD-002",
+      "title": "allowance = budget / daysInMonth",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AD-003",
+      "title": "pct clamped to 100",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AD-004",
+      "title": "pct 0 when no spend",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AD-005",
+      "title": "remaining = allowance - spend",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AD-006",
+      "title": "remaining 0 when over",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AD-007",
+      "title": "overBy = spend - allowance",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AD-008",
+      "title": "overBy 0 when under",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AD-009",
+      "title": "over=true when over allowance",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AD-010",
+      "title": "over=false when under",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AD-011",
+      "title": "over=false at exact",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AD-012",
+      "title": "pct at 50%",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AD-013",
+      "title": "30-day month allowance",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AD-014",
+      "title": "28-day Feb allowance",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AD-015",
+      "title": "pct rounds within bounds",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AE-001",
+      "title": "empty query returns []",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AE-002",
+      "title": "category label match",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AE-003",
+      "title": "category key match",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AE-004",
+      "title": "note substring match",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AE-005",
+      "title": "partial note match",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AE-006",
+      "title": "amount equality match",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AE-007",
+      "title": "amount no match",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AE-008",
+      "title": "sorted desc by date",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AE-009",
+      "title": "case-insensitive",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AE-010",
+      "title": "iocl match",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AE-011",
+      "title": "garbage returns 0",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AE-012",
+      "title": "empty list returns []",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AE-013",
+      "title": "search includes both 200 entries",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AE-014",
+      "title": "search by amount preserves order desc",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AE-015",
+      "title": "search \"petrol\" returns one",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AE-016",
+      "title": "search empty string after trim",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AE-017",
+      "title": "search by decimal amount no match if off by 1",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AE-018",
+      "title": "search by category fragment \"food\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AE-019",
+      "title": "search ignores null entries safely",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AE-020",
+      "title": "search by category icon NOT a match",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AF-001",
+      "title": "onDelete sets pending",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AF-002",
+      "title": "canUndo true right after delete",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AF-003",
+      "title": "canUndo false initially",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AF-004",
+      "title": "canUndo false after 5s+",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AF-005",
+      "title": "canUndo true within window",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AF-006",
+      "title": "undo returns pending and clears",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AF-007",
+      "title": "undo on empty returns null",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AF-008",
+      "title": "expire clears pending",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AF-009",
+      "title": "delete after expire stores new",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AF-010",
+      "title": "double delete: latest wins",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AG-001",
+      "title": "voice auto-save when toggle on + clean parse",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AG-002",
+      "title": "voice preview when toggle off",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AG-003",
+      "title": "voice preview when no category",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AG-004",
+      "title": "voice preview when no amount",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AG-005",
+      "title": "voice routes budget-set intent regardless",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AG-006",
+      "title": "voice routes date-query intent",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AG-007",
+      "title": "voice routes budget-query intent",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AG-008",
+      "title": "voice null parse fails",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AG-009",
+      "title": "voice none intent falls through",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AG-010",
+      "title": "voice add intent + autosave",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AH-001",
+      "title": "uuid starts with r",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AH-002",
+      "title": "uuid length > 8",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AH-003",
+      "title": "uuid unique across 1000 calls",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AH-004",
+      "title": "uuid uses base36 chars",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AH-005",
+      "title": "uuid type string",
       "status": "PASS",
       "error": null
     }

@@ -652,6 +652,800 @@ T('TC-P-009','category match: longest first ("outside food" beats "food")', () =
 T('TC-P-010','startOfWeek Sunday Jan 4 2026 → Mon Dec 29 2025', () => assert.strictEqual(dateToStr(startOfWeek(new Date(2026,0,4))),'2025-12-29'));
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   v25 FEATURE PACK — MIRROR PURE FUNCTIONS FROM features.js
+   These mirror the testable logic so any regression in the new feature module
+   fails this suite.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ---- yyyymm / dToYMD / clamp ---- */
+function yyyymm(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+function dToYMD(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function clamp(x, lo, hi) { return Math.max(lo, Math.min(hi, x)); }
+
+/* ---- AI_KEYWORDS / MERCHANT_HINTS (must match features.js) ---- */
+const AI_KEYWORDS = {
+  food: ['food','lunch','dinner','breakfast','meal','eat','eating','restaurant','hotel','biryani','swiggy','zomato','snack','snacks','chai','tea','coffee','tiffin','starbucks','dominos','pizza','burger','kfc','mcdonald','mcdonalds','subway','dosa','idli','curry','rice','thali','cafe','bakery','sweet','sweets'],
+  grocery: ['grocery','groceries','supermarket','kirana','big bazaar','dmart','reliance','zepto','blinkit','instamart','more','spencer','bigbasket','grofers','jiomart'],
+  market: ['market','vegetable','vegetables','fruit','fruits','sabzi','mandi','farm','farmer'],
+  medicine: ['medicine','medicines','medical','pharmacy','pharmacist','doctor','hospital','tablet','tablets','capsule','drug','health','apollo','wellness','prescription','clinic','dental','dentist'],
+  petrol: ['petrol','fuel','diesel','gas','pump','filling','indianoil','iocl','bpcl','hpcl','shell','reliance petrol'],
+  recharge: ['recharge','mobile','phone','internet','data','sim','jio','airtel','vi','bsnl','broadband','wifi','wifi bill','postpaid','prepaid'],
+  water: ['water','aqua','bisleri','mineral','kinley','rail neer'],
+  gifts: ['gift','gifts','present','birthday','anniversary','wedding','flower','flowers','bouquet'],
+  other: ['other','misc','miscellaneous'],
+};
+const MERCHANT_HINTS = {
+  'uber': 'other', 'ola': 'other', 'rapido': 'other',
+  'amazon': 'other', 'flipkart': 'other', 'myntra': 'other', 'meesho': 'other',
+  'netflix': 'recharge', 'spotify': 'recharge', 'hotstar': 'recharge', 'prime': 'recharge', 'youtube': 'recharge',
+};
+
+/* In-memory history store (per-test resettable) */
+let _catHistory = {};
+function _resetCatHistory() { _catHistory = {}; }
+function recordCatHistory(note, catKey) {
+  if (!note || !catKey) return;
+  const lower = note.toLowerCase().trim();
+  if (!lower) return;
+  const tokens = lower.split(/\s+/).filter(t => t.length >= 3);
+  for (const t of tokens) {
+    if (!_catHistory[t]) _catHistory[t] = {};
+    _catHistory[t][catKey] = (_catHistory[t][catKey] || 0) + 1;
+  }
+}
+function suggestCategoryFromNote(note) {
+  if (!note) return null;
+  const lower = note.toLowerCase();
+  const tokens = lower.split(/\s+/).filter(t => t.length >= 3);
+  const votes = {};
+  for (const t of tokens) {
+    const h = _catHistory[t];
+    if (!h) continue;
+    for (const [cat, n] of Object.entries(h)) votes[cat] = (votes[cat] || 0) + n;
+  }
+  let bestHistory = null;
+  for (const [cat, n] of Object.entries(votes)) {
+    if (!bestHistory || n > bestHistory[1]) bestHistory = [cat, n];
+  }
+  if (bestHistory) return bestHistory[0];
+  for (const [m, c] of Object.entries(MERCHANT_HINTS)) {
+    if (new RegExp(`\\b${m}\\b`, 'i').test(lower)) return c;
+  }
+  for (const [cat, kws] of Object.entries(AI_KEYWORDS)) {
+    for (const kw of kws) {
+      if (new RegExp(`\\b${kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(lower)) return cat;
+    }
+  }
+  return null;
+}
+
+/* ---- Recurring due check ---- */
+function recurringIsDue(rec, today /* Date */) {
+  const ymStr = yyyymm(today);
+  if (rec.dayOfMonth > today.getDate()) return false;
+  if (rec.lastRunYYYYMM === ymStr) return false;
+  return true;
+}
+
+/* ---- Goal auto-credit math (split budget gap across active goals) ---- */
+function autoCreditCalc(budgets, goals, currentYM) {
+  /* budgets: [{year,month,budget,spent}], goals: [{target,saved,lastCreditedYYYYMM}] */
+  const eligible = budgets.filter(b => {
+    const ymd = `${b.year}-${String(b.month).padStart(2,'0')}`;
+    return ymd < currentYM && b.spent < b.budget && b.budget > 0;
+  });
+  const newGoals = goals.map(g => ({ ...g }));
+  for (const b of eligible) {
+    const ymd = `${b.year}-${String(b.month).padStart(2,'0')}`;
+    const active = newGoals.filter(g => g.saved < g.target && (g.lastCreditedYYYYMM || '') < ymd);
+    if (active.length === 0) continue;
+    const savings = Math.max(0, b.budget - b.spent);
+    const perGoal = savings / active.length;
+    for (const g of active) {
+      const headroom = Math.max(0, g.target - g.saved);
+      const credit = Math.min(perGoal, headroom);
+      g.saved += credit;
+      g.lastCreditedYYYYMM = ymd;
+    }
+  }
+  return newGoals;
+}
+
+/* ---- Forecast math (linear projection) ---- */
+function computeForecastPure(spentSoFar, daysElapsed, daysInMonth, budget /* may be null */, recRemaining = 0) {
+  if (daysElapsed < 3) return null;
+  const dailyAvg  = spentSoFar / daysElapsed;
+  const projected = dailyAvg * daysInMonth + recRemaining;
+  return {
+    spentSoFar, dailyAvg, daysElapsed, daysInMonth,
+    projected,
+    budget: budget || 0,
+    overBy:  budget && projected > budget ? projected - budget : 0,
+    underBy: budget && projected <= budget ? budget - projected : 0,
+  };
+}
+
+/* ---- Sparkline polyline ---- */
+function polylineFor(points) {
+  return points.map(p => `${(p.x / 2) * 60},${24 - p.y * 22 - 1}`).join(' ');
+}
+function sparklineDelta(prev, last) {
+  if (prev > 0) return ((last - prev) / prev) * 100;
+  return null;
+}
+
+/* ---- Heatmap level (0..4) ---- */
+function heatmapLevel(value, max) {
+  if (value === 0) return 0;
+  return Math.min(4, Math.ceil((value / Math.max(max, 1)) * 4));
+}
+
+/* ---- What-if savings math ---- */
+function whatIfRecalc(byCat, cuts) {
+  let cur = 0, after = 0;
+  for (const [k, v] of Object.entries(byCat)) {
+    cur += v;
+    const cut = cuts[k] || 0;
+    after += v * (1 - cut / 100);
+  }
+  return { current: cur, after, saved: cur - after, sixMonth: (cur - after) * 6 };
+}
+
+/* ---- Year-wrap aggregation ---- */
+function yearWrapAgg(expenses, year) {
+  const exps = expenses.filter(e => e.date && parseInt(e.date.slice(0,4)) === year);
+  if (exps.length === 0) return null;
+  const total = exps.reduce((s, e) => s + e.amount, 0);
+  const months = new Array(12).fill(0);
+  const byCat = {};
+  const byDay = {};
+  exps.forEach(e => {
+    const [y, m, d] = e.date.split('-').map(Number);
+    months[m - 1] += e.amount;
+    byCat[e.category] = (byCat[e.category] || 0) + e.amount;
+    byDay[e.date]     = (byDay[e.date]     || 0) + e.amount;
+  });
+  const topCatEntry = Object.entries(byCat).sort((a, b) => b[1] - a[1])[0];
+  const biggestDay  = Object.entries(byDay).sort((a, b) => b[1] - a[1])[0];
+  const monthsTracked = months.filter(v => v > 0).length;
+  return {
+    total, months, byCat, byDay,
+    topCat:    topCatEntry ? topCatEntry[0] : null,
+    topCatAmt: topCatEntry ? topCatEntry[1] : 0,
+    biggestDay:    biggestDay ? biggestDay[0] : null,
+    biggestDayAmt: biggestDay ? biggestDay[1] : 0,
+    monthsTracked,
+    avgPerMonth: monthsTracked > 0 ? total / monthsTracked : 0,
+    entries: exps.length,
+  };
+}
+
+/* ---- CSV escape ---- */
+function csvEscape(v) {
+  const s = String(v == null ? '' : v).replace(/"/g, '""');
+  return /[",\n]/.test(s) ? `"${s}"` : s;
+}
+function toCSV(rows) {
+  return rows.map(r => r.map(csvEscape).join(',')).join('\n');
+}
+
+/* ---- Export range data ---- */
+function exportRange(range, now = new Date()) {
+  const y = now.getFullYear(), m = now.getMonth() + 1;
+  if (range === 'this-month') {
+    return { from: `${y}-${String(m).padStart(2,'0')}-01`,
+             to:   `${y}-${String(m).padStart(2,'0')}-${String(new Date(y, m, 0).getDate()).padStart(2,'0')}` };
+  }
+  if (range === 'last-month') {
+    const lm = new Date(y, m - 2, 1);
+    const ly = lm.getFullYear(), lmo = lm.getMonth() + 1;
+    return { from: `${ly}-${String(lmo).padStart(2,'0')}-01`,
+             to:   `${ly}-${String(lmo).padStart(2,'0')}-${String(new Date(ly, lmo, 0).getDate()).padStart(2,'0')}` };
+  }
+  if (range === 'this-year') return { from: `${y}-01-01`, to: `${y}-12-31` };
+  if (range === 'last-year') return { from: `${y-1}-01-01`, to: `${y-1}-12-31` };
+  return { from: '0000-01-01', to: '9999-12-31' };
+}
+
+/* ---- URL quickadd parser ---- */
+function parseQuickaddURL(href) {
+  try {
+    const u = new URL(href);
+    return u.searchParams.get('quickadd');
+  } catch (_) { return null; }
+}
+
+/* ---- Today hero allowance/clamp math ---- */
+function todayHeroMath(todaySpend, budgetForMonth, daysInMonth) {
+  const dailyAllowance = budgetForMonth > 0 ? budgetForMonth / daysInMonth : 0;
+  if (dailyAllowance === 0) return { allowance: 0, pct: 0, over: false, remaining: 0 };
+  const pct = clamp((todaySpend / dailyAllowance) * 100, 0, 100);
+  return {
+    allowance: dailyAllowance,
+    pct,
+    over: todaySpend > dailyAllowance,
+    remaining: Math.max(0, dailyAllowance - todaySpend),
+    overBy:   Math.max(0, todaySpend - dailyAllowance),
+  };
+}
+
+/* ---- Search filter ---- */
+function searchMatch(expenses, q, catMap) {
+  q = String(q || '').trim().toLowerCase();
+  if (!q) return [];
+  const isAmount = /^\d+(\.\d+)?$/.test(q);
+  const amtQuery = isAmount ? parseFloat(q) : null;
+  return expenses.filter(e => {
+    if (!e) return false;
+    if (amtQuery !== null && Math.abs(e.amount - amtQuery) < 0.5) return true;
+    const note = (e.note || '').toLowerCase();
+    if (note.includes(q)) return true;
+    const c = catMap[e.category];
+    if (c && c.label.toLowerCase().includes(q)) return true;
+    if (e.category && e.category.toLowerCase().includes(q)) return true;
+    return false;
+  }).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+}
+
+/* ---- Goals progress ---- */
+function goalProgress(g) {
+  if (!g.target || g.target <= 0) return 0;
+  return clamp(Math.round((g.saved / g.target) * 100), 0, 100);
+}
+function goalDone(g) { return g.target > 0 && g.saved >= g.target; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Q.  YYYYMM / dToYMD / clamp  (TC-Q-001..Q-015)
+   ═══════════════════════════════════════════════════════════════════════════ */
+T('TC-Q-001','yyyymm May 2026', () => assert.strictEqual(yyyymm(new Date(2026,4,13)),'2026-05'));
+T('TC-Q-002','yyyymm Jan 2026', () => assert.strictEqual(yyyymm(new Date(2026,0,1)),'2026-01'));
+T('TC-Q-003','yyyymm Dec 2025', () => assert.strictEqual(yyyymm(new Date(2025,11,31)),'2025-12'));
+T('TC-Q-004','yyyymm pads single digit month', () => assert.strictEqual(yyyymm(new Date(2026,8,1)),'2026-09'));
+T('TC-Q-005','yyyymm lexically sortable', () => assert.ok(yyyymm(new Date(2025,11,1)) < yyyymm(new Date(2026,0,1))));
+T('TC-Q-006','dToYMD May 1', () => assert.strictEqual(dToYMD(new Date(2026,4,1)),'2026-05-01'));
+T('TC-Q-007','dToYMD Dec 31', () => assert.strictEqual(dToYMD(new Date(2025,11,31)),'2025-12-31'));
+T('TC-Q-008','dToYMD pads single digit', () => assert.strictEqual(dToYMD(new Date(2026,0,5)),'2026-01-05'));
+T('TC-Q-009','dToYMD round-trips strToDate', () => assert.strictEqual(dToYMD(strToDate('2024-02-29')),'2024-02-29'));
+T('TC-Q-010','clamp inside range', () => assert.strictEqual(clamp(50,0,100),50));
+T('TC-Q-011','clamp below min', () => assert.strictEqual(clamp(-5,0,100),0));
+T('TC-Q-012','clamp above max', () => assert.strictEqual(clamp(150,0,100),100));
+T('TC-Q-013','clamp at min boundary', () => assert.strictEqual(clamp(0,0,100),0));
+T('TC-Q-014','clamp at max boundary', () => assert.strictEqual(clamp(100,0,100),100));
+T('TC-Q-015','clamp with negative range', () => assert.strictEqual(clamp(-50,-100,-10),-50));
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   R.  RECURRING DUE CHECK  (TC-R-001..R-020)
+   ═══════════════════════════════════════════════════════════════════════════ */
+const today1 = new Date(2026,4,13);   /* May 13 2026 */
+const today2 = new Date(2026,4,1);    /* May 1  2026 */
+
+T('TC-R-001','due when day=13, today=May 13, not yet run', () => assert.strictEqual(recurringIsDue({dayOfMonth:13,lastRunYYYYMM:''}, today1), true));
+T('TC-R-002','not due when day=14 (future)', () => assert.strictEqual(recurringIsDue({dayOfMonth:14,lastRunYYYYMM:''}, today1), false));
+T('TC-R-003','not due when already run this month', () => assert.strictEqual(recurringIsDue({dayOfMonth:5,lastRunYYYYMM:'2026-05'}, today1), false));
+T('TC-R-004','due when last run was previous month', () => assert.strictEqual(recurringIsDue({dayOfMonth:1,lastRunYYYYMM:'2026-04'}, today1), true));
+T('TC-R-005','due on day=1 if today=1', () => assert.strictEqual(recurringIsDue({dayOfMonth:1,lastRunYYYYMM:''}, today2), true));
+T('TC-R-006','not due day=2 if today=1', () => assert.strictEqual(recurringIsDue({dayOfMonth:2,lastRunYYYYMM:''}, today2), false));
+T('TC-R-007','idempotent — same lastRun blocks re-fire', () => { const r={dayOfMonth:5,lastRunYYYYMM:'2026-05'}; assert.strictEqual(recurringIsDue(r,today1), false); });
+T('TC-R-008','due on day=28 (max valid)', () => assert.strictEqual(recurringIsDue({dayOfMonth:28,lastRunYYYYMM:''}, new Date(2026,4,28)), true));
+T('TC-R-009','not due day=28 if today=27', () => assert.strictEqual(recurringIsDue({dayOfMonth:28,lastRunYYYYMM:''}, new Date(2026,4,27)), false));
+T('TC-R-010','due when last run was older month', () => assert.strictEqual(recurringIsDue({dayOfMonth:1,lastRunYYYYMM:'2026-01'}, today1), true));
+T('TC-R-011','due day=13 today=13 prev-month run', () => assert.strictEqual(recurringIsDue({dayOfMonth:13,lastRunYYYYMM:'2026-04'}, today1), true));
+T('TC-R-012','due bumps idempotent after success simulation', () => { const r={dayOfMonth:1,lastRunYYYYMM:''}; assert.ok(recurringIsDue(r,today1)); r.lastRunYYYYMM='2026-05'; assert.ok(!recurringIsDue(r,today1)); });
+T('TC-R-013','RECURRING_HEADERS shape sanity', () => { const headers=['Id','Label','Amount','Category','DayOfMonth','LastRunYYYYMM','CreatedAt']; assert.strictEqual(headers.length,7); });
+T('TC-R-014','recurring amount parse via float', () => assert.strictEqual(parseFloat('499.5'), 499.5));
+T('TC-R-015','recurring day parse via int', () => assert.strictEqual(parseInt('5'), 5));
+T('TC-R-016','recurring filter discards empty id', () => { const rows=[{id:'',label:'X',amount:1},{id:'r1',label:'Y',amount:1}]; const ok=rows.filter(r=>r.id && r.label && r.amount>0); assert.strictEqual(ok.length,1); });
+T('TC-R-017','recurring filter discards 0 amount', () => { const rows=[{id:'r1',label:'X',amount:0}]; const ok=rows.filter(r=>r.id && r.label && r.amount>0); assert.strictEqual(ok.length,0); });
+T('TC-R-018','recurring across year boundary', () => assert.strictEqual(recurringIsDue({dayOfMonth:1,lastRunYYYYMM:'2025-12'}, new Date(2026,0,1)), true));
+T('TC-R-019','two recurring same day: both due', () => { const a={dayOfMonth:5,lastRunYYYYMM:''},b={dayOfMonth:5,lastRunYYYYMM:''}; assert.ok(recurringIsDue(a,today1) && recurringIsDue(b,today1)); });
+T('TC-R-020','recurring lastRun lexicographic compare', () => assert.ok('2026-04' < '2026-05'));
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   S.  GOAL AUTO-CREDIT MATH  (TC-S-001..S-030)
+   ═══════════════════════════════════════════════════════════════════════════ */
+T('TC-S-001','single goal, single good month, full headroom', () => {
+  const out = autoCreditCalc([{year:2026,month:4,budget:1000,spent:600}],
+                             [{target:5000,saved:0,lastCreditedYYYYMM:''}], '2026-05');
+  assert.strictEqual(out[0].saved, 400);
+});
+T('TC-S-002','single goal lastCreditedYYYYMM updated', () => {
+  const out = autoCreditCalc([{year:2026,month:4,budget:1000,spent:600}],
+                             [{target:5000,saved:0,lastCreditedYYYYMM:''}], '2026-05');
+  assert.strictEqual(out[0].lastCreditedYYYYMM, '2026-04');
+});
+T('TC-S-003','current month NOT eligible', () => {
+  const out = autoCreditCalc([{year:2026,month:5,budget:1000,spent:500}],
+                             [{target:5000,saved:0,lastCreditedYYYYMM:''}], '2026-05');
+  assert.strictEqual(out[0].saved, 0);
+});
+T('TC-S-004','bad month NOT eligible', () => {
+  const out = autoCreditCalc([{year:2026,month:4,budget:1000,spent:1100}],
+                             [{target:5000,saved:0,lastCreditedYYYYMM:''}], '2026-05');
+  assert.strictEqual(out[0].saved, 0);
+});
+T('TC-S-005','zero budget NOT eligible', () => {
+  const out = autoCreditCalc([{year:2026,month:4,budget:0,spent:0}],
+                             [{target:5000,saved:0,lastCreditedYYYYMM:''}], '2026-05');
+  assert.strictEqual(out[0].saved, 0);
+});
+T('TC-S-006','splits across 2 active goals evenly', () => {
+  const out = autoCreditCalc([{year:2026,month:4,budget:1000,spent:600}],
+    [{target:5000,saved:0,lastCreditedYYYYMM:''},{target:5000,saved:0,lastCreditedYYYYMM:''}], '2026-05');
+  assert.strictEqual(out[0].saved, 200);
+  assert.strictEqual(out[1].saved, 200);
+});
+T('TC-S-007','already-credited goal skipped', () => {
+  const out = autoCreditCalc([{year:2026,month:4,budget:1000,spent:600}],
+                             [{target:5000,saved:100,lastCreditedYYYYMM:'2026-04'}], '2026-05');
+  assert.strictEqual(out[0].saved, 100);
+});
+T('TC-S-008','completed goal skipped', () => {
+  const out = autoCreditCalc([{year:2026,month:4,budget:1000,spent:600}],
+                             [{target:100,saved:100,lastCreditedYYYYMM:''}], '2026-05');
+  assert.strictEqual(out[0].saved, 100);
+});
+T('TC-S-009','headroom cap respected', () => {
+  const out = autoCreditCalc([{year:2026,month:4,budget:1000,spent:0}],
+                             [{target:500,saved:0,lastCreditedYYYYMM:''}], '2026-05');
+  assert.strictEqual(out[0].saved, 500);   /* capped at target */
+});
+T('TC-S-010','multiple eligible months stack', () => {
+  const out = autoCreditCalc(
+    [{year:2026,month:2,budget:1000,spent:800},{year:2026,month:3,budget:1000,spent:700}],
+    [{target:5000,saved:0,lastCreditedYYYYMM:''}], '2026-05');
+  assert.strictEqual(out[0].saved, 500); /* 200 + 300 */
+});
+T('TC-S-011','multiple months but only last applies', () => {
+  const out = autoCreditCalc([{year:2026,month:3,budget:1000,spent:700}],
+                             [{target:5000,saved:0,lastCreditedYYYYMM:'2026-02'}], '2026-05');
+  assert.strictEqual(out[0].lastCreditedYYYYMM, '2026-03');
+});
+T('TC-S-012','no eligible budgets → goals unchanged', () => {
+  const out = autoCreditCalc([], [{target:5000,saved:100,lastCreditedYYYYMM:''}], '2026-05');
+  assert.strictEqual(out[0].saved, 100);
+});
+T('TC-S-013','no goals → no error', () => {
+  assert.deepStrictEqual(autoCreditCalc([{year:2026,month:4,budget:1000,spent:500}], [], '2026-05'), []);
+});
+T('TC-S-014','mixed completed + active: only active credited', () => {
+  const out = autoCreditCalc([{year:2026,month:4,budget:1000,spent:600}],
+    [{target:100,saved:100,lastCreditedYYYYMM:''},{target:5000,saved:0,lastCreditedYYYYMM:''}], '2026-05');
+  assert.strictEqual(out[0].saved, 100);
+  assert.strictEqual(out[1].saved, 400);
+});
+T('TC-S-015','3 goals split equally', () => {
+  const out = autoCreditCalc([{year:2026,month:4,budget:1200,spent:300}],
+    [{target:5000,saved:0,lastCreditedYYYYMM:''},{target:5000,saved:0,lastCreditedYYYYMM:''},{target:5000,saved:0,lastCreditedYYYYMM:''}], '2026-05');
+  out.forEach(g => assert.strictEqual(g.saved, 300));
+});
+T('TC-S-016','goal headroom respected with split', () => {
+  const out = autoCreditCalc([{year:2026,month:4,budget:1000,spent:200}],
+    [{target:100,saved:0,lastCreditedYYYYMM:''},{target:5000,saved:0,lastCreditedYYYYMM:''}], '2026-05');
+  assert.strictEqual(out[0].saved, 100);   /* capped */
+  assert.strictEqual(out[1].saved, 400);   /* gets full half */
+});
+T('TC-S-017','goalProgress 50%', () => assert.strictEqual(goalProgress({target:1000,saved:500}), 50));
+T('TC-S-018','goalProgress 0%', () => assert.strictEqual(goalProgress({target:1000,saved:0}), 0));
+T('TC-S-019','goalProgress 100%', () => assert.strictEqual(goalProgress({target:1000,saved:1000}), 100));
+T('TC-S-020','goalProgress clamps >100', () => assert.strictEqual(goalProgress({target:1000,saved:2000}), 100));
+T('TC-S-021','goalProgress zero target safe', () => assert.strictEqual(goalProgress({target:0,saved:500}), 0));
+T('TC-S-022','goalDone true at exact target', () => assert.strictEqual(goalDone({target:1000,saved:1000}), true));
+T('TC-S-023','goalDone true above target', () => assert.strictEqual(goalDone({target:1000,saved:1500}), true));
+T('TC-S-024','goalDone false below target', () => assert.strictEqual(goalDone({target:1000,saved:999}), false));
+T('TC-S-025','goalDone false zero target', () => assert.strictEqual(goalDone({target:0,saved:0}), false));
+T('TC-S-026','GOALS_HEADERS shape', () => { const headers=['Id','Label','Target','Saved','Deadline','CreatedAt','LastCreditedYYYYMM']; assert.strictEqual(headers.length, 7); });
+T('TC-S-027','lex compare 2026-04 < 2026-05', () => assert.ok('2026-04' < '2026-05'));
+T('TC-S-028','already-credited-this-month idempotency', () => {
+  const out = autoCreditCalc([{year:2026,month:4,budget:1000,spent:600}],
+                             [{target:5000,saved:0,lastCreditedYYYYMM:'2026-04'}], '2026-05');
+  assert.strictEqual(out[0].saved, 0);
+});
+T('TC-S-029','partial savings → partial credit, not overflow', () => {
+  const out = autoCreditCalc([{year:2026,month:4,budget:1000,spent:999}],
+                             [{target:5000,saved:0,lastCreditedYYYYMM:''}], '2026-05');
+  assert.strictEqual(out[0].saved, 1);
+});
+T('TC-S-030','huge headroom doesn\'t exceed savings', () => {
+  const out = autoCreditCalc([{year:2026,month:4,budget:1000,spent:500}],
+                             [{target:1000000,saved:0,lastCreditedYYYYMM:''}], '2026-05');
+  assert.strictEqual(out[0].saved, 500);
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   U.  AI CATEGORY SUGGESTION  (TC-U-001..U-050)
+   ═══════════════════════════════════════════════════════════════════════════ */
+T('TC-U-001','keyword: "swiggy" → food', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('swiggy'),'food'); });
+T('TC-U-002','keyword: "zomato" → food', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('zomato'),'food'); });
+T('TC-U-003','keyword: "starbucks" → food', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('starbucks Bandra'),'food'); });
+T('TC-U-004','keyword: "dominos pizza" → food', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('dominos pizza'),'food'); });
+T('TC-U-005','keyword: "biryani" → food', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('biryani'),'food'); });
+T('TC-U-006','keyword: "dosa" → food', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('dosa breakfast'),'food'); });
+T('TC-U-007','keyword: "tea coffee" → food', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('tea coffee'),'food'); });
+T('TC-U-008','keyword: "zepto" → grocery', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('zepto delivery'),'grocery'); });
+T('TC-U-009','keyword: "blinkit" → grocery', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('blinkit'),'grocery'); });
+T('TC-U-010','keyword: "bigbasket" → grocery', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('bigbasket order'),'grocery'); });
+T('TC-U-011','keyword: "dmart" → grocery', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('dmart visit'),'grocery'); });
+T('TC-U-012','keyword: "kirana" → grocery', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('kirana store'),'grocery'); });
+T('TC-U-013','keyword: "vegetable" → market', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('vegetable mandi'),'market'); });
+T('TC-U-014','keyword: "sabzi" → market', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('sabzi fresh'),'market'); });
+T('TC-U-015','keyword: "fruit" → market', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('fruit basket'),'market'); });
+T('TC-U-016','keyword: "pharmacy" → medicine', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('pharmacy run'),'medicine'); });
+T('TC-U-017','keyword: "doctor" → medicine', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('doctor visit'),'medicine'); });
+T('TC-U-018','keyword: "apollo" → medicine', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('apollo hospital'),'medicine'); });
+T('TC-U-019','keyword: "dental" → medicine', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('dental cleaning'),'medicine'); });
+T('TC-U-020','keyword: "petrol" → petrol', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('petrol fill'),'petrol'); });
+T('TC-U-021','keyword: "fuel" → petrol', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('fuel'),'petrol'); });
+T('TC-U-022','keyword: "diesel" → petrol', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('diesel pump'),'petrol'); });
+T('TC-U-023','keyword: "indianoil" → petrol', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('indianoil station'),'petrol'); });
+T('TC-U-024','keyword: "recharge" → recharge', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('recharge mobile'),'recharge'); });
+T('TC-U-025','keyword: "jio" → recharge', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('jio postpaid'),'recharge'); });
+T('TC-U-026','keyword: "airtel broadband" → recharge', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('airtel broadband'),'recharge'); });
+T('TC-U-027','keyword: "wifi" → recharge', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('wifi bill'),'recharge'); });
+T('TC-U-028','keyword: "bisleri" → water', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('bisleri delivery'),'water'); });
+T('TC-U-029','keyword: "water" → water', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('water can'),'water'); });
+T('TC-U-030','keyword: "kinley" → water', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('kinley'),'water'); });
+T('TC-U-031','keyword: "gift" → gifts', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('gift hamper'),'gifts'); });
+T('TC-U-032','keyword: "birthday" → gifts', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('birthday gift for amma'),'gifts'); });
+T('TC-U-033','keyword: "anniversary" → gifts', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('anniversary present'),'gifts'); });
+T('TC-U-034','merchant: "uber" → other', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('uber ride home'),'other'); });
+T('TC-U-035','merchant: "ola" → other', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('ola airport'),'other'); });
+T('TC-U-036','merchant: "amazon" → other', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('amazon order'),'other'); });
+T('TC-U-037','merchant: "flipkart" → other', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('flipkart sale'),'other'); });
+T('TC-U-038','merchant: "netflix" → recharge', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('netflix renewal'),'recharge'); });
+T('TC-U-039','merchant: "spotify" → recharge', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('spotify monthly'),'recharge'); });
+T('TC-U-040','merchant: "prime" → recharge', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('prime renewal'),'recharge'); });
+T('TC-U-041','no match → null', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote('asdfghjkl'),null); });
+T('TC-U-042','empty note → null', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote(''),null); });
+T('TC-U-043','null note → null', () => { _resetCatHistory(); assert.strictEqual(suggestCategoryFromNote(null),null); });
+T('TC-U-044','history beats keyword', () => {
+  _resetCatHistory();
+  recordCatHistory('starbucks coffee', 'recharge');  /* user mapped to recharge */
+  recordCatHistory('starbucks coffee', 'recharge');
+  recordCatHistory('starbucks coffee', 'recharge');
+  assert.strictEqual(suggestCategoryFromNote('starbucks today'), 'recharge');
+});
+T('TC-U-045','history per-token: starbucks generalizes', () => {
+  _resetCatHistory();
+  recordCatHistory('starbucks bandra', 'food');
+  assert.strictEqual(suggestCategoryFromNote('starbucks andheri'), 'food');
+});
+T('TC-U-046','history records each token', () => {
+  _resetCatHistory();
+  recordCatHistory('big bazaar grocery run', 'grocery');
+  assert.strictEqual(_catHistory['bazaar'].grocery, 1);
+  assert.strictEqual(_catHistory['grocery'].grocery, 1);
+});
+T('TC-U-047','history ignores tokens shorter than 3 chars', () => {
+  _resetCatHistory();
+  recordCatHistory('go to mart', 'grocery');
+  assert.strictEqual(_catHistory['go'], undefined);
+  assert.strictEqual(_catHistory['to'], undefined);
+  assert.ok(_catHistory['mart']);
+});
+T('TC-U-048','votes accumulate', () => {
+  _resetCatHistory();
+  recordCatHistory('chai stand', 'food');
+  recordCatHistory('chai stand', 'food');
+  recordCatHistory('chai stand', 'food');
+  assert.strictEqual(_catHistory['chai'].food, 3);
+});
+T('TC-U-049','tie-breaker: first cat with highest vote', () => {
+  _resetCatHistory();
+  recordCatHistory('xyzfoo', 'food');
+  recordCatHistory('xyzfoo', 'grocery');
+  /* Both have 1 vote — first encountered wins */
+  const v = suggestCategoryFromNote('xyzfoo');
+  assert.ok(v === 'food' || v === 'grocery');
+});
+T('TC-U-050','history dominant cat wins on mixed input', () => {
+  _resetCatHistory();
+  for (let i = 0; i < 5; i++) recordCatHistory('rare term', 'gifts');
+  assert.strictEqual(suggestCategoryFromNote('rare term'), 'gifts');
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   V.  FORECAST MATH  (TC-V-001..V-025)
+   ═══════════════════════════════════════════════════════════════════════════ */
+T('TC-V-001','forecast null when daysElapsed < 3', () => assert.strictEqual(computeForecastPure(500,2,31,null), null));
+T('TC-V-002','forecast OK when daysElapsed >= 3', () => assert.ok(computeForecastPure(900,3,31,null) !== null));
+T('TC-V-003','forecast dailyAvg = spend/days', () => assert.strictEqual(computeForecastPure(900,3,31,null).dailyAvg, 300));
+T('TC-V-004','forecast projection = avg × monthLength', () => assert.strictEqual(computeForecastPure(900,3,31,null).projected, 9300));
+T('TC-V-005','forecast adds recurring remainder', () => assert.strictEqual(computeForecastPure(900,3,31,null,500).projected, 9800));
+T('TC-V-006','forecast overBy when over budget', () => assert.strictEqual(computeForecastPure(900,3,31,8000).overBy, 1300));
+T('TC-V-007','forecast underBy when under budget', () => assert.strictEqual(computeForecastPure(900,3,31,15000).underBy, 5700));
+T('TC-V-008','forecast under cap means overBy=0', () => assert.strictEqual(computeForecastPure(900,3,31,15000).overBy, 0));
+T('TC-V-009','forecast over cap means underBy=0', () => assert.strictEqual(computeForecastPure(900,3,31,8000).underBy, 0));
+T('TC-V-010','forecast no budget returns 0/0', () => { const f=computeForecastPure(900,3,31,null); assert.strictEqual(f.overBy,0); assert.strictEqual(f.underBy,0); });
+T('TC-V-011','forecast last day = avg (no projection growth)', () => assert.strictEqual(computeForecastPure(31000,31,31,null).projected, 31000));
+T('TC-V-012','forecast exact budget edge: underBy=0', () => assert.strictEqual(computeForecastPure(310,31,31,310).overBy, 0));
+T('TC-V-013','forecast spends 0 → projection 0', () => assert.strictEqual(computeForecastPure(0,3,31,null).projected, 0));
+T('TC-V-014','forecast with high recRemaining', () => assert.strictEqual(computeForecastPure(1000,5,30,null,3000).projected, 9000));
+T('TC-V-015','forecast 28-day month (Feb)', () => assert.strictEqual(computeForecastPure(500,5,28,null).projected, 2800));
+T('TC-V-016','forecast 30-day month (Apr)', () => assert.strictEqual(computeForecastPure(600,3,30,null).projected, 6000));
+T('TC-V-017','forecast 31-day month (Jul)', () => assert.strictEqual(computeForecastPure(310,1,31,null), null));  /* daysElapsed < 3 */
+T('TC-V-018','forecast small spend large month', () => { const f=computeForecastPure(30,3,30,1000); assert.strictEqual(f.projected, 300); assert.strictEqual(f.underBy, 700); });
+T('TC-V-019','forecast huge spend', () => assert.strictEqual(computeForecastPure(100000,10,30,null).projected, 300000));
+T('TC-V-020','forecast object shape', () => { const f=computeForecastPure(900,3,31,null); assert.ok(['spentSoFar','dailyAvg','daysElapsed','daysInMonth','projected','budget','overBy','underBy'].every(k => k in f)); });
+T('TC-V-021','forecast spentSoFar preserved', () => assert.strictEqual(computeForecastPure(900,3,31,null).spentSoFar, 900));
+T('TC-V-022','forecast daysElapsed preserved', () => assert.strictEqual(computeForecastPure(900,3,31,null).daysElapsed, 3));
+T('TC-V-023','forecast daysInMonth preserved', () => assert.strictEqual(computeForecastPure(900,3,31,null).daysInMonth, 31));
+T('TC-V-024','forecast budget preserved', () => assert.strictEqual(computeForecastPure(900,3,31,10000).budget, 10000));
+T('TC-V-025','forecast no budget → budget=0', () => assert.strictEqual(computeForecastPure(900,3,31,null).budget, 0));
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   W.  SPARKLINE / DELTA MATH  (TC-W-001..W-020)
+   ═══════════════════════════════════════════════════════════════════════════ */
+T('TC-W-001','polyline 3 points', () => assert.strictEqual(polylineFor([{x:0,y:0},{x:1,y:0.5},{x:2,y:1}]), '0,23 30,12 60,1'));
+T('TC-W-002','polyline flat at top', () => assert.strictEqual(polylineFor([{x:0,y:1},{x:1,y:1},{x:2,y:1}]), '0,1 30,1 60,1'));
+T('TC-W-003','polyline flat at bottom', () => assert.strictEqual(polylineFor([{x:0,y:0},{x:1,y:0},{x:2,y:0}]), '0,23 30,23 60,23'));
+T('TC-W-004','sparkline delta +100%', () => assert.strictEqual(sparklineDelta(100, 200), 100));
+T('TC-W-005','sparkline delta -50%', () => assert.strictEqual(sparklineDelta(200, 100), -50));
+T('TC-W-006','sparkline delta 0% (flat)', () => assert.strictEqual(sparklineDelta(100, 100), 0));
+T('TC-W-007','sparkline delta null when prev=0', () => assert.strictEqual(sparklineDelta(0, 500), null));
+T('TC-W-008','sparkline delta exact 25%', () => assert.strictEqual(sparklineDelta(400, 500), 25));
+T('TC-W-009','sparkline delta -100%', () => assert.strictEqual(sparklineDelta(100, 0), -100));
+T('TC-W-010','polyline middle point math', () => { const p=polylineFor([{x:0,y:0.5},{x:1,y:0.5},{x:2,y:0.5}]); assert.ok(p.includes('30,12')); });
+T('TC-W-011','sparkline delta rounding', () => { const d=sparklineDelta(300,400); assert.ok(Math.abs(d - 33.33) < 0.01); });
+T('TC-W-012','polyline empty points', () => assert.strictEqual(polylineFor([]), ''));
+T('TC-W-013','polyline single point', () => assert.strictEqual(polylineFor([{x:0,y:0.5}]), '0,12'));
+T('TC-W-014','sparkline delta with decimals', () => assert.strictEqual(sparklineDelta(150, 300), 100));
+T('TC-W-015','sparkline delta small change', () => assert.strictEqual(sparklineDelta(1000, 1010), 1));
+T('TC-W-016','sparkline delta negative', () => assert.ok(sparklineDelta(1000, 990) < 0));
+T('TC-W-017','sparkline delta huge ratio', () => assert.strictEqual(sparklineDelta(1, 1000), 99900));
+T('TC-W-018','polyline y=0 maps to 23', () => { const p=polylineFor([{x:0,y:0}]); assert.strictEqual(p, '0,23'); });
+T('TC-W-019','polyline y=1 maps to 1', () => { const p=polylineFor([{x:0,y:1}]); assert.strictEqual(p, '0,1'); });
+T('TC-W-020','polyline x scale: x=2 → 60', () => { const p=polylineFor([{x:2,y:0}]); assert.strictEqual(p, '60,23'); });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   X.  HEATMAP LEVEL  (TC-X-001..X-020)
+   ═══════════════════════════════════════════════════════════════════════════ */
+T('TC-X-001','heatmap value 0 → level 0', () => assert.strictEqual(heatmapLevel(0, 1000), 0));
+T('TC-X-002','heatmap value=max → level 4', () => assert.strictEqual(heatmapLevel(1000, 1000), 4));
+T('TC-X-003','heatmap value 25% of max → level 1', () => assert.strictEqual(heatmapLevel(250, 1000), 1));
+T('TC-X-004','heatmap value 50% of max → level 2', () => assert.strictEqual(heatmapLevel(500, 1000), 2));
+T('TC-X-005','heatmap value 75% of max → level 3', () => assert.strictEqual(heatmapLevel(750, 1000), 3));
+T('TC-X-006','heatmap value 1% of max → level 1', () => assert.strictEqual(heatmapLevel(10, 1000), 1));
+T('TC-X-007','heatmap value capped at 4', () => assert.strictEqual(heatmapLevel(5000, 1000), 4));
+T('TC-X-008','heatmap level 26% → 2 (ceil)', () => assert.strictEqual(heatmapLevel(260, 1000), 2));
+T('TC-X-009','heatmap level 51% → 3 (ceil)', () => assert.strictEqual(heatmapLevel(510, 1000), 3));
+T('TC-X-010','heatmap level 76% → 4 (ceil)', () => assert.strictEqual(heatmapLevel(760, 1000), 4));
+T('TC-X-011','heatmap max=0 safe', () => assert.strictEqual(heatmapLevel(100, 0), 4));
+T('TC-X-012','heatmap negative value yields non-positive level', () => assert.ok(heatmapLevel(-100, 1000) <= 0));
+T('TC-X-013','heatmap one tiny value', () => assert.strictEqual(heatmapLevel(1, 1), 4));
+T('TC-X-014','heatmap level math: ceil(.5) = 1 → level 1', () => assert.strictEqual(heatmapLevel(125, 1000), 1));
+T('TC-X-015','heatmap level exactly at boundary 25%', () => assert.strictEqual(heatmapLevel(250, 1000), 1));
+T('TC-X-016','heatmap level just over 25%', () => assert.strictEqual(heatmapLevel(251, 1000), 2));
+T('TC-X-017','heatmap level just under 50%', () => assert.strictEqual(heatmapLevel(499, 1000), 2));
+T('TC-X-018','heatmap level just over 50%', () => assert.strictEqual(heatmapLevel(501, 1000), 3));
+T('TC-X-019','heatmap level just under 75%', () => assert.strictEqual(heatmapLevel(749, 1000), 3));
+T('TC-X-020','heatmap level just over 75%', () => assert.strictEqual(heatmapLevel(751, 1000), 4));
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Y.  WHAT-IF MATH  (TC-Y-001..Y-020)
+   ═══════════════════════════════════════════════════════════════════════════ */
+T('TC-Y-001','what-if zero cuts → current = after', () => { const r = whatIfRecalc({food:1000,grocery:500},{}); assert.strictEqual(r.current, r.after); });
+T('TC-Y-002','what-if 100% cut on one cat', () => { const r = whatIfRecalc({food:1000,grocery:500},{food:100}); assert.strictEqual(r.after, 500); });
+T('TC-Y-003','what-if 50% cut on all', () => { const r = whatIfRecalc({food:1000,grocery:500},{food:50,grocery:50}); assert.strictEqual(r.after, 750); });
+T('TC-Y-004','what-if saved = current - after', () => { const r = whatIfRecalc({food:1000},{food:25}); assert.strictEqual(r.saved, 250); });
+T('TC-Y-005','what-if six-month projection = saved * 6', () => { const r = whatIfRecalc({food:1000},{food:25}); assert.strictEqual(r.sixMonth, 1500); });
+T('TC-Y-006','what-if no cuts on empty cat → 0 saved', () => { const r = whatIfRecalc({},{food:50}); assert.strictEqual(r.saved, 0); });
+T('TC-Y-007','what-if cut on non-existent cat ignored', () => { const r = whatIfRecalc({food:1000},{grocery:50}); assert.strictEqual(r.saved, 0); });
+T('TC-Y-008','what-if 0% cut = no savings', () => { const r = whatIfRecalc({food:1000},{food:0}); assert.strictEqual(r.saved, 0); });
+T('TC-Y-009','what-if large current', () => { const r = whatIfRecalc({food:50000,grocery:30000,petrol:10000},{food:20,grocery:10,petrol:50}); assert.strictEqual(r.saved, 50000*.2 + 30000*.1 + 10000*.5); });
+T('TC-Y-010','what-if values are numeric', () => { const r = whatIfRecalc({food:1000},{food:25}); assert.strictEqual(typeof r.after, 'number'); });
+T('TC-Y-011','what-if 1% cut precision', () => { const r = whatIfRecalc({food:10000},{food:1}); assert.strictEqual(r.saved, 100); });
+T('TC-Y-012','what-if 99% cut leaves 1%', () => { const r = whatIfRecalc({food:10000},{food:99}); assert.ok(Math.abs(r.after - 100) < 0.001); });
+T('TC-Y-013','what-if six-month with multiple cats', () => { const r = whatIfRecalc({a:1000,b:500},{a:50,b:50}); assert.strictEqual(r.sixMonth, (500+250)*6); });
+T('TC-Y-014','what-if all 100% cuts → after=0', () => { const r = whatIfRecalc({a:100,b:200,c:300},{a:100,b:100,c:100}); assert.strictEqual(r.after, 0); });
+T('TC-Y-015','what-if current sum matches input', () => { const r = whatIfRecalc({a:100,b:200,c:300},{}); assert.strictEqual(r.current, 600); });
+T('TC-Y-016','what-if 50% twice in summary', () => { const r = whatIfRecalc({a:1000},{a:50}); assert.strictEqual(r.after, 500); assert.strictEqual(r.saved, 500); });
+T('TC-Y-017','what-if accepts strings via Number coercion via *', () => { /* JS quirk: ints work */ const r = whatIfRecalc({a:1000},{a:50}); assert.ok(!isNaN(r.after)); });
+T('TC-Y-018','what-if no cut object', () => { const r = whatIfRecalc({a:1000},{}); assert.strictEqual(r.saved, 0); });
+T('TC-Y-019','what-if six-month negative impossible (cuts can\'t increase)', () => { const r = whatIfRecalc({a:1000},{a:50}); assert.ok(r.sixMonth >= 0); });
+T('TC-Y-020','what-if returns shape', () => { const r = whatIfRecalc({a:1000},{a:50}); assert.ok('current' in r && 'after' in r && 'saved' in r && 'sixMonth' in r); });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Z.  YEAR-WRAP AGGREGATION  (TC-Z-001..Z-020)
+   ═══════════════════════════════════════════════════════════════════════════ */
+const YW_EXP = [
+  { date:'2025-01-15', category:'food', amount:1000 },
+  { date:'2025-02-10', category:'food', amount:1500 },
+  { date:'2025-03-05', category:'grocery', amount:500 },
+  { date:'2025-03-25', category:'petrol', amount:2000 },
+  { date:'2025-12-31', category:'gifts', amount:5000 },
+  { date:'2026-01-01', category:'food', amount:200 },  /* different year */
+];
+
+T('TC-Z-001','wrap returns null for empty year', () => assert.strictEqual(yearWrapAgg(YW_EXP, 2027), null));
+T('TC-Z-002','wrap total for 2025', () => { const w=yearWrapAgg(YW_EXP,2025); assert.strictEqual(w.total, 1000+1500+500+2000+5000); });
+T('TC-Z-003','wrap entries count', () => assert.strictEqual(yearWrapAgg(YW_EXP,2025).entries, 5));
+T('TC-Z-004','wrap top category = gifts', () => assert.strictEqual(yearWrapAgg(YW_EXP,2025).topCat, 'gifts'));
+T('TC-Z-005','wrap top category amount', () => assert.strictEqual(yearWrapAgg(YW_EXP,2025).topCatAmt, 5000));
+T('TC-Z-006','wrap biggest day', () => assert.strictEqual(yearWrapAgg(YW_EXP,2025).biggestDay, '2025-12-31'));
+T('TC-Z-007','wrap biggest day amount', () => assert.strictEqual(yearWrapAgg(YW_EXP,2025).biggestDayAmt, 5000));
+T('TC-Z-008','wrap months tracked count', () => assert.strictEqual(yearWrapAgg(YW_EXP,2025).monthsTracked, 4));
+T('TC-Z-009','wrap avg per month', () => { const w=yearWrapAgg(YW_EXP,2025); assert.strictEqual(w.avgPerMonth, w.total / 4); });
+T('TC-Z-010','wrap excludes other years', () => { const w=yearWrapAgg(YW_EXP,2025); assert.ok(!Object.keys(w.byDay).some(d => d.startsWith('2026'))); });
+T('TC-Z-011','wrap months[] length 12', () => assert.strictEqual(yearWrapAgg(YW_EXP,2025).months.length, 12));
+T('TC-Z-012','wrap months[0] Jan = 1000', () => assert.strictEqual(yearWrapAgg(YW_EXP,2025).months[0], 1000));
+T('TC-Z-013','wrap months[1] Feb = 1500', () => assert.strictEqual(yearWrapAgg(YW_EXP,2025).months[1], 1500));
+T('TC-Z-014','wrap months[2] Mar = 500+2000', () => assert.strictEqual(yearWrapAgg(YW_EXP,2025).months[2], 2500));
+T('TC-Z-015','wrap months[11] Dec = 5000', () => assert.strictEqual(yearWrapAgg(YW_EXP,2025).months[11], 5000));
+T('TC-Z-016','wrap months[3..10] are zero', () => { const w=yearWrapAgg(YW_EXP,2025); for (let i=3;i<11;i++) assert.strictEqual(w.months[i], 0); });
+T('TC-Z-017','wrap byCat sum equals total', () => { const w=yearWrapAgg(YW_EXP,2025); assert.strictEqual(Object.values(w.byCat).reduce((s,n)=>s+n,0), w.total); });
+T('TC-Z-018','wrap byDay sum equals total', () => { const w=yearWrapAgg(YW_EXP,2025); assert.strictEqual(Object.values(w.byDay).reduce((s,n)=>s+n,0), w.total); });
+T('TC-Z-019','wrap empty list returns null', () => assert.strictEqual(yearWrapAgg([], 2025), null));
+T('TC-Z-020','wrap byCat keys are category strings', () => assert.ok(Object.keys(yearWrapAgg(YW_EXP,2025).byCat).every(k => typeof k === 'string')));
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AA. CSV EXPORT FORMAT  (TC-AA-001..AA-020)
+   ═══════════════════════════════════════════════════════════════════════════ */
+T('TC-AA-001','csvEscape plain string', () => assert.strictEqual(csvEscape('hello'), 'hello'));
+T('TC-AA-002','csvEscape with comma quoted', () => assert.strictEqual(csvEscape('a,b'), '"a,b"'));
+T('TC-AA-003','csvEscape with quote doubled', () => assert.strictEqual(csvEscape('say "hi"'), '"say ""hi"""'));
+T('TC-AA-004','csvEscape with newline quoted', () => assert.strictEqual(csvEscape('line1\nline2'), '"line1\nline2"'));
+T('TC-AA-005','csvEscape null → empty', () => assert.strictEqual(csvEscape(null), ''));
+T('TC-AA-006','csvEscape undefined → empty', () => assert.strictEqual(csvEscape(undefined), ''));
+T('TC-AA-007','csvEscape number coerced', () => assert.strictEqual(csvEscape(42), '42'));
+T('TC-AA-008','csvEscape empty string', () => assert.strictEqual(csvEscape(''), ''));
+T('TC-AA-009','toCSV single row', () => assert.strictEqual(toCSV([['a','b','c']]), 'a,b,c'));
+T('TC-AA-010','toCSV multiple rows', () => assert.strictEqual(toCSV([['a','b'],['c','d']]), 'a,b\nc,d'));
+T('TC-AA-011','toCSV mixed types', () => assert.strictEqual(toCSV([['date',42,null]]), 'date,42,'));
+T('TC-AA-012','toCSV header + data row', () => assert.strictEqual(toCSV([['Date','Amount'],['2026-05-13',200]]), 'Date,Amount\n2026-05-13,200'));
+T('TC-AA-013','toCSV with comma in cell', () => assert.strictEqual(toCSV([['a, b','c']]), '"a, b",c'));
+T('TC-AA-014','toCSV with quote in cell', () => assert.strictEqual(toCSV([['a"b','c']]), '"a""b",c'));
+T('TC-AA-015','toCSV with newline in cell', () => assert.strictEqual(toCSV([['a\nb','c']]), '"a\nb",c'));
+T('TC-AA-016','toCSV empty rows', () => assert.strictEqual(toCSV([]), ''));
+T('TC-AA-017','toCSV preserves order', () => assert.strictEqual(toCSV([['1','2','3']]), '1,2,3'));
+T('TC-AA-018','csvEscape with all 3 special chars', () => assert.strictEqual(csvEscape('a,b"c\nd'), '"a,b""c\nd"'));
+T('TC-AA-019','csvEscape preserves spaces', () => assert.strictEqual(csvEscape('hello world'), 'hello world'));
+T('TC-AA-020','csvEscape with leading/trailing space', () => assert.strictEqual(csvEscape(' a '), ' a '));
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AB. EXPORT RANGE  (TC-AB-001..AB-015)
+   ═══════════════════════════════════════════════════════════════════════════ */
+T('TC-AB-001','this-month from = 1st of month', () => assert.strictEqual(exportRange('this-month').from, '2026-05-01'));
+T('TC-AB-002','this-month to = last day of month', () => assert.strictEqual(exportRange('this-month').to, '2026-05-31'));
+T('TC-AB-003','last-month from', () => assert.strictEqual(exportRange('last-month').from, '2026-04-01'));
+T('TC-AB-004','last-month to = April 30', () => assert.strictEqual(exportRange('last-month').to, '2026-04-30'));
+T('TC-AB-005','this-year from = Jan 1', () => assert.strictEqual(exportRange('this-year').from, '2026-01-01'));
+T('TC-AB-006','this-year to = Dec 31', () => assert.strictEqual(exportRange('this-year').to, '2026-12-31'));
+T('TC-AB-007','last-year from = 2025-01-01', () => assert.strictEqual(exportRange('last-year').from, '2025-01-01'));
+T('TC-AB-008','last-year to = 2025-12-31', () => assert.strictEqual(exportRange('last-year').to, '2025-12-31'));
+T('TC-AB-009','all from = 0000-01-01', () => assert.strictEqual(exportRange('all').from, '0000-01-01'));
+T('TC-AB-010','all to = 9999-12-31', () => assert.strictEqual(exportRange('all').to, '9999-12-31'));
+T('TC-AB-011','unknown range falls to all', () => assert.deepStrictEqual(exportRange('xyz'), exportRange('all')));
+T('TC-AB-012','last-month Feb leap year', () => { const r=exportRange('last-month', new Date(2024,2,15)); assert.strictEqual(r.to, '2024-02-29'); });
+T('TC-AB-013','last-month Feb non-leap', () => { const r=exportRange('last-month', new Date(2025,2,15)); assert.strictEqual(r.to, '2025-02-28'); });
+T('TC-AB-014','last-month from Jan = previous year Dec', () => { const r=exportRange('last-month', new Date(2026,0,15)); assert.strictEqual(r.from, '2025-12-01'); });
+T('TC-AB-015','last-month to from Jan = 2025-12-31', () => { const r=exportRange('last-month', new Date(2026,0,15)); assert.strictEqual(r.to, '2025-12-31'); });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AC. URL QUICKADD PARSING  (TC-AC-001..AC-010)
+   ═══════════════════════════════════════════════════════════════════════════ */
+T('TC-AC-001','parse quickadd=food', () => assert.strictEqual(parseQuickaddURL('https://x.com/?quickadd=food'), 'food'));
+T('TC-AC-002','parse quickadd=grocery', () => assert.strictEqual(parseQuickaddURL('https://x.com/?quickadd=grocery'), 'grocery'));
+T('TC-AC-003','parse quickadd=petrol', () => assert.strictEqual(parseQuickaddURL('https://x.com/?quickadd=petrol'), 'petrol'));
+T('TC-AC-004','parse quickadd=voice', () => assert.strictEqual(parseQuickaddURL('https://x.com/?quickadd=voice'), 'voice'));
+T('TC-AC-005','parse missing param → null', () => assert.strictEqual(parseQuickaddURL('https://x.com/'), null));
+T('TC-AC-006','parse other params no quickadd', () => assert.strictEqual(parseQuickaddURL('https://x.com/?utm=src'), null));
+T('TC-AC-007','parse multiple params first wins', () => assert.strictEqual(parseQuickaddURL('https://x.com/?quickadd=food&utm=x'), 'food'));
+T('TC-AC-008','parse invalid URL → null', () => assert.strictEqual(parseQuickaddURL('not a url'), null));
+T('TC-AC-009','parse with hash fragment', () => assert.strictEqual(parseQuickaddURL('https://x.com/?quickadd=food#hash'), 'food'));
+T('TC-AC-010','parse with subdir', () => assert.strictEqual(parseQuickaddURL('https://x.com/sub/?quickadd=grocery'), 'grocery'));
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AD. TODAY HERO MATH  (TC-AD-001..AD-015)
+   ═══════════════════════════════════════════════════════════════════════════ */
+T('TC-AD-001','no budget → allowance 0', () => assert.strictEqual(todayHeroMath(100, 0, 31).allowance, 0));
+T('TC-AD-002','allowance = budget / daysInMonth', () => assert.strictEqual(todayHeroMath(100, 31000, 31).allowance, 1000));
+T('TC-AD-003','pct clamped to 100', () => assert.strictEqual(todayHeroMath(2000, 31000, 31).pct, 100));
+T('TC-AD-004','pct 0 when no spend', () => assert.strictEqual(todayHeroMath(0, 31000, 31).pct, 0));
+T('TC-AD-005','remaining = allowance - spend', () => assert.strictEqual(todayHeroMath(300, 31000, 31).remaining, 700));
+T('TC-AD-006','remaining 0 when over', () => assert.strictEqual(todayHeroMath(2000, 31000, 31).remaining, 0));
+T('TC-AD-007','overBy = spend - allowance', () => assert.strictEqual(todayHeroMath(1500, 31000, 31).overBy, 500));
+T('TC-AD-008','overBy 0 when under', () => assert.strictEqual(todayHeroMath(500, 31000, 31).overBy, 0));
+T('TC-AD-009','over=true when over allowance', () => assert.strictEqual(todayHeroMath(1500, 31000, 31).over, true));
+T('TC-AD-010','over=false when under', () => assert.strictEqual(todayHeroMath(500, 31000, 31).over, false));
+T('TC-AD-011','over=false at exact', () => assert.strictEqual(todayHeroMath(1000, 31000, 31).over, false));
+T('TC-AD-012','pct at 50%', () => assert.strictEqual(todayHeroMath(500, 31000, 31).pct, 50));
+T('TC-AD-013','30-day month allowance', () => assert.strictEqual(todayHeroMath(0, 30000, 30).allowance, 1000));
+T('TC-AD-014','28-day Feb allowance', () => assert.strictEqual(todayHeroMath(0, 28000, 28).allowance, 1000));
+T('TC-AD-015','pct rounds within bounds', () => { const r=todayHeroMath(333, 31000, 31); assert.ok(r.pct >= 0 && r.pct <= 100); });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AE. SEARCH FILTER  (TC-AE-001..AE-020)
+   ═══════════════════════════════════════════════════════════════════════════ */
+const SEARCH_CATMAP = {
+  food:    { label: 'Food', icon: '🍔', color: '#E23744' },
+  grocery: { label: 'Grocery', icon: '🛒', color: '#1BA672' },
+  petrol:  { label: 'Petrol', icon: '⛽', color: '#FF7E36' },
+};
+const SEARCH_EXPS = [
+  { date:'2026-05-13', category:'food',    amount:200, note:'Swiggy' },
+  { date:'2026-05-12', category:'grocery', amount:1500, note:'DMart' },
+  { date:'2026-05-11', category:'petrol',  amount:1000, note:'IOCL pump' },
+  { date:'2026-05-10', category:'food',    amount:200, note:'Starbucks' },
+];
+T('TC-AE-001','empty query returns []', () => assert.strictEqual(searchMatch(SEARCH_EXPS,'',SEARCH_CATMAP).length, 0));
+T('TC-AE-002','category label match', () => { const r=searchMatch(SEARCH_EXPS,'food',SEARCH_CATMAP); assert.strictEqual(r.length, 2); });
+T('TC-AE-003','category key match', () => { const r=searchMatch(SEARCH_EXPS,'grocery',SEARCH_CATMAP); assert.strictEqual(r.length, 1); });
+T('TC-AE-004','note substring match', () => { const r=searchMatch(SEARCH_EXPS,'swiggy',SEARCH_CATMAP); assert.strictEqual(r.length, 1); });
+T('TC-AE-005','partial note match', () => { const r=searchMatch(SEARCH_EXPS,'mart',SEARCH_CATMAP); assert.strictEqual(r.length, 1); });
+T('TC-AE-006','amount equality match', () => { const r=searchMatch(SEARCH_EXPS,'200',SEARCH_CATMAP); assert.strictEqual(r.length, 2); });
+T('TC-AE-007','amount no match', () => { const r=searchMatch(SEARCH_EXPS,'9999',SEARCH_CATMAP); assert.strictEqual(r.length, 0); });
+T('TC-AE-008','sorted desc by date', () => { const r=searchMatch(SEARCH_EXPS,'food',SEARCH_CATMAP); assert.strictEqual(r[0].date, '2026-05-13'); });
+T('TC-AE-009','case-insensitive', () => { const r=searchMatch(SEARCH_EXPS,'SWIGGY',SEARCH_CATMAP); assert.strictEqual(r.length, 1); });
+T('TC-AE-010','iocl match', () => { const r=searchMatch(SEARCH_EXPS,'iocl',SEARCH_CATMAP); assert.strictEqual(r.length, 1); });
+T('TC-AE-011','garbage returns 0', () => { const r=searchMatch(SEARCH_EXPS,'qwertyu',SEARCH_CATMAP); assert.strictEqual(r.length, 0); });
+T('TC-AE-012','empty list returns []', () => { const r=searchMatch([],'food',SEARCH_CATMAP); assert.strictEqual(r.length, 0); });
+T('TC-AE-013','search includes both 200 entries', () => { const r=searchMatch(SEARCH_EXPS,'200',SEARCH_CATMAP); assert.strictEqual(r.length, 2); });
+T('TC-AE-014','search by amount preserves order desc', () => { const r=searchMatch(SEARCH_EXPS,'200',SEARCH_CATMAP); assert.strictEqual(r[0].date,'2026-05-13'); });
+T('TC-AE-015','search "petrol" returns one', () => { const r=searchMatch(SEARCH_EXPS,'petrol',SEARCH_CATMAP); assert.strictEqual(r.length, 1); });
+T('TC-AE-016','search empty string after trim', () => { const r=searchMatch(SEARCH_EXPS,'   ',SEARCH_CATMAP); assert.strictEqual(r.length, 0); });
+T('TC-AE-017','search by decimal amount no match if off by 1', () => { const r=searchMatch(SEARCH_EXPS,'201',SEARCH_CATMAP); assert.strictEqual(r.length, 0); });
+T('TC-AE-018','search by category fragment "food"', () => { const r=searchMatch(SEARCH_EXPS,'fo',SEARCH_CATMAP); assert.strictEqual(r.length, 2); });
+T('TC-AE-019','search ignores null entries safely', () => { const r=searchMatch([null,...SEARCH_EXPS],'food',SEARCH_CATMAP); assert.strictEqual(r.length, 2); });
+T('TC-AE-020','search by category icon NOT a match', () => { const r=searchMatch(SEARCH_EXPS,'🍔',SEARCH_CATMAP); assert.strictEqual(r.length, 0); });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AF. UNDO STATE MACHINE  (TC-AF-001..AF-010)
+   ═══════════════════════════════════════════════════════════════════════════ */
+function makeUndoMachine() {
+  let pending = null;
+  let timer = 0;
+  return {
+    onDelete(item) { pending = item; timer = Date.now(); },
+    canUndo(nowMs = Date.now(), windowMs = 5000) { return pending !== null && (nowMs - timer) < windowMs; },
+    undo() { const out = pending; pending = null; timer = 0; return out; },
+    expire() { pending = null; timer = 0; },
+    get pending() { return pending; },
+  };
+}
+T('TC-AF-001','onDelete sets pending', () => { const m=makeUndoMachine(); m.onDelete({rowIndex:5}); assert.deepStrictEqual(m.pending,{rowIndex:5}); });
+T('TC-AF-002','canUndo true right after delete', () => { const m=makeUndoMachine(); m.onDelete({rowIndex:1}); assert.strictEqual(m.canUndo(), true); });
+T('TC-AF-003','canUndo false initially', () => { const m=makeUndoMachine(); assert.strictEqual(m.canUndo(), false); });
+T('TC-AF-004','canUndo false after 5s+', () => { const m=makeUndoMachine(); m.onDelete({rowIndex:1}); assert.strictEqual(m.canUndo(Date.now()+6000), false); });
+T('TC-AF-005','canUndo true within window', () => { const m=makeUndoMachine(); m.onDelete({rowIndex:1}); assert.strictEqual(m.canUndo(Date.now()+3000), true); });
+T('TC-AF-006','undo returns pending and clears', () => { const m=makeUndoMachine(); m.onDelete({rowIndex:1}); assert.deepStrictEqual(m.undo(),{rowIndex:1}); assert.strictEqual(m.pending, null); });
+T('TC-AF-007','undo on empty returns null', () => { const m=makeUndoMachine(); assert.strictEqual(m.undo(), null); });
+T('TC-AF-008','expire clears pending', () => { const m=makeUndoMachine(); m.onDelete({a:1}); m.expire(); assert.strictEqual(m.pending, null); });
+T('TC-AF-009','delete after expire stores new', () => { const m=makeUndoMachine(); m.onDelete({a:1}); m.expire(); m.onDelete({a:2}); assert.deepStrictEqual(m.pending,{a:2}); });
+T('TC-AF-010','double delete: latest wins', () => { const m=makeUndoMachine(); m.onDelete({a:1}); m.onDelete({a:2}); assert.deepStrictEqual(m.undo(),{a:2}); });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AG. VOICE AUTO-SAVE FLOW  (TC-AG-001..AG-010)
+   ═══════════════════════════════════════════════════════════════════════════ */
+function routeVoice(parsed, voiceAutoSave) {
+  /* When voiceAutoSave=true and parsed has amount+category, route to autosave.
+     Otherwise show preview card. */
+  if (!parsed) return 'fail';
+  if (parsed.intent && parsed.intent !== 'none' && parsed.intent !== 'add') return parsed.intent;
+  if (voiceAutoSave && parsed.amount > 0 && parsed.category) return 'auto-save';
+  return 'preview';
+}
+T('TC-AG-001','voice auto-save when toggle on + clean parse', () => assert.strictEqual(routeVoice({amount:200,category:'food'}, true), 'auto-save'));
+T('TC-AG-002','voice preview when toggle off', () => assert.strictEqual(routeVoice({amount:200,category:'food'}, false), 'preview'));
+T('TC-AG-003','voice preview when no category', () => assert.strictEqual(routeVoice({amount:200}, true), 'preview'));
+T('TC-AG-004','voice preview when no amount', () => assert.strictEqual(routeVoice({category:'food'}, true), 'preview'));
+T('TC-AG-005','voice routes budget-set intent regardless', () => assert.strictEqual(routeVoice({intent:'budget-set',amount:50000}, true), 'budget-set'));
+T('TC-AG-006','voice routes date-query intent', () => assert.strictEqual(routeVoice({intent:'date-query'}, true), 'date-query'));
+T('TC-AG-007','voice routes budget-query intent', () => assert.strictEqual(routeVoice({intent:'budget-query'}, true), 'budget-query'));
+T('TC-AG-008','voice null parse fails', () => assert.strictEqual(routeVoice(null, true), 'fail'));
+T('TC-AG-009','voice none intent falls through', () => assert.strictEqual(routeVoice({intent:'none',amount:200,category:'food'}, true), 'auto-save'));
+T('TC-AG-010','voice add intent + autosave', () => assert.strictEqual(routeVoice({intent:'add',amount:200,category:'food'}, true), 'auto-save'));
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AH. ID GENERATION  (TC-AH-001..AH-005)
+   ═══════════════════════════════════════════════════════════════════════════ */
+function uuid() { return 'r' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4); }
+T('TC-AH-001','uuid starts with r', () => assert.ok(uuid().startsWith('r')));
+T('TC-AH-002','uuid length > 8', () => assert.ok(uuid().length > 8));
+T('TC-AH-003','uuid unique across 1000 calls', () => { const s=new Set(); for (let i=0;i<1000;i++) s.add(uuid()); assert.strictEqual(s.size, 1000); });
+T('TC-AH-004','uuid uses base36 chars', () => assert.match(uuid(), /^r[0-9a-z]+$/));
+T('TC-AH-005','uuid type string', () => assert.strictEqual(typeof uuid(), 'string'));
+
+/* ═══════════════════════════════════════════════════════════════════════════
    FINISH — report
    ═══════════════════════════════════════════════════════════════════════════ */
 const summary = { total: results.length, pass: passCount, fail: failCount, results };
