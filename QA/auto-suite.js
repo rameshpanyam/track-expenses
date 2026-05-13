@@ -1446,6 +1446,166 @@ T('TC-AH-004','uuid uses base36 chars', () => assert.match(uuid(), /^r[0-9a-z]+$
 T('TC-AH-005','uuid type string', () => assert.strictEqual(typeof uuid(), 'string'));
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   AI. CATEGORY MANAGEMENT  (v25.1)  (TC-AI-001..AI-030)
+   ═══════════════════════════════════════════════════════════════════════════ */
+const _CAT_BUILTINS = [
+  { key:'food' }, { key:'grocery' }, { key:'market' }, { key:'medicine' },
+  { key:'petrol' }, { key:'recharge' }, { key:'water' }, { key:'gifts' }, { key:'other' },
+];
+function isBuiltInCatKey(key, list) { return (list || _CAT_BUILTINS).some(c => c.key === key); }
+function catUsageCount(expenses, key) { return (expenses || []).filter(e => e.category === key).length; }
+function findUnusedCats(customCats, expenses) {
+  return (customCats || []).filter(c => catUsageCount(expenses, c.key) === 0);
+}
+function catDeletePlan(key, customCats, expenses, opts) {
+  opts = opts || {};
+  const reassignTarget = opts.reassignTarget || 'other';
+  const builtIns = opts.builtIns || _CAT_BUILTINS;
+  if (isBuiltInCatKey(key, builtIns)) return { ok:false, reason:'builtin', usedCount:0 };
+  const cat = (customCats || []).find(c => c.key === key);
+  if (!cat) return { ok:false, reason:'not-found', usedCount:0 };
+  const used = catUsageCount(expenses, key);
+  return { ok:true, usedCount:used, canSafeDelete:used===0, requiresReassign:used>0, reassignTarget };
+}
+function customKeyFor(name) { return 'custom_' + name.toLowerCase().replace(/\s+/g, '_'); }
+function reassignPlan(expenses, fromKey, toKey) {
+  return (expenses || []).filter(e => e.category === fromKey).map(e => ({ ...e, category: toKey }));
+}
+
+/* — built-in protection — */
+T('TC-AI-001','built-in food is locked', () => assert.strictEqual(isBuiltInCatKey('food'), true));
+T('TC-AI-002','built-in grocery is locked', () => assert.strictEqual(isBuiltInCatKey('grocery'), true));
+T('TC-AI-003','built-in other is locked', () => assert.strictEqual(isBuiltInCatKey('other'), true));
+T('TC-AI-004','custom_travel is NOT built-in', () => assert.strictEqual(isBuiltInCatKey('custom_travel'), false));
+T('TC-AI-005','unknown key is not built-in', () => assert.strictEqual(isBuiltInCatKey('garbage'), false));
+
+/* — usage count — */
+T('TC-AI-006','usageCount: empty list = 0', () => assert.strictEqual(catUsageCount([], 'food'), 0));
+T('TC-AI-007','usageCount: one match', () => assert.strictEqual(catUsageCount([{category:'food'}], 'food'), 1));
+T('TC-AI-008','usageCount: three matches mixed', () =>
+  assert.strictEqual(catUsageCount(
+    [{category:'food'},{category:'petrol'},{category:'food'},{category:'food'}], 'food'), 3));
+T('TC-AI-009','usageCount: no match returns 0', () =>
+  assert.strictEqual(catUsageCount([{category:'food'},{category:'petrol'}], 'custom_x'), 0));
+T('TC-AI-010','usageCount: null expenses safe', () =>
+  assert.strictEqual(catUsageCount(null, 'food'), 0));
+
+/* — findUnusedCats — */
+T('TC-AI-011','findUnused: none used → all unused', () => {
+  const cats=[{key:'custom_a'},{key:'custom_b'}];
+  assert.strictEqual(findUnusedCats(cats, []).length, 2);
+});
+T('TC-AI-012','findUnused: skip used ones', () => {
+  const cats=[{key:'custom_a'},{key:'custom_b'},{key:'custom_c'}];
+  const exp=[{category:'custom_b'}];
+  const unused=findUnusedCats(cats, exp);
+  assert.strictEqual(unused.length, 2);
+  assert.deepStrictEqual(unused.map(c=>c.key).sort(), ['custom_a','custom_c']);
+});
+T('TC-AI-013','findUnused: empty cats → empty', () =>
+  assert.deepStrictEqual(findUnusedCats([], [{category:'food'}]), []));
+T('TC-AI-014','findUnused: all used → empty', () => {
+  const cats=[{key:'custom_a'},{key:'custom_b'}];
+  const exp=[{category:'custom_a'},{category:'custom_b'}];
+  assert.deepStrictEqual(findUnusedCats(cats, exp), []);
+});
+T('TC-AI-015','findUnused: built-ins ignored (only customs passed)', () => {
+  /* findUnused only inspects the customCats arg, so built-ins never appear */
+  assert.deepStrictEqual(findUnusedCats([], []), []);
+});
+
+/* — catDeletePlan — */
+T('TC-AI-016','deletePlan: built-in blocked', () => {
+  const p=catDeletePlan('food', [], []);
+  assert.strictEqual(p.ok, false); assert.strictEqual(p.reason, 'builtin');
+});
+T('TC-AI-017','deletePlan: not-found custom', () => {
+  const p=catDeletePlan('custom_zzz', [{key:'custom_a'}], []);
+  assert.strictEqual(p.ok, false); assert.strictEqual(p.reason, 'not-found');
+});
+T('TC-AI-018','deletePlan: safe delete when unused', () => {
+  const p=catDeletePlan('custom_travel', [{key:'custom_travel'}], []);
+  assert.strictEqual(p.ok, true);
+  assert.strictEqual(p.canSafeDelete, true);
+  assert.strictEqual(p.usedCount, 0);
+});
+T('TC-AI-019','deletePlan: requires reassign when used', () => {
+  const p=catDeletePlan('custom_travel', [{key:'custom_travel'}],
+    [{category:'custom_travel'},{category:'custom_travel'}]);
+  assert.strictEqual(p.ok, true);
+  assert.strictEqual(p.canSafeDelete, false);
+  assert.strictEqual(p.requiresReassign, true);
+  assert.strictEqual(p.usedCount, 2);
+});
+T('TC-AI-020','deletePlan: reassignTarget defaults to other', () => {
+  const p=catDeletePlan('custom_a', [{key:'custom_a'}], [{category:'custom_a'}]);
+  assert.strictEqual(p.reassignTarget, 'other');
+});
+T('TC-AI-021','deletePlan: custom reassignTarget honored', () => {
+  const p=catDeletePlan('custom_a', [{key:'custom_a'}], [{category:'custom_a'}], { reassignTarget:'misc' });
+  assert.strictEqual(p.reassignTarget, 'misc');
+});
+
+/* — key stability (custom_travel never changes) — */
+T('TC-AI-022','customKey: spaces become underscores', () =>
+  assert.strictEqual(customKeyFor('My Travel'), 'custom_my_travel'));
+T('TC-AI-023','customKey: lowercased', () =>
+  assert.strictEqual(customKeyFor('TRAVEL'), 'custom_travel'));
+T('TC-AI-024','customKey: rename does NOT change key', () => {
+  /* Renaming "Travel" → "Holiday" leaves key 'custom_travel' intact so existing
+     expense rows keep working. The label is what changes, not the key. */
+  const cat={ key:'custom_travel', label:'Travel', icon:'✈️', color:'#26C6DA' };
+  cat.label = 'Holiday';
+  assert.strictEqual(cat.key, 'custom_travel');
+});
+
+/* — reassignPlan (force-delete cascade) — */
+T('TC-AI-025','reassignPlan: zero matches', () =>
+  assert.deepStrictEqual(reassignPlan([{category:'food'}], 'custom_x', 'other'), []));
+T('TC-AI-026','reassignPlan: rewrites category', () => {
+  const out=reassignPlan(
+    [{date:'2026-05-01',category:'custom_x',amount:100},
+     {date:'2026-05-02',category:'food',     amount:50}],
+    'custom_x', 'other');
+  assert.strictEqual(out.length, 1);
+  assert.strictEqual(out[0].category, 'other');
+  assert.strictEqual(out[0].amount, 100);
+});
+T('TC-AI-027','reassignPlan: preserves date/amount/note', () => {
+  const out=reassignPlan(
+    [{date:'2026-01-01',category:'custom_x',amount:50,note:'taxi'}], 'custom_x','other');
+  assert.strictEqual(out[0].date, '2026-01-01');
+  assert.strictEqual(out[0].amount, 50);
+  assert.strictEqual(out[0].note, 'taxi');
+});
+T('TC-AI-028','reassignPlan: handles many rows', () => {
+  const exp=[]; for (let i=0;i<25;i++) exp.push({category:'custom_x', amount:i});
+  const out=reassignPlan(exp,'custom_x','other');
+  assert.strictEqual(out.length, 25);
+  assert.ok(out.every(e => e.category === 'other'));
+});
+
+/* — bulk-cleanup of test categories (the user's stated pain point) — */
+T('TC-AI-029','bulk: deleting all unused leaves only used cats', () => {
+  const cats=[
+    {key:'custom_a'}, /* used */
+    {key:'custom_b'}, /* test (unused) */
+    {key:'custom_c'}, /* test (unused) */
+    {key:'custom_d'}, /* used */
+  ];
+  const exp=[{category:'custom_a'},{category:'custom_d'},{category:'custom_d'}];
+  const unused=findUnusedCats(cats, exp);
+  const remaining=cats.filter(c => !unused.some(u=>u.key===c.key));
+  assert.strictEqual(remaining.length, 2);
+  assert.deepStrictEqual(remaining.map(c=>c.key), ['custom_a','custom_d']);
+});
+T('TC-AI-030','bulk: nothing happens when no unused', () => {
+  const cats=[{key:'custom_a'},{key:'custom_b'}];
+  const exp=[{category:'custom_a'},{category:'custom_b'}];
+  assert.strictEqual(findUnusedCats(cats, exp).length, 0);
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
    FINISH — report
    ═══════════════════════════════════════════════════════════════════════════ */
 const summary = { total: results.length, pass: passCount, fail: failCount, results };

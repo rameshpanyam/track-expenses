@@ -1,6 +1,6 @@
 {
-  "total": 577,
-  "pass": 577,
+  "total": 607,
+  "pass": 607,
   "fail": 0,
   "results": [
     {
@@ -3462,6 +3462,186 @@
     {
       "id": "TC-AH-005",
       "title": "uuid type string",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-001",
+      "title": "built-in food is locked",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-002",
+      "title": "built-in grocery is locked",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-003",
+      "title": "built-in other is locked",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-004",
+      "title": "custom_travel is NOT built-in",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-005",
+      "title": "unknown key is not built-in",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-006",
+      "title": "usageCount: empty list = 0",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-007",
+      "title": "usageCount: one match",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-008",
+      "title": "usageCount: three matches mixed",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-009",
+      "title": "usageCount: no match returns 0",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-010",
+      "title": "usageCount: null expenses safe",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-011",
+      "title": "findUnused: none used → all unused",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-012",
+      "title": "findUnused: skip used ones",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-013",
+      "title": "findUnused: empty cats → empty",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-014",
+      "title": "findUnused: all used → empty",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-015",
+      "title": "findUnused: built-ins ignored (only customs passed)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-016",
+      "title": "deletePlan: built-in blocked",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-017",
+      "title": "deletePlan: not-found custom",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-018",
+      "title": "deletePlan: safe delete when unused",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-019",
+      "title": "deletePlan: requires reassign when used",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-020",
+      "title": "deletePlan: reassignTarget defaults to other",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-021",
+      "title": "deletePlan: custom reassignTarget honored",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-022",
+      "title": "customKey: spaces become underscores",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-023",
+      "title": "customKey: lowercased",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-024",
+      "title": "customKey: rename does NOT change key",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-025",
+      "title": "reassignPlan: zero matches",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-026",
+      "title": "reassignPlan: rewrites category",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-027",
+      "title": "reassignPlan: preserves date/amount/note",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-028",
+      "title": "reassignPlan: handles many rows",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-029",
+      "title": "bulk: deleting all unused leaves only used cats",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-AI-030",
+      "title": "bulk: nothing happens when no unused",
       "status": "PASS",
       "error": null
     }

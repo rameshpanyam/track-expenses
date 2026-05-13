@@ -1522,6 +1522,406 @@
   }
 
   /* ═══════════════════════════════════════════════════════════
+     CATEGORY EDIT / UPDATE / DELETE  (v25.1)
+       - Custom-only: built-in categories are locked
+       - Long-press a cat chip on Add screen → action sheet
+       - Manage screen (Tools → 🗂️ Categories) with usage counts,
+         bulk-select, and one-tap "Delete all unused" for fast
+         test-category cleanup
+       - Deletion: safe (block if used) + force (reassign to "Other")
+       - Keys stay stable across renames (custom_travel never changes)
+     ═══════════════════════════════════════════════════════════ */
+
+  let pendingCatKey = null;
+  let _editCatColor = null;
+  let manageSelected = new Set();
+
+  /* ─── Pure helpers (also exposed for tests) ───────────────── */
+  function isBuiltInCatKey(key, builtIns) {
+    const list = builtIns || (window.CATEGORIES || []);
+    return list.some(c => c.key === key);
+  }
+  function catUsageCount(expenses, key) {
+    return (expenses || []).filter(e => e.category === key).length;
+  }
+  function findUnusedCats(customCats, expenses) {
+    return (customCats || []).filter(c => catUsageCount(expenses, c.key) === 0);
+  }
+  /* Plan describes what a delete would do (used for tests + UI labels) */
+  function catDeletePlan(key, customCats, expenses, opts) {
+    opts = opts || {};
+    const reassignTarget = opts.reassignTarget || 'other';
+    const builtIns = opts.builtIns || (window.CATEGORIES || []);
+    if (isBuiltInCatKey(key, builtIns)) {
+      return { ok: false, reason: 'builtin', usedCount: 0 };
+    }
+    const cat = (customCats || []).find(c => c.key === key);
+    if (!cat) return { ok: false, reason: 'not-found', usedCount: 0 };
+    const used = catUsageCount(expenses, key);
+    return {
+      ok: true,
+      usedCount: used,
+      canSafeDelete: used === 0,
+      requiresReassign: used > 0,
+      reassignTarget,
+    };
+  }
+
+  /* ─── DOM-bound helpers ───────────────────────────────────── */
+  function isBuiltInCat(key) { return isBuiltInCatKey(key); }
+  function expenseCountForCat(key) { return catUsageCount(window.allExpenses, key); }
+
+  /* Wire long-press on custom .cat-btn — built-ins ignored entirely */
+  function attachCatLongPress() {
+    const grid = document.getElementById('cat-grid');
+    if (!grid) return;
+    grid.querySelectorAll('.cat-btn[data-cat]').forEach(btn => {
+      const key = btn.dataset.cat;
+      if (!key || isBuiltInCat(key)) return;
+      if (btn._catLPBound) return;
+      btn._catLPBound = true;
+      let pressTimer = null;
+      let triggered  = false;
+      const start = () => {
+        triggered = false;
+        pressTimer = setTimeout(() => {
+          triggered = true;
+          if (navigator.vibrate) { try { navigator.vibrate(25); } catch (_) {} }
+          openCatActions(key);
+        }, 550);
+      };
+      const cancel = () => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } };
+      btn.addEventListener('touchstart', start, { passive: true });
+      btn.addEventListener('touchend',   cancel);
+      btn.addEventListener('touchcancel',cancel);
+      btn.addEventListener('touchmove',  cancel);
+      btn.addEventListener('mousedown',  start);
+      btn.addEventListener('mouseup',    cancel);
+      btn.addEventListener('mouseleave', cancel);
+      /* Swallow the click that follows a long-press so the cat
+         doesn't also get "selected". */
+      btn.addEventListener('click', (ev) => {
+        if (triggered) { ev.preventDefault(); ev.stopPropagation(); triggered = false; }
+      }, true);
+    });
+  }
+
+  /* ─── Action sheet ────────────────────────────────────────── */
+  function openCatActions(key) {
+    const cat = (window.allCategories ? window.allCategories() : []).find(c => c.key === key);
+    if (!cat) return;
+    pendingCatKey = key;
+    document.getElementById('cat-action-icon').textContent  = cat.icon;
+    document.getElementById('cat-action-label').textContent = cat.label;
+    const cnt = expenseCountForCat(key);
+    document.getElementById('cat-action-usage').textContent =
+      cnt === 0 ? 'Not used yet' : (cnt + ' expense' + (cnt === 1 ? '' : 's'));
+    document.getElementById('cat-action-modal').style.display = 'flex';
+  }
+  function closeCatActions() {
+    document.getElementById('cat-action-modal').style.display = 'none';
+    pendingCatKey = null;
+  }
+  function openCatEditFromAction() {
+    if (!pendingCatKey) return;
+    const k = pendingCatKey; closeCatActions(); openCatEditModal(k);
+  }
+  function openCatDeleteFromAction() {
+    if (!pendingCatKey) return;
+    const k = pendingCatKey; closeCatActions(); openCatDeleteConfirm(k);
+  }
+
+  /* ─── Edit modal ──────────────────────────────────────────── */
+  function openCatEditModal(key) {
+    if (isBuiltInCat(key)) { showToast('Built-in categories cannot be edited', true); return; }
+    const cat = (window.customCategories || []).find(c => c.key === key);
+    if (!cat) { showToast('Category not found', true); return; }
+    pendingCatKey = key;
+    _editCatColor = cat.color;
+    document.getElementById('edit-cat-key').value  = key;
+    document.getElementById('edit-cat-icon').value = cat.icon;
+    document.getElementById('edit-cat-name').value = cat.label;
+    const palette = (window.CAT_COLOR_PALETTE || []);
+    document.getElementById('edit-cat-colors').innerHTML = palette.map(col => `
+      <button type="button" class="cat-color-btn ${col === cat.color ? 'selected' : ''}"
+              style="background:${col}" data-col="${col}" onclick="pickEditCatColor('${col}')"></button>
+    `).join('');
+    document.getElementById('edit-cat-modal').style.display = 'flex';
+  }
+  function pickEditCatColor(col) {
+    _editCatColor = col;
+    document.querySelectorAll('#edit-cat-colors .cat-color-btn').forEach(b => {
+      b.classList.toggle('selected', b.dataset.col === col);
+    });
+  }
+  function closeCatEditModal() {
+    document.getElementById('edit-cat-modal').style.display = 'none';
+    _editCatColor = null;
+  }
+  async function saveCatEdit() {
+    const key  = document.getElementById('edit-cat-key').value;
+    const icon = document.getElementById('edit-cat-icon').value.trim();
+    const name = document.getElementById('edit-cat-name').value.trim();
+    if (!icon || !name) { showToast('Icon and name required', true); return; }
+    if (isBuiltInCat(key)) { showToast('Built-in categories cannot be edited', true); return; }
+    const cat = (window.customCategories || []).find(c => c.key === key);
+    if (!cat) { showToast('Category not found', true); return; }
+    cat.icon  = icon;
+    cat.label = name;
+    cat.color = _editCatColor || cat.color;
+    localStorage.setItem('customCategories', JSON.stringify(window.customCategories));
+    if (typeof window.rebuildCatMap === 'function') window.rebuildCatMap();
+    /* Persist to Sheet */
+    try {
+      await ensureToken();
+      await persistCategoryRow(cat);
+    } catch (e) {
+      console.warn('Cat edit sync failed:', e.message);
+      showToast('Saved locally — will sync on next reload', true);
+    }
+    closeCatEditModal();
+    if (typeof window.buildCatGrid === 'function') { window.buildCatGrid(); }
+    if (typeof window.renderDashboard === 'function' && window.currentView === 'dashboard') window.renderDashboard();
+    if (document.getElementById('manage-cats-modal').style.display === 'flex') renderManageCats();
+    showToast('Updated ✓');
+  }
+
+  /* PUT-update a single Categories row by matching key in column A. */
+  async function persistCategoryRow(cat) {
+    if (!window.spreadsheetId) return;
+    const data = await sheetsRequest('GET', `/${window.spreadsheetId}/values/Categories!A:E`);
+    const rows = data.values || [];
+    let rowIndex = -1;
+    for (let i = 1; i < rows.length; i++) {
+      if ((rows[i][0] || '') === cat.key) { rowIndex = i + 1; break; }
+    }
+    if (rowIndex < 0) {
+      if (typeof window.appendCategoryRow === 'function') {
+        await window.appendCategoryRow(cat);
+      }
+      return;
+    }
+    const createdAt = (rows[rowIndex - 1] && rows[rowIndex - 1][4]) || new Date().toISOString();
+    await sheetsRequest('PUT',
+      `/${window.spreadsheetId}/values/Categories!A${rowIndex}:E${rowIndex}?valueInputOption=RAW`,
+      { values: [[cat.key, cat.label, cat.icon, cat.color, createdAt]] });
+  }
+
+  /* deleteDimension a Categories row by matching key. */
+  async function deleteCategoryRowFromSheet(key) {
+    if (!window.spreadsheetId) return;
+    if (typeof window.ensureCategoryTab === 'function' && (window.categoryGid == null || window.categoryGid < 0)) {
+      await window.ensureCategoryTab();
+    }
+    const data = await sheetsRequest('GET', `/${window.spreadsheetId}/values/Categories!A:E`);
+    const rows = data.values || [];
+    let rowIndex = -1;
+    for (let i = 1; i < rows.length; i++) {
+      if ((rows[i][0] || '') === key) { rowIndex = i + 1; break; }
+    }
+    if (rowIndex < 0) return;
+    await sheetsRequest('POST', `/${window.spreadsheetId}:batchUpdate`, {
+      requests: [{ deleteDimension: {
+        range: { sheetId: window.categoryGid, dimension: 'ROWS',
+                 startIndex: rowIndex - 1, endIndex: rowIndex }
+      }}]
+    });
+  }
+
+  /* ─── Delete confirm ──────────────────────────────────────── */
+  function openCatDeleteConfirm(key) {
+    if (isBuiltInCat(key)) { showToast('Built-in categories cannot be deleted', true); return; }
+    const cat = (window.customCategories || []).find(c => c.key === key);
+    if (!cat) { showToast('Category not found', true); return; }
+    pendingCatKey = key;
+    const cnt = expenseCountForCat(key);
+    document.getElementById('cat-del-icon').textContent  = cat.icon;
+    document.getElementById('cat-del-label').textContent = cat.label;
+    document.getElementById('cat-del-count').textContent =
+      cnt === 0 ? 'Not used yet — safe to delete' :
+      (`Used by ${cnt} expense${cnt === 1 ? '' : 's'}`);
+    document.getElementById('cat-del-explain').textContent =
+      cnt === 0
+        ? 'This category will be removed permanently. This action cannot be undone.'
+        : `If you proceed, those ${cnt} expense${cnt === 1 ? '' : 's'} will be reassigned to "Other" so no data is lost.`;
+    document.getElementById('cat-del-safe-btn').style.display  = cnt === 0 ? 'inline-block' : 'none';
+    const forceBtn = document.getElementById('cat-del-force-btn');
+    forceBtn.style.display = cnt > 0 ? 'inline-block' : 'none';
+    forceBtn.textContent   = cnt > 0 ? `Delete & reassign ${cnt} → Other` : 'Delete';
+    document.getElementById('cat-delete-modal').style.display = 'flex';
+  }
+  function closeCatDeleteConfirm() {
+    document.getElementById('cat-delete-modal').style.display = 'none';
+    pendingCatKey = null;
+  }
+  async function confirmCatDeleteSafe() {
+    const key = pendingCatKey; if (!key) return;
+    if (expenseCountForCat(key) > 0) {
+      showToast('Has expenses — use the reassign option', true); return;
+    }
+    closeCatDeleteConfirm();
+    await performCatDelete(key, /*reassign*/ false);
+  }
+  async function confirmCatDeleteForce() {
+    const key = pendingCatKey; if (!key) return;
+    closeCatDeleteConfirm();
+    await performCatDelete(key, /*reassign*/ true);
+  }
+
+  async function performCatDelete(key, reassign) {
+    if (isBuiltInCat(key)) { showToast('Built-ins are locked', true); return; }
+    try {
+      setLoading('Deleting…');
+      await ensureToken();
+      if (reassign) {
+        const list = (window.allExpenses || []).filter(e => e.category === key);
+        for (const exp of list) {
+          await sheetsRequest('PUT',
+            `/${window.spreadsheetId}/values/Expenses!A${exp.rowIndex}:E${exp.rowIndex}?valueInputOption=RAW`,
+            { values: [[exp.date, 'other', exp.amount, exp.note || '', exp.createdAt || '']] });
+          exp.category = 'other';
+        }
+      }
+      await deleteCategoryRowFromSheet(key);
+      window.customCategories = (window.customCategories || []).filter(c => c.key !== key);
+      localStorage.setItem('customCategories', JSON.stringify(window.customCategories));
+      if (typeof window.rebuildCatMap === 'function') window.rebuildCatMap();
+      clearLoading();
+      showToast(reassign ? 'Deleted + reassigned ✓' : 'Deleted ✓');
+      if (typeof window.buildCatGrid === 'function') window.buildCatGrid();
+      if (typeof window.renderDashboard === 'function' && window.currentView === 'dashboard') window.renderDashboard();
+      if (document.getElementById('manage-cats-modal').style.display === 'flex') renderManageCats();
+    } catch (e) {
+      clearLoading();
+      showToast('Delete failed: ' + e.message, true);
+    }
+  }
+
+  /* ─── Manage screen (bulk cleanup for test categories) ────── */
+  function openManageCatsModal() {
+    manageSelected.clear();
+    renderManageCats();
+    document.getElementById('manage-cats-modal').style.display = 'flex';
+  }
+  function closeManageCatsModal() {
+    document.getElementById('manage-cats-modal').style.display = 'none';
+    manageSelected.clear();
+  }
+  function renderManageCats() {
+    const list = (window.customCategories || []).map(c => ({
+      ...c, uses: expenseCountForCat(c.key),
+    }));
+    /* Sort: unused first (most useful for test-cleanup), then by label */
+    list.sort((a, b) => a.uses - b.uses || a.label.localeCompare(b.label));
+    const unusedCount = list.filter(c => c.uses === 0).length;
+    document.getElementById('manage-cats-unused-count').textContent =
+      unusedCount === 0
+        ? 'No unused custom categories'
+        : `${unusedCount} unused (zero expenses)`;
+    document.getElementById('manage-cats-delete-unused-btn').disabled = unusedCount === 0;
+    const delSelBtn = document.getElementById('manage-cats-delete-selected-btn');
+    delSelBtn.disabled    = manageSelected.size === 0;
+    delSelBtn.textContent = manageSelected.size === 0
+      ? 'Delete selected'
+      : `Delete ${manageSelected.size} selected`;
+    const listEl = document.getElementById('manage-cats-list');
+    if (list.length === 0) {
+      listEl.innerHTML =
+        '<div class="manage-empty">No custom categories yet. Built-ins are locked.<br>Add a custom one via the <b>+</b> on the Add screen.</div>';
+      return;
+    }
+    listEl.innerHTML = list.map(c => `
+      <div class="manage-cat-row ${c.uses === 0 ? 'manage-cat-unused' : ''}">
+        <label class="manage-cat-check">
+          <input type="checkbox" data-key="${c.key}"
+                 ${manageSelected.has(c.key) ? 'checked' : ''}
+                 onchange="toggleManageCat('${c.key}', this.checked)">
+        </label>
+        <div class="manage-cat-icon" style="background:${c.color}22;color:${c.color}">${c.icon}</div>
+        <div class="manage-cat-meta">
+          <div class="manage-cat-name">${escapeHTML(c.label)}</div>
+          <div class="manage-cat-uses ${c.uses === 0 ? 'zero' : ''}">
+            ${c.uses === 0 ? '· Not used' : `· ${c.uses} use${c.uses === 1 ? '' : 's'}`}
+          </div>
+        </div>
+        <button class="manage-cat-edit" onclick="openCatEditModal('${c.key}')" title="Edit">✏️</button>
+      </div>
+    `).join('');
+  }
+  function toggleManageCat(key, on) {
+    if (on) manageSelected.add(key); else manageSelected.delete(key);
+    renderManageCats();
+  }
+  async function deleteAllUnusedCats() {
+    const unused = (window.customCategories || []).filter(c => expenseCountForCat(c.key) === 0);
+    if (unused.length === 0) { showToast('No unused custom categories', true); return; }
+    if (!confirm(`Delete ${unused.length} unused custom categor${unused.length === 1 ? 'y' : 'ies'}?\n\nThis can't be undone.`)) return;
+    setLoading('Cleaning up…');
+    try { await ensureToken(); } catch (_) {}
+    let removed = 0;
+    for (const c of unused) {
+      try {
+        await deleteCategoryRowFromSheet(c.key);
+        window.customCategories = (window.customCategories || []).filter(x => x.key !== c.key);
+        removed++;
+      } catch (e) { console.warn('Skip', c.key, e.message); }
+    }
+    localStorage.setItem('customCategories', JSON.stringify(window.customCategories));
+    if (typeof window.rebuildCatMap === 'function') window.rebuildCatMap();
+    clearLoading();
+    showToast(`Removed ${removed} unused categor${removed === 1 ? 'y' : 'ies'} ✓`);
+    if (typeof window.buildCatGrid === 'function') window.buildCatGrid();
+    if (typeof window.renderDashboard === 'function' && window.currentView === 'dashboard') window.renderDashboard();
+    renderManageCats();
+  }
+  async function deleteSelectedCats() {
+    if (manageSelected.size === 0) { showToast('Nothing selected', true); return; }
+    const keys = Array.from(manageSelected);
+    const used = keys.filter(k => expenseCountForCat(k) > 0);
+    let reassign = false;
+    if (used.length > 0) {
+      const totalExps = used.reduce((s, k) => s + expenseCountForCat(k), 0);
+      reassign = confirm(
+        `${used.length} of the selected categor${used.length === 1 ? 'y has' : 'ies have'} ${totalExps} expense${totalExps === 1 ? '' : 's'}.\n\n` +
+        `Click OK to reassign them to "Other" and delete.\nClick Cancel to skip those and delete only the unused ones.`
+      );
+    }
+    setLoading('Deleting…');
+    try { await ensureToken(); } catch (_) {}
+    let removed = 0, skipped = 0;
+    for (const key of keys) {
+      const cnt = expenseCountForCat(key);
+      if (cnt > 0 && !reassign) { skipped++; continue; }
+      try {
+        if (cnt > 0 && reassign) {
+          const list = (window.allExpenses || []).filter(e => e.category === key);
+          for (const exp of list) {
+            await sheetsRequest('PUT',
+              `/${window.spreadsheetId}/values/Expenses!A${exp.rowIndex}:E${exp.rowIndex}?valueInputOption=RAW`,
+              { values: [[exp.date, 'other', exp.amount, exp.note || '', exp.createdAt || '']] });
+            exp.category = 'other';
+          }
+        }
+        await deleteCategoryRowFromSheet(key);
+        window.customCategories = (window.customCategories || []).filter(x => x.key !== key);
+        removed++;
+      } catch (e) { console.warn('Skip', key, e.message); skipped++; }
+    }
+    manageSelected.clear();
+    localStorage.setItem('customCategories', JSON.stringify(window.customCategories));
+    if (typeof window.rebuildCatMap === 'function') window.rebuildCatMap();
+    clearLoading();
+    showToast(
+      skipped > 0
+        ? `Removed ${removed}, skipped ${skipped} (still used)`
+        : `Removed ${removed} ✓`
+    );
+    if (typeof window.buildCatGrid === 'function') window.buildCatGrid();
+    if (typeof window.renderDashboard === 'function' && window.currentView === 'dashboard') window.renderDashboard();
+    renderManageCats();
+  }
+
+  /* ═══════════════════════════════════════════════════════════
      PATCH EXISTING FUNCTIONS
      ═══════════════════════════════════════════════════════════ */
   function patchAll() {
@@ -1562,16 +1962,25 @@
       };
     }
 
-    /* ── 3. Patch renderDashboard to also render Today hero, forecast,
-                                    sparklines, heatmap ── */
+    /* ── 3. Patch renderDashboard to also render forecast, sparklines, heatmap.
+                Today's Spend Hero moved to Insights tab in v25.2 ── */
     if (typeof window.renderDashboard === 'function' && !window._origRenderDashboard) {
       window._origRenderDashboard = window.renderDashboard;
       window.renderDashboard = function () {
         window._origRenderDashboard.apply(this, arguments);
-        renderTodayHero();
         renderForecast();
         renderSparklines();
         renderHeatmap();
+      };
+    }
+
+    /* ── 3b. Patch renderInsights so Today's Spend Hero updates when the
+                Insights view is opened (v25.2: moved here from Dashboard) ── */
+    if (typeof window.renderInsights === 'function' && !window._origRenderInsights) {
+      window._origRenderInsights = window.renderInsights;
+      window.renderInsights = function () {
+        window._origRenderInsights.apply(this, arguments);
+        try { renderTodayHero(); } catch (e) { console.warn('renderTodayHero:', e.message); }
       };
     }
 
@@ -1585,6 +1994,15 @@
         try { await loadGoals(); }        catch (e) { console.warn('loadGoals failed:', e.message); }
         try { await autoCreditGoals(); }  catch (e) { console.warn('autoCreditGoals failed:', e.message); }
         handleQuickAddURL();
+      };
+    }
+
+    /* ── 4b. Patch buildCatGrid to wire long-press on custom cat chips ── */
+    if (typeof window.buildCatGrid === 'function' && !window._origBuildCatGrid) {
+      window._origBuildCatGrid = window.buildCatGrid;
+      window.buildCatGrid = function () {
+        window._origBuildCatGrid.apply(this, arguments);
+        try { attachCatLongPress(); } catch (e) { console.warn('attachCatLongPress:', e.message); }
       };
     }
 
@@ -1704,9 +2122,19 @@
     openExportModal, closeExportModal, exportAsCSV, exportAsPDF,
     // undo
     undoLastDelete,
+    // category management (v25.1)
+    openCatActions, closeCatActions,
+    openCatEditFromAction, openCatDeleteFromAction,
+    openCatEditModal, closeCatEditModal, pickEditCatColor, saveCatEdit,
+    openCatDeleteConfirm, closeCatDeleteConfirm,
+    confirmCatDeleteSafe, confirmCatDeleteForce,
+    openManageCatsModal, closeManageCatsModal,
+    toggleManageCat, deleteAllUnusedCats, deleteSelectedCats,
+    renderManageCats, attachCatLongPress,
     // for tests
     suggestCategoryFromNote, recordCatHistory, computeForecast,
     AI_KEYWORDS, MERCHANT_HINTS,
+    isBuiltInCatKey, catUsageCount, findUnusedCats, catDeletePlan,
     _features_state: () => ({ allRecurring, allGoals, lastDeletedExpense, voiceAutoSave, whatIfCuts, heatmapMode }),
     _features_setVoiceAutoSave: (v) => { voiceAutoSave = !!v; },
   });

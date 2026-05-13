@@ -18,7 +18,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
   <title>Expense Tracker</title>
-  <link rel="stylesheet" href="style.css?v=25" />
+  <link rel="stylesheet" href="style.css?v=25.2" />
 
   <!-- Chart.js for the Dashboard -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
@@ -181,23 +181,6 @@
   <!-- ── Dashboard View ── -->
   <div id="view-dashboard" class="view">
 
-    <!-- Today's Spend Hero Card (above month hero) -->
-    <div class="today-hero" id="today-hero">
-      <div class="today-hero-row">
-        <div class="today-hero-left">
-          <div class="today-hero-label">Today</div>
-          <div class="today-hero-amount" id="today-hero-amount">₹0</div>
-          <div class="today-hero-sub" id="today-hero-sub">No expenses yet today</div>
-        </div>
-        <div class="today-hero-right">
-          <div class="today-hero-allowance-label">Daily allowance</div>
-          <div class="today-hero-allowance" id="today-hero-allowance">—</div>
-        </div>
-      </div>
-      <div class="today-hero-bar"><div class="today-hero-bar-fill" id="today-hero-bar-fill"></div></div>
-      <div class="today-hero-meta" id="today-hero-meta"></div>
-    </div>
-
     <!-- Search bar (slides down when opened from tools menu) -->
     <div class="search-wrap" id="search-wrap" style="display:none;">
       <span class="search-icon">🔍</span>
@@ -312,6 +295,24 @@
 
   <!-- ── Insights View ── -->
   <div id="view-insights" class="view">
+
+    <!-- Today's Spend Hero (moved from Dashboard in v25.2) -->
+    <div class="today-hero" id="today-hero">
+      <div class="today-hero-row">
+        <div class="today-hero-left">
+          <div class="today-hero-label">Today</div>
+          <div class="today-hero-amount" id="today-hero-amount">₹0</div>
+          <div class="today-hero-sub" id="today-hero-sub">No expenses yet today</div>
+        </div>
+        <div class="today-hero-right">
+          <div class="today-hero-allowance-label">Daily allowance</div>
+          <div class="today-hero-allowance" id="today-hero-allowance">—</div>
+        </div>
+      </div>
+      <div class="today-hero-bar"><div class="today-hero-bar-fill" id="today-hero-bar-fill"></div></div>
+      <div class="today-hero-meta" id="today-hero-meta"></div>
+    </div>
+
     <p class="dash-section-title" style="margin-top:0;">Monthly Verdict</p>
     <p class="insights-tagline">Tap any month to jump to its dashboard.</p>
     <div class="verdict-strip" id="verdict-strip"></div>
@@ -394,7 +395,7 @@
       <span class="nav-icon">📊</span><span>Dashboard</span>
     </button>
     <button id="nav-insights" class="nav-btn" onclick="switchView('insights')">
-      <span class="nav-icon">💡</span><span>Insights</span>
+      <span class="nav-icon">🦉</span><span>Insights</span>
     </button>
   </nav>
 
@@ -501,9 +502,107 @@
       <button class="tool-item" onclick="closeToolsMenu(); openExportModal();">
         <span class="tool-icon">📤</span><span class="tool-label">Export</span>
       </button>
+      <button class="tool-item" onclick="closeToolsMenu(); openManageCatsModal();">
+        <span class="tool-icon">🗂️</span><span class="tool-label">Categories</span>
+      </button>
     </div>
     <div class="confirm-actions">
       <button class="confirm-cancel" onclick="closeToolsMenu()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     CATEGORY ACTION SHEET (long-press a custom cat chip)
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="cat-action-modal" class="confirm-modal" style="display:none;">
+  <div class="confirm-box cat-action-box">
+    <div class="cat-action-head">
+      <span id="cat-action-icon" class="cat-action-icon">📦</span>
+      <div class="cat-action-meta">
+        <div id="cat-action-label" class="cat-action-label">Category</div>
+        <div id="cat-action-usage" class="cat-action-usage muted">0 expenses</div>
+      </div>
+    </div>
+    <div class="cat-action-buttons">
+      <button class="cat-action-btn" onclick="openCatEditFromAction()">
+        <span>✏️</span><span>Edit</span>
+      </button>
+      <button class="cat-action-btn cat-action-danger" onclick="openCatDeleteFromAction()">
+        <span>🗑️</span><span>Delete</span>
+      </button>
+    </div>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" onclick="closeCatActions()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     EDIT CATEGORY MODAL
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="edit-cat-modal" class="confirm-modal" style="display:none;">
+  <div class="confirm-box add-cat-box">
+    <p class="confirm-msg">Edit Category</p>
+    <p class="confirm-sub">Change the icon, name or colour. Built-ins can't be edited.</p>
+    <input type="hidden" id="edit-cat-key" />
+    <div class="add-cat-fields">
+      <input id="edit-cat-icon" class="add-cat-icon-input" type="text"
+             placeholder="😊" maxlength="4" autocomplete="off" />
+      <input id="edit-cat-name" class="add-cat-name-input" type="text"
+             placeholder="Category name" maxlength="20" autocomplete="off" />
+    </div>
+    <p class="add-cat-color-label">Colour</p>
+    <div id="edit-cat-colors" class="color-picker-grid"></div>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" onclick="closeCatEditModal()">Cancel</button>
+      <button class="confirm-ok" onclick="saveCatEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     DELETE CATEGORY CONFIRM
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="cat-delete-modal" class="confirm-modal" style="display:none;">
+  <div class="confirm-box">
+    <div class="cat-action-head">
+      <span id="cat-del-icon" class="cat-action-icon">📦</span>
+      <div class="cat-action-meta">
+        <div id="cat-del-label" class="cat-action-label">Category</div>
+        <div id="cat-del-count" class="cat-action-usage muted"></div>
+      </div>
+    </div>
+    <p class="confirm-sub" id="cat-del-explain">
+      This category will be removed. Built-in categories are protected and won't be affected.
+    </p>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" onclick="closeCatDeleteConfirm()">Cancel</button>
+      <button class="confirm-ok cat-del-safe-btn" id="cat-del-safe-btn"
+              onclick="confirmCatDeleteSafe()">Delete</button>
+      <button class="confirm-ok cat-del-force-btn" id="cat-del-force-btn"
+              onclick="confirmCatDeleteForce()" style="display:none;">Delete & reassign</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MANAGE CATEGORIES (bulk-cleanup screen)
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="manage-cats-modal" class="confirm-modal" style="display:none;">
+  <div class="confirm-box manage-cats-box">
+    <p class="confirm-msg">🗂️ Manage Categories</p>
+    <p class="confirm-sub">Custom categories with usage counts. Built-ins (food, grocery, petrol…) are locked.</p>
+    <div class="manage-cats-toolbar">
+      <span id="manage-cats-unused-count" class="manage-cats-unused-count muted">0 unused</span>
+      <button id="manage-cats-delete-unused-btn" class="manage-cats-cleanup-btn"
+              onclick="deleteAllUnusedCats()" disabled>🧹 Delete all unused</button>
+    </div>
+    <div id="manage-cats-list" class="manage-cats-list"></div>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" onclick="closeManageCatsModal()">Close</button>
+      <button class="confirm-ok cat-del-force-btn" id="manage-cats-delete-selected-btn"
+              onclick="deleteSelectedCats()" disabled>Delete selected</button>
     </div>
   </div>
 </div>
@@ -676,7 +775,7 @@
 
 <!-- jsPDF library for PDF export (loaded lazily — only when user opens Export) -->
 
-<script src="app.js?v=25"></script>
-<script src="features.js?v=25"></script>
+<script src="app.js?v=25.2"></script>
+<script src="features.js?v=25.2"></script>
 </body>
 </html>
