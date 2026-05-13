@@ -38,7 +38,12 @@ const CATEGORIES = [
   { key: 'other',    icon: '📦', label: 'Other',    color: '#78909C' },
 ];
 /* ── Custom categories (persisted in localStorage) ─────────── */
-let customCategories = JSON.parse(localStorage.getItem('customCategories') || '[]');
+/* IMPORTANT: declared with `var` (not `let`) at script top-level so they
+   become real window.* properties. features.js reads many of these via
+   window.allExpenses / window.viewMonth / window.customCategories etc.
+   A `let` at top level creates a script binding but does NOT attach to
+   window — caused the heatmap to silently render zeros in v25–v25.2. */
+var customCategories = JSON.parse(localStorage.getItem('customCategories') || '[]');
 
 function allCategories() { return [...CATEGORIES, ...customCategories]; }
 
@@ -57,20 +62,22 @@ const CAT_COLOR_PALETTE = [
 let newCatColor = CAT_COLOR_PALETTE[0];
 
 /* ── State ─────────────────────────────────────────────────── */
+/* Cross-script globals: declared as `var` so features.js can read them
+   via window.* (see customCategories note above for the full rationale). */
 let tokenClient   = null;
 let accessToken   = null;
 let tokenExpiry   = 0;
-let spreadsheetId = localStorage.getItem('expenseSheetId') || null;
-let sheetGid      = Number(localStorage.getItem('expenseSheetGid') ?? -1);
-let budgetGid     = Number(localStorage.getItem('budgetSheetGid') ?? -1);
-let categoryGid   = Number(localStorage.getItem('categorySheetGid') ?? -1);
-let allExpenses   = [];
-let allBudgets    = [];          /* { rowIndex, month, year, budget, spent, status, spillover, updatedAt } */
+var spreadsheetId = localStorage.getItem('expenseSheetId') || null;
+var sheetGid      = Number(localStorage.getItem('expenseSheetGid') ?? -1);
+var budgetGid     = Number(localStorage.getItem('budgetSheetGid') ?? -1);
+var categoryGid   = Number(localStorage.getItem('categorySheetGid') ?? -1);
+var allExpenses   = [];
+var allBudgets    = [];          /* { rowIndex, month, year, budget, spent, status, spillover, updatedAt } */
 let lastWrapMonth = localStorage.getItem('lastWrapMonth') || '';   /* yyyy-mm of last shown wrap-up */
-let currentView   = 'add';
-let selectedCat   = null;
-let viewMonth     = new Date(); viewMonth.setDate(1);
-let pendingDeleteRow = null;
+var currentView   = 'add';
+var selectedCat   = null;
+var viewMonth     = new Date(); viewMonth.setDate(1);
+var pendingDeleteRow = null;
 
 /* Chart instances — must destroy before recreating */
 let barChart    = null;
