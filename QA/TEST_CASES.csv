@@ -1,0 +1,389 @@
+ID,Module,Type,Priority,Auto,Title,Status,Notes/Error
+TC-A-001,Date Helpers,Functional/Edge,P0/P1,✅,dateToStr formats Date → yyyy-mm-dd,PASS,
+TC-A-002,Date Helpers,Functional/Edge,P0/P1,✅,dateToStr zero-pads month & day,PASS,
+TC-A-003,Date Helpers,Functional/Edge,P0/P1,✅,dateToStr handles Dec 31,PASS,
+TC-A-004,Date Helpers,Functional/Edge,P0/P1,✅,strToDate parses yyyy-mm-dd → Date,PASS,
+TC-A-005,Date Helpers,Functional/Edge,P0/P1,✅,strToDate round-trips dateToStr,PASS,
+TC-A-006,Date Helpers,Functional/Edge,P0/P1,✅,addDays +1 from May 13,PASS,
+TC-A-007,Date Helpers,Functional/Edge,P0/P1,✅,addDays -1 from May 1 crosses month,PASS,
+TC-A-008,Date Helpers,Functional/Edge,P0/P1,✅,addDays -1 from Jan 1 crosses year,PASS,
+TC-A-009,Date Helpers,Functional/Edge,P0/P1,✅,addDays +365 from Jan 1,PASS,
+TC-A-010,Date Helpers,Functional/Edge,P0/P1,✅,addDays handles leap year Feb,PASS,
+TC-A-011,Date Helpers,Functional/Edge,P0/P1,✅,startOfWeek on Wed gives Mon,PASS,
+TC-A-012,Date Helpers,Functional/Edge,P0/P1,✅,startOfWeek on Mon = same Mon,PASS,
+TC-A-013,Date Helpers,Functional/Edge,P0/P1,✅,startOfWeek on Sun shifts back 6 days,PASS,
+TC-A-014,Date Helpers,Functional/Edge,P0/P1,✅,startOfWeek on Sat = Mon of same week,PASS,
+TC-A-015,Date Helpers,Functional/Edge,P0/P1,✅,todayStr returns frozen today,PASS,
+TC-A-016,Date Helpers,Functional/Edge,P0/P1,✅,ymd same as dateToStr,PASS,
+TC-A-017,Date Helpers,Functional/Edge,P0/P1,✅,fmtDate strips year,PASS,
+TC-A-018,Date Helpers,Functional/Edge,P0/P1,✅,fmtDate handles single-digit day,PASS,
+TC-A-019,Date Helpers,Functional/Edge,P0/P1,✅,fmtFullDate with year,PASS,
+TC-A-020,Date Helpers,Functional/Edge,P0/P1,✅,fmtFullDate without year,PASS,
+TC-B-001,Range Presets,Functional/Edge,P0/P1,✅,"today preset = [today, today]",PASS,
+TC-B-002,Range Presets,Functional/Edge,P0/P1,✅,"yesterday preset = [yesterday, yesterday]",PASS,
+TC-B-003,Range Presets,Functional/Edge,P0/P1,✅,"this-week preset = [Mon, today]",PASS,
+TC-B-004,Range Presets,Functional/Edge,P0/P1,✅,"last-7 preset = [today-6, today]",PASS,
+TC-B-005,Range Presets,Functional/Edge,P0/P1,✅,unknown preset returns null,PASS,
+TC-B-006,Range Presets,Functional/Edge,P0/P1,✅,"this-week on Monday = [Mon, Mon]",PASS,
+TC-B-007,Range Presets,Functional/Edge,P0/P1,✅,this-week on Sunday = previous Mon → Sun,PASS,
+TC-B-008,Range Presets,Functional/Edge,P0/P1,✅,last-7 always spans 7 days,PASS,
+TC-B-009,Range Presets,Functional/Edge,P0/P1,✅,today preset has from===to,PASS,
+TC-B-010,Range Presets,Functional/Edge,P0/P1,✅,yesterday preset has from===to,PASS,
+TC-B-011,Range Presets,Functional/Edge,P0/P1,✅,yesterday is exactly 1 day before today,PASS,
+TC-B-012,Range Presets,Functional/Edge,P0/P1,✅,rangeForPreset is deterministic with frozen clock,PASS,
+TC-C-001,Range Filter,Functional/Boundary,P0/P1,✅,filter today returns 2 rows,PASS,
+TC-C-002,Range Filter,Functional/Boundary,P0/P1,✅,filter yesterday returns 1 row,PASS,
+TC-C-003,Range Filter,Functional/Boundary,P0/P1,✅,filter this-week returns 4 rows,PASS,
+TC-C-004,Range Filter,Functional/Boundary,P0/P1,✅,filter last-7 returns 5 rows,PASS,
+TC-C-005,Range Filter,Functional/Boundary,P0/P1,✅,filter cross-month range,PASS,
+TC-C-006,Range Filter,Functional/Boundary,P0/P1,✅,filter empty range = no entries,PASS,
+TC-C-007,Range Filter,Functional/Boundary,P0/P1,✅,filter excludes empty-date rows,PASS,
+TC-C-008,Range Filter,Functional/Boundary,P0/P1,✅,filter inclusive boundaries,PASS,
+TC-C-009,Range Filter,Functional/Boundary,P0/P1,✅,filter single date with no match,PASS,
+TC-C-010,Range Filter,Functional/Boundary,P0/P1,✅,filter same from/to inclusive,PASS,
+TC-C-011,Range Filter,Functional/Boundary,P0/P1,✅,filter from>to gives 0 rows (safety),PASS,
+TC-C-012,Range Filter,Functional/Boundary,P0/P1,✅,filter today sums to 1200,PASS,
+TC-C-013,Range Filter,Functional/Boundary,P0/P1,✅,filter this-week sums to 3000,PASS,
+TC-C-014,Range Filter,Functional/Boundary,P0/P1,✅,filter last-7 sums to 3150,PASS,
+TC-C-015,Range Filter,Functional/Boundary,P0/P1,✅,filter on empty list returns [],PASS,
+TC-D-001,Parse Spoken Amount,Functional/Edge,P0/P1,✅,"plain ""500"" → 500",PASS,
+TC-D-002,Parse Spoken Amount,Functional/Edge,P0/P1,✅,"""₹500"" → 500",PASS,
+TC-D-003,Parse Spoken Amount,Functional/Edge,P0/P1,✅,"""1,000"" → 1000",PASS,
+TC-D-004,Parse Spoken Amount,Functional/Edge,P0/P1,✅,"""25k"" → 25000",PASS,
+TC-D-005,Parse Spoken Amount,Functional/Edge,P0/P1,✅,"""25 k"" → 25000",PASS,
+TC-D-006,Parse Spoken Amount,Functional/Edge,P0/P1,✅,"""1.5k"" → 1500",PASS,
+TC-D-007,Parse Spoken Amount,Functional/Edge,P0/P1,✅,"""1 lakh"" → 100000",PASS,
+TC-D-008,Parse Spoken Amount,Functional/Edge,P0/P1,✅,"""1.5 lakh"" → 150000",PASS,
+TC-D-009,Parse Spoken Amount,Functional/Edge,P0/P1,✅,"""2 lakhs"" → 200000",PASS,
+TC-D-010,Parse Spoken Amount,Functional/Edge,P0/P1,✅,"""1 lac"" → 100000",PASS,
+TC-D-011,Parse Spoken Amount,Functional/Edge,P0/P1,✅,"""1 crore"" → 10000000",PASS,
+TC-D-012,Parse Spoken Amount,Functional/Edge,P0/P1,✅,"""1.2 crores"" → 12000000",PASS,
+TC-D-013,Parse Spoken Amount,Functional/Edge,P0/P1,✅,"""1 cr"" → 10000000",PASS,
+TC-D-014,Parse Spoken Amount,Functional/Edge,P0/P1,✅,"""fifty thousand"" → 50000",PASS,
+TC-D-015,Parse Spoken Amount,Functional/Edge,P0/P1,✅,"""twenty five thousand"" → 25000",PASS,
+TC-D-016,Parse Spoken Amount,Functional/Edge,P0/P1,✅,"""five hundred"" → 500",PASS,
+TC-D-017,Parse Spoken Amount,Functional/Edge,P0/P1,✅,"""one hundred"" → 100",PASS,
+TC-D-018,Parse Spoken Amount,Functional/Edge,P0/P1,✅,no number → null,PASS,
+TC-D-019,Parse Spoken Amount,Functional/Edge,P0/P1,✅,empty string → null,PASS,
+TC-D-020,Parse Spoken Amount,Functional/Edge,P0/P1,✅,picks largest number,PASS,
+TC-D-021,Parse Spoken Amount,Functional/Edge,P0/P1,✅,"decimal ""123.45"" → 123",PASS,
+TC-D-022,Parse Spoken Amount,Functional/Edge,P0/P1,✅,"""0"" → null (no positive number)",PASS,
+TC-D-023,Parse Spoken Amount,Functional/Edge,P0/P1,✅,"case-insensitive ""LAKH""",PASS,
+TC-D-024,Parse Spoken Amount,Functional/Edge,P0/P1,✅,"mixed comma and decimal ""12,345.67""",PASS,
+TC-D-025,Parse Spoken Amount,Functional/Edge,P0/P1,✅,"very large ""99 crore""",PASS,
+TC-E-001,Parse Spoken Date,Functional/Edge,P0/P1,✅,"""5 may"" → 2026-05-05",PASS,
+TC-E-002,Parse Spoken Date,Functional/Edge,P0/P1,✅,"""may 5"" → 2026-05-05",PASS,
+TC-E-003,Parse Spoken Date,Functional/Edge,P0/P1,✅,"""5th may"" → 2026-05-05",PASS,
+TC-E-004,Parse Spoken Date,Functional/Edge,P0/P1,✅,"""23rd june"" → 2026-06-23",PASS,
+TC-E-005,Parse Spoken Date,Functional/Edge,P0/P1,✅,"""5 may 2025"" → 2025-05-05",PASS,
+TC-E-006,Parse Spoken Date,Functional/Edge,P0/P1,✅,"""may 5 2025"" → 2025-05-05",PASS,
+TC-E-007,Parse Spoken Date,Functional/Edge,P0/P1,✅,"""jan 1"" → 2026-01-01",PASS,
+TC-E-008,Parse Spoken Date,Functional/Edge,P0/P1,✅,"""december 31"" → 2026-12-31",PASS,
+TC-E-009,Parse Spoken Date,Functional/Edge,P0/P1,✅,"""feb 29 2024"" → 2024-02-29 (leap)",PASS,
+TC-E-010,Parse Spoken Date,Functional/Edge,P0/P1,✅,"case insensitive ""MAY 5""",PASS,
+TC-E-011,Parse Spoken Date,Functional/Edge,P0/P1,✅,"invalid month ""smay 5"" → null",PASS,
+TC-E-012,Parse Spoken Date,Functional/Edge,P0/P1,✅,day=0 → null,PASS,
+TC-E-013,Parse Spoken Date,Functional/Edge,P0/P1,✅,day=32 → null,PASS,
+TC-E-014,Parse Spoken Date,Functional/Edge,P0/P1,✅,empty → null,PASS,
+TC-E-015,Parse Spoken Date,Functional/Edge,P0/P1,✅,"""15th august"" → 2026-08-15",PASS,
+TC-F-001,Voice Intent - Budget Set,Voice/Functional,P0/P1,✅,"""set budget 50000""",PASS,
+TC-F-002,Voice Intent - Budget Set,Voice/Functional,P0/P1,✅,"""set my monthly budget to 50000""",PASS,
+TC-F-003,Voice Intent - Budget Set,Voice/Functional,P0/P1,✅,"""budget 50000""",PASS,
+TC-F-004,Voice Intent - Budget Set,Voice/Functional,P0/P1,✅,"""my budget is 50000""",PASS,
+TC-F-005,Voice Intent - Budget Set,Voice/Functional,P0/P1,✅,"""this month budget 50000""",PASS,
+TC-F-006,Voice Intent - Budget Set,Voice/Functional,P0/P1,✅,"""set budget fifty thousand""",PASS,
+TC-F-007,Voice Intent - Budget Set,Voice/Functional,P0/P1,✅,"""set budget 1 lakh""",PASS,
+TC-F-008,Voice Intent - Budget Set,Voice/Functional,P0/P1,✅,"""set budget 25k""",PASS,
+TC-F-009,Voice Intent - Budget Set,Voice/Functional,P0/P1,✅,"""make budget 30000""",PASS,
+TC-F-010,Voice Intent - Budget Set,Voice/Functional,P0/P1,✅,"""update budget to 40000""",PASS,
+TC-F-011,Voice Intent - Budget Set,Voice/Functional,P0/P1,✅,"""change budget at 60000""",PASS,
+TC-F-012,Voice Intent - Budget Set,Voice/Functional,P0/P1,✅,"""monthly budget is 70000""",PASS,
+TC-F-013,Voice Intent - Budget Set,Voice/Functional,P0/P1,✅,"""this month budget is 80000""",PASS,
+TC-F-014,Voice Intent - Budget Set,Voice/Functional,P0/P1,✅,"""budget = 90000""",PASS,
+TC-F-015,Voice Intent - Budget Set,Voice/Functional,P0/P1,✅,"""set budget 1.5 lakh""",PASS,
+TC-G-001,Voice Intent - Budget Query,Voice/Functional,P0/P1,✅,"""budget left?""",PASS,
+TC-G-002,Voice Intent - Budget Query,Voice/Functional,P0/P1,✅,"""how much budget left""",PASS,
+TC-G-003,Voice Intent - Budget Query,Voice/Functional,P0/P1,✅,"""what is my budget""",PASS,
+TC-G-004,Voice Intent - Budget Query,Voice/Functional,P0/P1,✅,"""did i overspend""",PASS,
+TC-G-005,Voice Intent - Budget Query,Voice/Functional,P0/P1,✅,"""did i over spend""",PASS,
+TC-G-006,Voice Intent - Budget Query,Voice/Functional,P0/P1,✅,"""am i over budget""",PASS,
+TC-G-007,Voice Intent - Budget Query,Voice/Functional,P0/P1,✅,"""am i under budget""",PASS,
+TC-G-008,Voice Intent - Budget Query,Voice/Functional,P0/P1,✅,"""good month or bad month""",PASS,
+TC-G-009,Voice Intent - Budget Query,Voice/Functional,P0/P1,✅,"""how is my budget doing""",PASS,
+TC-G-010,Voice Intent - Budget Query,Voice/Functional,P0/P1,✅,"""show me my verdict""",PASS,
+TC-G-011,Voice Intent - Budget Query,Voice/Functional,P0/P1,✅,"""tell me my budget""",PASS,
+TC-G-012,Voice Intent - Budget Query,Voice/Functional,P0/P1,✅,"""budget remaining""",PASS,
+TC-H-001,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"""how much did i spend yesterday""",PASS,
+TC-H-002,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"""what did i spend today""",PASS,
+TC-H-003,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"""show this week""",PASS,
+TC-H-004,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"""current week""",PASS,
+TC-H-005,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"""last 7 days""",PASS,
+TC-H-006,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"""last seven days""",PASS,
+TC-H-007,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"""last week""",PASS,
+TC-H-008,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"""last 30 days""",PASS,
+TC-H-009,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"""last thirty days""",PASS,
+TC-H-010,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"""from may 1 to may 10""",PASS,
+TC-H-011,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"""from may 1 till may 10""",PASS,
+TC-H-012,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"""from may 1 until may 10""",PASS,
+TC-H-013,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"""show me may 5""",PASS,
+TC-H-014,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"""how much on food yesterday""",PASS,
+TC-H-015,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"""how much spent on petrol today""",PASS,
+TC-H-016,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"""how much on grocery this week""",PASS,
+TC-H-017,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"""how many expenses today""",PASS,
+TC-H-018,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"""tell me yesterday""",PASS,
+TC-H-019,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"""total spent yesterday""",PASS,
+TC-H-020,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,expenses for today phrasing,PASS,
+TC-H-021,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"""last 7 days food""",PASS,
+TC-H-022,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"""this week petrol""",PASS,
+TC-H-023,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"""from may 1 to may 10 food""",PASS,
+TC-H-024,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"disambig: ""spent 500 on food yesterday"" is NOT date-query",PASS,
+TC-H-025,Voice Intent - Date Query,Voice/Functional,P0/P1,✅,"disambig: ""yesterday spent 500 food"" is NOT date-query",PASS,
+TC-I-001,Voice - Negatives/Disambig,Negative/Security,P0/P1,✅,random sentence → none,PASS,
+TC-I-002,Voice - Negatives/Disambig,Negative/Security,P0/P1,✅,empty → none,PASS,
+TC-I-003,Voice - Negatives/Disambig,Negative/Security,P0/P1,✅,"only ""yesterday"" with no question → none",PASS,
+TC-I-004,Voice - Negatives/Disambig,Negative/Security,P0/P1,✅,"only ""today"" with no question → none",PASS,
+TC-I-005,Voice - Negatives/Disambig,Negative/Security,P0/P1,✅,"expense-add: ""500 grocery today"" → none",PASS,
+TC-I-006,Voice - Negatives/Disambig,Negative/Security,P0/P1,✅,"expense-add: ""twenty rupees food yesterday"" → none",PASS,
+TC-I-007,Voice - Negatives/Disambig,Negative/Security,P0/P1,✅,"expense-add: ""spent 100 petrol"" → none",PASS,
+TC-I-008,Voice - Negatives/Disambig,Negative/Security,P0/P1,✅,"garbage budget set: ""set budget abc"" → none",PASS,
+TC-I-009,Voice - Negatives/Disambig,Negative/Security,P0/P1,✅,"""budget"" alone → none",PASS,
+TC-I-010,Voice - Negatives/Disambig,Negative/Security,P0/P1,✅,"""set budget"" with no amount → none",PASS,
+TC-I-011,Voice - Negatives/Disambig,Negative/Security,P0/P1,✅,non-English chars handled,PASS,
+TC-I-012,Voice - Negatives/Disambig,Negative/Security,P0/P1,✅,very long noise → none,PASS,
+TC-I-013,Voice - Negatives/Disambig,Negative/Security,P0/P1,✅,"""spent 500 yesterday"" (no cat) is still none b/c no question",PASS,
+TC-I-014,Voice - Negatives/Disambig,Negative/Security,P0/P1,✅,"""yesterday food 500"" → none (expense pattern)",PASS,
+TC-I-015,Voice - Negatives/Disambig,Negative/Security,P0/P1,✅,"SQL-injection-ish ""today'); DROP TABLE"" → none safe",PASS,
+TC-J-001,Voice Date Extraction,Voice/Edge,P0/P1,✅,"""today"" → today",PASS,
+TC-J-002,Voice Date Extraction,Voice/Edge,P0/P1,✅,"""yesterday"" → today-1",PASS,
+TC-J-003,Voice Date Extraction,Voice/Edge,P0/P1,✅,"""day before yesterday"" → today-2",PASS,
+TC-J-004,Voice Date Extraction,Voice/Edge,P0/P1,✅,"""5 may"" → 2026-05-05",PASS,
+TC-J-005,Voice Date Extraction,Voice/Edge,P0/P1,✅,"""may 5"" → 2026-05-05",PASS,
+TC-J-006,Voice Date Extraction,Voice/Edge,P0/P1,✅,"""5th may"" → 2026-05-05",PASS,
+TC-J-007,Voice Date Extraction,Voice/Edge,P0/P1,✅,"""23rd june"" → 2025-06-23 (future → prev year)",PASS,
+TC-J-008,Voice Date Extraction,Voice/Edge,P0/P1,✅,"""may 5 2025"" inline year",PASS,
+TC-J-009,Voice Date Extraction,Voice/Edge,P0/P1,✅,"""in 2025"" explicit year",PASS,
+TC-J-010,Voice Date Extraction,Voice/Edge,P0/P1,✅,no date phrase → null,PASS,
+TC-J-011,Voice Date Extraction,Voice/Edge,P0/P1,✅,future month defaults to last year,PASS,
+TC-J-012,Voice Date Extraction,Voice/Edge,P0/P1,✅,past month stays current year,PASS,
+TC-J-013,Voice Date Extraction,Voice/Edge,P0/P1,✅,strips date from cleaned text,PASS,
+TC-J-014,Voice Date Extraction,Voice/Edge,P0/P1,✅,"""jan 1"" lowercase",PASS,
+TC-J-015,Voice Date Extraction,Voice/Edge,P0/P1,✅,4-digit amount NOT confused with year,PASS,
+TC-J-016,Voice Date Extraction,Voice/Edge,P0/P1,✅,"""5 of june"" handled (→ prev year)",PASS,
+TC-J-017,Voice Date Extraction,Voice/Edge,P0/P1,✅,"""23rd of june"" handled (→ prev year)",PASS,
+TC-J-018,Voice Date Extraction,Voice/Edge,P0/P1,✅,"""june the 23rd"" handled (→ prev year)",PASS,
+TC-J-019,Voice Date Extraction,Voice/Edge,P0/P1,✅,this month on 5,PASS,
+TC-J-020,Voice Date Extraction,Voice/Edge,P0/P1,✅,last month on 5,PASS,
+TC-K-001,Voice Expense Parse,Voice/Functional,P0/P1,✅,"""spent 500 on food today""",PASS,
+TC-K-002,Voice Expense Parse,Voice/Functional,P0/P1,✅,"""500 petrol yesterday""",PASS,
+TC-K-003,Voice Expense Parse,Voice/Functional,P0/P1,✅,"""1000 grocery""",PASS,
+TC-K-004,Voice Expense Parse,Voice/Functional,P0/P1,✅,"note via ""and note is""",PASS,
+TC-K-005,Voice Expense Parse,Voice/Functional,P0/P1,✅,"note via ""note:""",PASS,
+TC-K-006,Voice Expense Parse,Voice/Functional,P0/P1,✅,"note via ""for X""",PASS,
+TC-K-007,Voice Expense Parse,Voice/Functional,P0/P1,✅,note via dash separator,PASS,
+TC-K-008,Voice Expense Parse,Voice/Functional,P0/P1,✅,date strips before amount detection,PASS,
+TC-K-009,Voice Expense Parse,Voice/Functional,P0/P1,✅,"keyword ""biryani"" → food",PASS,
+TC-K-010,Voice Expense Parse,Voice/Functional,P0/P1,✅,"keyword ""zepto"" → grocery",PASS,
+TC-K-011,Voice Expense Parse,Voice/Functional,P0/P1,✅,"keyword ""diesel"" → petrol",PASS,
+TC-K-012,Voice Expense Parse,Voice/Functional,P0/P1,✅,"keyword ""apollo"" → medicine",PASS,
+TC-K-013,Voice Expense Parse,Voice/Functional,P0/P1,✅,no category → null,PASS,
+TC-K-014,Voice Expense Parse,Voice/Functional,P0/P1,✅,"""for food"" treats food as category, not note",PASS,
+TC-K-015,Voice Expense Parse,Voice/Functional,P0/P1,✅,"word-boundary: ""seafood"" does NOT match food",PASS,
+TC-K-016,Voice Expense Parse,Voice/Functional,P0/P1,✅,date defaults to today,PASS,
+TC-K-017,Voice Expense Parse,Voice/Functional,P0/P1,✅,multi-keyword: petrol+fuel → petrol,PASS,
+TC-K-018,Voice Expense Parse,Voice/Functional,P0/P1,✅,decimal amount,PASS,
+TC-K-019,Voice Expense Parse,Voice/Functional,P0/P1,✅,empty input,PASS,
+TC-K-020,Voice Expense Parse,Voice/Functional,P0/P1,✅,case-insensitive,PASS,
+TC-L-001,Currency/HTML/Format,Security/UI,P0/P1,✅,fmt 500 → ₹500,PASS,
+TC-L-002,Currency/HTML/Format,Security/UI,P0/P1,✅,"fmt 1000 → ₹1,000",PASS,
+TC-L-003,Currency/HTML/Format,Security/UI,P0/P1,✅,"fmt 100000 → ₹1,00,000 (Indian grouping)",PASS,
+TC-L-004,Currency/HTML/Format,Security/UI,P0/P1,✅,fmt 0 → ₹0,PASS,
+TC-L-005,Currency/HTML/Format,Security/UI,P0/P1,✅,fmt negative,PASS,
+TC-L-006,Currency/HTML/Format,Security/UI,P0/P1,✅,fmt rounds decimals,PASS,
+TC-L-007,Currency/HTML/Format,Security/UI,P0/P1,✅,escapeHTML <script>,PASS,
+TC-L-008,Currency/HTML/Format,Security/UI,P0/P1,✅,escapeHTML &,PASS,
+TC-L-009,Currency/HTML/Format,Security/UI,P0/P1,✅,escapeHTML quotes,PASS,
+TC-L-010,Currency/HTML/Format,Security/UI,P0/P1,✅,escapeHTML apostrophe,PASS,
+TC-L-011,Currency/HTML/Format,Security/UI,P0/P1,✅,escapeHTML empty,PASS,
+TC-L-012,Currency/HTML/Format,Security/UI,P0/P1,✅,"fmtDate ""2026-05-13"" → ""13 May""",PASS,
+TC-L-013,Currency/HTML/Format,Security/UI,P0/P1,✅,fmtFullDate Dec 25,PASS,
+TC-L-014,Currency/HTML/Format,Security/UI,P0/P1,✅,fmt 1 crore,PASS,
+TC-L-015,Currency/HTML/Format,Security/UI,P0/P1,✅,escapeHTML handles non-string,PASS,
+TC-M-001,Budget Math,Functional/Boundary,P0/P1,✅,computeSpent for May 2026 sums correctly,PASS,
+TC-M-002,Budget Math,Functional/Boundary,P0/P1,✅,computeSpent for Apr 2026 = 100,PASS,
+TC-M-003,Budget Math,Functional/Boundary,P0/P1,✅,computeSpent for month with no data = 0,PASS,
+TC-M-004,Budget Math,Functional/Boundary,P0/P1,✅,computeSpent for empty list = 0,PASS,
+TC-M-005,Budget Math,Functional/Boundary,P0/P1,✅,computeSpent ignores empty-date rows,PASS,
+TC-M-006,Budget Math,Functional/Boundary,P0/P1,✅,verdict no budget,PASS,
+TC-M-007,Budget Math,Functional/Boundary,P0/P1,✅,verdict good (under),PASS,
+TC-M-008,Budget Math,Functional/Boundary,P0/P1,✅,verdict good (exactly at),PASS,
+TC-M-009,Budget Math,Functional/Boundary,P0/P1,✅,verdict bad (over),PASS,
+TC-M-010,Budget Math,Functional/Boundary,P0/P1,✅,verdict bad with large spillover,PASS,
+TC-M-011,Budget Math,Functional/Boundary,P0/P1,✅,verdict 0 spent under budget = good,PASS,
+TC-M-012,Budget Math,Functional/Boundary,P0/P1,✅,verdict negative budget treated as no-budget,PASS,
+TC-M-013,Budget Math,Functional/Boundary,P0/P1,✅,verdict spillover never negative,PASS,
+TC-M-014,Budget Math,Functional/Boundary,P0/P1,✅,computeSpent boundary first day of month,PASS,
+TC-M-015,Budget Math,Functional/Boundary,P0/P1,✅,computeSpent boundary last day Dec,PASS,
+TC-N-001,Category Aggregation,Functional,P0/P1,✅,"agg today: food=200,petrol=1000",PASS,
+TC-N-002,Category Aggregation,Functional,P0/P1,✅,agg today counts,PASS,
+TC-N-003,Category Aggregation,Functional,P0/P1,✅,agg week food = 200+300+150,PASS,
+TC-N-004,Category Aggregation,Functional,P0/P1,✅,agg week food count = 3,PASS,
+TC-N-005,Category Aggregation,Functional,P0/P1,✅,agg empty range = {},PASS,
+TC-N-006,Category Aggregation,Functional,P0/P1,✅,agg this-week petrol count,PASS,
+TC-N-007,Category Aggregation,Functional,P0/P1,✅,agg this-week grocery total,PASS,
+TC-N-008,Category Aggregation,Functional,P0/P1,✅,agg sum equals range total,PASS,
+TC-N-009,Category Aggregation,Functional,P0/P1,✅,agg ignores empty-date rows,PASS,
+TC-N-010,Category Aggregation,Functional,P0/P1,✅,agg with duplicate categories adds,PASS,
+TC-O-001,Percentage/Donut Math,Functional/Edge,P0/P1,✅,pct 200/1000 = 20,PASS,
+TC-O-002,Percentage/Donut Math,Functional/Edge,P0/P1,✅,pct 0/1000 = 0,PASS,
+TC-O-003,Percentage/Donut Math,Functional/Edge,P0/P1,✅,pct 1000/1000 = 100,PASS,
+TC-O-004,Percentage/Donut Math,Functional/Edge,P0/P1,✅,pct 333/1000 = 33,PASS,
+TC-O-005,Percentage/Donut Math,Functional/Edge,P0/P1,✅,pct guards divide-by-zero,PASS,
+TC-O-006,Percentage/Donut Math,Functional/Edge,P0/P1,✅,pct rounds half up,PASS,
+TC-O-007,Percentage/Donut Math,Functional/Edge,P0/P1,✅,pct very small,PASS,
+TC-O-008,Percentage/Donut Math,Functional/Edge,P0/P1,✅,pct sum may equal 100 (3 cats),PASS,
+TC-P-001,Edge/Leap/DST/Performance,Edge/Performance,P0/P1,✅,leap-year addDays Feb 28 → Feb 29 (2024),PASS,
+TC-P-002,Edge/Leap/DST/Performance,Edge/Performance,P0/P1,✅,non-leap addDays Feb 28 → Mar 1 (2025),PASS,
+TC-P-003,Edge/Leap/DST/Performance,Edge/Performance,P0/P1,✅,addDays across DST (Mar 8 2026 → Mar 9),PASS,
+TC-P-004,Edge/Leap/DST/Performance,Edge/Performance,P0/P1,✅,startOfWeek across month boundary,PASS,
+TC-P-005,Edge/Leap/DST/Performance,Edge/Performance,P0/P1,✅,filter range spanning year boundary,PASS,
+TC-P-006,Edge/Leap/DST/Performance,Edge/Performance,P0/P1,✅,filter range with same start/end on last-of-month,PASS,
+TC-P-007,Edge/Leap/DST/Performance,Edge/Performance,P0/P1,✅,"filter range lexical: ""2026-9-1"" not equal ""2026-09-01""",PASS,
+TC-P-008,Edge/Leap/DST/Performance,Edge/Performance,P0/P1,✅,very large list 10000 entries — perf reasonable,PASS,
+TC-P-009,Edge/Leap/DST/Performance,Edge/Performance,P0/P1,✅,"category match: longest first (""outside food"" beats ""food"")",PASS,
+TC-P-010,Edge/Leap/DST/Performance,Edge/Performance,P0/P1,✅,startOfWeek Sunday Jan 4 2026 → Mon Dec 29 2025,PASS,
+TC-Q-001,Add-Expense UI,Functional/UI,P0,⏳,Open app → Add tab is default,PENDING,Manual — execute on device
+TC-Q-002,Add-Expense UI,Functional/UI,P0,⏳,Tap Food tile,PENDING,Manual — execute on device
+TC-Q-003,Add-Expense UI,Functional/UI,P0,⏳,Enter amount and save,PENDING,Manual — execute on device
+TC-Q-004,Add-Expense UI,Functional/UI,P0,⏳,Save without category,PENDING,Manual — execute on device
+TC-Q-005,Add-Expense UI,Functional/UI,P0,⏳,Save without amount,PENDING,Manual — execute on device
+TC-Q-006,Add-Expense UI,Functional/UI,P1,⏳,Save with amount=0,PENDING,Manual — execute on device
+TC-Q-007,Add-Expense UI,Functional/UI,P1,⏳,Save with negative amount,PENDING,Manual — execute on device
+TC-Q-008,Add-Expense UI,Functional/UI,P2,⏳,Save with very large amount,PENDING,Manual — execute on device
+TC-Q-009,Add-Expense UI,Functional/UI,P2,⏳,Save with decimals,PENDING,Manual — execute on device
+TC-Q-010,Add-Expense UI,Functional/UI,P1,⏳,Save with note,PENDING,Manual — execute on device
+TC-Q-011,Add-Expense UI,Functional/UI,P2,⏳,Save with very long note (500 chars),PENDING,Manual — execute on device
+TC-Q-012,Add-Expense UI,Functional/UI,P2,⏳,Save with emoji in note,PENDING,Manual — execute on device
+TC-Q-013,Add-Expense UI,Functional/UI,P0,⏳,XSS safety: HTML in note escaped,PENDING,Manual — execute on device
+TC-Q-014,Add-Expense UI,Functional/UI,P0,⏳,Change date to yesterday and save,PENDING,Manual — execute on device
+TC-Q-015,Add-Expense UI,Functional/UI,P2,⏳,Date picker future date,PENDING,Manual — execute on device
+TC-Q-016,Add-Expense UI,Functional/UI,P2,⏳,Date picker 5 years ago,PENDING,Manual — execute on device
+TC-Q-017,Add-Expense UI,Functional/UI,P0,⏳,Add custom category — happy path,PENDING,Manual — execute on device
+TC-Q-018,Add-Expense UI,Functional/UI,P1,⏳,Add custom category — empty name,PENDING,Manual — execute on device
+TC-Q-019,Add-Expense UI,Functional/UI,P1,⏳,Add custom category — duplicate name,PENDING,Manual — execute on device
+TC-Q-020,Add-Expense UI,Functional/UI,P2,⏳,Add custom category — emoji-only label,PENDING,Manual — execute on device
+TC-Q-021,Add-Expense UI,Functional/UI,P1,⏳,Tap saved expense to expand,PENDING,Manual — execute on device
+TC-Q-022,Add-Expense UI,Functional/UI,P0,⏳,Delete saved expense — confirm,PENDING,Manual — execute on device
+TC-Q-023,Add-Expense UI,Functional/UI,P1,⏳,Delete saved expense — cancel,PENDING,Manual — execute on device
+TC-Q-024,Add-Expense UI,Functional/UI,P0,⏳,Save offline (no internet),PENDING,Manual — execute on device
+TC-Q-025,Add-Expense UI,Functional/UI,P1,⏳,Spam-tap Add button,PENDING,Manual — execute on device
+TC-R-001,Dashboard/Monthly View,UI/Functional,P0,⏳,Switch to Dashboard tab,PENDING,Manual — execute on device
+TC-R-002,Dashboard/Monthly View,UI/Functional,P0,⏳,Bar chart renders,PENDING,Manual — execute on device
+TC-R-003,Dashboard/Monthly View,UI/Functional,P0,⏳,Donut chart renders,PENDING,Manual — execute on device
+TC-R-004,Dashboard/Monthly View,UI/Functional,P0,⏳,Tap prev month,PENDING,Manual — execute on device
+TC-R-005,Dashboard/Monthly View,UI/Functional,P0,⏳,Tap next month,PENDING,Manual — execute on device
+TC-R-006,Dashboard/Monthly View,UI/Functional,P1,⏳,Navigate to empty month,PENDING,Manual — execute on device
+TC-R-007,Dashboard/Monthly View,UI/Functional,P1,⏳,Year rollover Dec→Jan,PENDING,Manual — execute on device
+TC-R-008,Dashboard/Monthly View,UI/Functional,P1,⏳,Category grouped list expand,PENDING,Manual — execute on device
+TC-R-009,Dashboard/Monthly View,UI/Functional,P1,⏳,Category grouped list collapse,PENDING,Manual — execute on device
+TC-R-010,Dashboard/Monthly View,UI/Functional,P0,⏳,Budget banner shows when set,PENDING,Manual — execute on device
+TC-R-011,Dashboard/Monthly View,UI/Functional,P0,⏳,Budget banner — over budget,PENDING,Manual — execute on device
+TC-R-012,Dashboard/Monthly View,UI/Functional,P1,⏳,Edit budget from banner,PENDING,Manual — execute on device
+TC-R-013,Dashboard/Monthly View,UI/Functional,P1,⏳,Remove budget,PENDING,Manual — execute on device
+TC-R-014,Dashboard/Monthly View,UI/Functional,P1,⏳,Dashboard performance with 500 entries,PENDING,Manual — execute on device
+TC-R-015,Dashboard/Monthly View,UI/Functional,P0,⏳,Dashboard updates after Add,PENDING,Manual — execute on device
+TC-S-001,Insights By Date UI (v22),UI/Functional,P0,⏳,Tap Insights tab,PENDING,Manual — execute on device
+TC-S-002,Insights By Date UI (v22),UI/Functional,P0,⏳,Default chip is Today,PENDING,Manual — execute on device
+TC-S-003,Insights By Date UI (v22),UI/Functional,P0,⏳,Today total matches add-tab total,PENDING,Manual — execute on device
+TC-S-004,Insights By Date UI (v22),UI/Functional,P0,⏳,Today donut chart renders,PENDING,Manual — execute on device
+TC-S-005,Insights By Date UI (v22),UI/Functional,P0,⏳,Today entries list shows correct rows,PENDING,Manual — execute on device
+TC-S-006,Insights By Date UI (v22),UI/Functional,P0,⏳,Tap Yesterday chip,PENDING,Manual — execute on device
+TC-S-007,Insights By Date UI (v22),UI/Functional,P0,⏳,Tap This week chip,PENDING,Manual — execute on device
+TC-S-008,Insights By Date UI (v22),UI/Functional,P0,⏳,Tap Last 7 days chip,PENDING,Manual — execute on device
+TC-S-009,Insights By Date UI (v22),UI/Functional,P0,⏳,Tap Custom chip → picker opens,PENDING,Manual — execute on device
+TC-S-010,Insights By Date UI (v22),UI/Functional,P0,⏳,Custom range — valid Apply,PENDING,Manual — execute on device
+TC-S-011,Insights By Date UI (v22),UI/Functional,P0,⏳,Custom range — From > To,PENDING,Manual — execute on device
+TC-S-012,Insights By Date UI (v22),UI/Functional,P1,⏳,Custom range — empty From,PENDING,Manual — execute on device
+TC-S-013,Insights By Date UI (v22),UI/Functional,P1,⏳,Custom range — From === To,PENDING,Manual — execute on device
+TC-S-014,Insights By Date UI (v22),UI/Functional,P1,⏳,Custom range across year boundary,PENDING,Manual — execute on device
+TC-S-015,Insights By Date UI (v22),UI/Functional,P0,⏳,Empty range shows empty state,PENDING,Manual — execute on device
+TC-S-016,Insights By Date UI (v22),UI/Functional,P1,⏳,Donut center shows total,PENDING,Manual — execute on device
+TC-S-017,Insights By Date UI (v22),UI/Functional,P0,⏳,"Category list shows %, ₹, count",PENDING,Manual — execute on device
+TC-S-018,Insights By Date UI (v22),UI/Functional,P1,⏳,Category list ordered by spend,PENDING,Manual — execute on device
+TC-S-019,Insights By Date UI (v22),UI/Functional,P1,⏳,Inline entries list ordered desc,PENDING,Manual — execute on device
+TC-S-020,Insights By Date UI (v22),UI/Functional,P0,⏳,Reset to today on tab switch,PENDING,Manual — execute on device
+TC-S-021,Insights By Date UI (v22),UI/Functional,P0,⏳,Header label reflects active range,PENDING,Manual — execute on device
+TC-S-022,Insights By Date UI (v22),UI/Functional,P1,⏳,Prev/Next arrows hidden on Insights,PENDING,Manual — execute on device
+TC-S-023,Insights By Date UI (v22),UI/Functional,P2,⏳,Switch chip mid-render,PENDING,Manual — execute on device
+TC-S-024,Insights By Date UI (v22),UI/Functional,P1,⏳,Delete entry inside by-date list,PENDING,Manual — execute on device
+TC-S-025,Insights By Date UI (v22),UI/Functional,P2,⏳,Update budget then view by-date,PENDING,Manual — execute on device
+TC-T-001,Voice UI/TTS,Voice/UI,P0,⏳,Hold-to-speak (Add) happy,PENDING,Manual — execute on device
+TC-T-002,Voice UI/TTS,Voice/UI,P0,⏳,Voice — set budget,PENDING,Manual — execute on device
+TC-T-003,Voice UI/TTS,Voice/UI,P0,⏳,Voice — budget left,PENDING,Manual — execute on device
+TC-T-004,Voice UI/TTS,Voice/UI,P1,⏳,Voice — did i overspend,PENDING,Manual — execute on device
+TC-T-005,Voice UI/TTS,Voice/UI,P0,⏳,Voice — yesterday query (v22),PENDING,Manual — execute on device
+TC-T-006,Voice UI/TTS,Voice/UI,P0,⏳,Voice — last 7 days (v22),PENDING,Manual — execute on device
+TC-T-007,Voice UI/TTS,Voice/UI,P0,⏳,Voice — from-to range (v22),PENDING,Manual — execute on device
+TC-T-008,Voice UI/TTS,Voice/UI,P0,⏳,Voice — category drill (v22),PENDING,Manual — execute on device
+TC-T-009,Voice UI/TTS,Voice/UI,P0,⏳,Voice — disambiguation expense vs query,PENDING,Manual — execute on device
+TC-T-010,Voice UI/TTS,Voice/UI,P1,⏳,Voice — mute toggle,PENDING,Manual — execute on device
+TC-T-011,Voice UI/TTS,Voice/UI,P0,⏳,Voice — mic permission denied,PENDING,Manual — execute on device
+TC-T-012,Voice UI/TTS,Voice/UI,P1,⏳,Voice — unsupported browser,PENDING,Manual — execute on device
+TC-T-013,Voice UI/TTS,Voice/UI,P1,⏳,Voice — gibberish input,PENDING,Manual — execute on device
+TC-T-014,Voice UI/TTS,Voice/UI,P2,⏳,Voice — interrupt mid-utterance,PENDING,Manual — execute on device
+TC-T-015,Voice UI/TTS,Voice/UI,P2,⏳,Voice — en-IN voice preference,PENDING,Manual — execute on device
+TC-U-001,PWA/Offline/SW,PWA,P0,⏳,Install PWA prompt Android,PENDING,Manual — execute on device
+TC-U-002,PWA/Offline/SW,PWA,P1,⏳,Install PWA iOS,PENDING,Manual — execute on device
+TC-U-003,PWA/Offline/SW,PWA,P0,⏳,Launch installed PWA,PENDING,Manual — execute on device
+TC-U-004,PWA/Offline/SW,PWA,P0,⏳,Service worker v22 installs,PENDING,Manual — execute on device
+TC-U-005,PWA/Offline/SW,PWA,P0,⏳,Old cache deleted on update,PENDING,Manual — execute on device
+TC-U-006,PWA/Offline/SW,PWA,P0,⏳,Offline — already loaded,PENDING,Manual — execute on device
+TC-U-007,PWA/Offline/SW,PWA,P2,⏳,Offline — first-time load,PENDING,Manual — execute on device
+TC-U-008,PWA/Offline/SW,PWA,P1,⏳,Offline → online auto-recover,PENDING,Manual — execute on device
+TC-U-009,PWA/Offline/SW,PWA,P1,⏳,App update propagates,PENDING,Manual — execute on device
+TC-U-010,PWA/Offline/SW,PWA,P1,⏳,manifest.json icons load,PENDING,Manual — execute on device
+TC-U-011,PWA/Offline/SW,PWA,P2,⏳,Splash screen on launch,PENDING,Manual — execute on device
+TC-U-012,PWA/Offline/SW,PWA,P2,⏳,Service worker scope subpath,PENDING,Manual — execute on device
+TC-V-001,Persistence/Multi-tab/Recovery,Persistence/Recovery,P0,⏳,Reload preserves sheet selection,PENDING,Manual — execute on device
+TC-V-002,Persistence/Multi-tab/Recovery,Persistence/Recovery,P0,⏳,Custom categories persist,PENDING,Manual — execute on device
+TC-V-003,Persistence/Multi-tab/Recovery,Persistence/Recovery,P0,⏳,Sign out clears token,PENDING,Manual — execute on device
+TC-V-004,Persistence/Multi-tab/Recovery,Persistence/Recovery,P1,⏳,Two tabs — write in tab 1,PENDING,Manual — execute on device
+TC-V-005,Persistence/Multi-tab/Recovery,Persistence/Recovery,P2,⏳,Two tabs — delete in tab 2,PENDING,Manual — execute on device
+TC-V-006,Persistence/Multi-tab/Recovery,Persistence/Recovery,P1,⏳,localStorage corruption recovery,PENDING,Manual — execute on device
+TC-V-007,Persistence/Multi-tab/Recovery,Persistence/Recovery,P0,⏳,Stale spreadsheet ID recovery,PENDING,Manual — execute on device
+TC-V-008,Persistence/Multi-tab/Recovery,Persistence/Recovery,P0,⏳,Token expiry mid-session,PENDING,Manual — execute on device
+TC-V-009,Persistence/Multi-tab/Recovery,Persistence/Recovery,P2,⏳,Voice mute pref persists,PENDING,Manual — execute on device
+TC-V-010,Persistence/Multi-tab/Recovery,Persistence/Recovery,P0,⏳,Migration v21→v22 keeps data,PENDING,Manual — execute on device
+TC-W-001,Accessibility/Responsive/Theme,A11y/UI,P1,⏳,Tab order via keyboard,PENDING,Manual — execute on device
+TC-W-002,Accessibility/Responsive/Theme,A11y/UI,P1,⏳,Focus rings visible,PENDING,Manual — execute on device
+TC-W-003,Accessibility/Responsive/Theme,A11y/UI,P1,⏳,ARIA labels on icon buttons,PENDING,Manual — execute on device
+TC-W-004,Accessibility/Responsive/Theme,A11y/UI,P1,⏳,Color contrast amount text,PENDING,Manual — execute on device
+TC-W-005,Accessibility/Responsive/Theme,A11y/UI,P1,⏳,prefers-reduced-motion respected,PENDING,Manual — execute on device
+TC-W-006,Accessibility/Responsive/Theme,A11y/UI,P2,⏳,Screen reader reads category,PENDING,Manual — execute on device
+TC-W-007,Accessibility/Responsive/Theme,A11y/UI,P0,⏳,Responsive 320px,PENDING,Manual — execute on device
+TC-W-008,Accessibility/Responsive/Theme,A11y/UI,P1,⏳,Responsive 768px tablet,PENDING,Manual — execute on device
+TC-W-009,Accessibility/Responsive/Theme,A11y/UI,P2,⏳,Responsive 1440px desktop,PENDING,Manual — execute on device
+TC-W-010,Accessibility/Responsive/Theme,A11y/UI,P2,⏳,Portrait orientation lock,PENDING,Manual — execute on device
+TC-W-011,Accessibility/Responsive/Theme,A11y/UI,P2,⏳,Landscape phone layout,PENDING,Manual — execute on device
+TC-W-012,Accessibility/Responsive/Theme,A11y/UI,P0,⏳,Dark theme readable,PENDING,Manual — execute on device
+TC-W-013,Accessibility/Responsive/Theme,A11y/UI,P2,⏳,Empty-state pulse animation,PENDING,Manual — execute on device
+TC-W-014,Accessibility/Responsive/Theme,A11y/UI,P2,⏳,Floating-money background motion,PENDING,Manual — execute on device
+TC-X-001,Security/Negative/Compatibility,Security/Compat,P0,⏳,XSS in note <script>,PENDING,Manual — execute on device
+TC-X-002,Security/Negative/Compatibility,Security/Compat,P0,⏳,XSS in custom category name,PENDING,Manual — execute on device
+TC-X-003,Security/Negative/Compatibility,Security/Compat,P1,⏳,XSS in spreadsheet name,PENDING,Manual — execute on device
+TC-X-004,Security/Negative/Compatibility,Security/Compat,P0,⏳,Inject via voice transcript,PENDING,Manual — execute on device
+TC-X-005,Security/Negative/Compatibility,Security/Compat,P0,⏳,Token never exposed in DOM,PENDING,Manual — execute on device
+TC-X-006,Security/Negative/Compatibility,Security/Compat,P0,⏳,HTTPS only,PENDING,Manual — execute on device
+TC-X-007,Security/Negative/Compatibility,Security/Compat,P0,⏳,OAuth scope limited,PENDING,Manual — execute on device
+TC-X-008,Security/Negative/Compatibility,Security/Compat,P1,⏳,No 3rd-party trackers,PENDING,Manual — execute on device
+TC-X-009,Security/Negative/Compatibility,Security/Compat,P2,⏳,CSP allows only Google + Chart.js,PENDING,Manual — execute on device
+TC-X-010,Security/Negative/Compatibility,Security/Compat,P0,⏳,Sheet API 401 handling,PENDING,Manual — execute on device
+TC-X-011,Security/Negative/Compatibility,Security/Compat,P1,⏳,Sheet API 429 rate limit,PENDING,Manual — execute on device
+TC-X-012,Security/Negative/Compatibility,Security/Compat,P1,⏳,Network timeout,PENDING,Manual — execute on device
+TC-X-013,Security/Negative/Compatibility,Security/Compat,P2,⏳,Concurrent sheet write conflict,PENDING,Manual — execute on device
+TC-X-014,Security/Negative/Compatibility,Security/Compat,P0,⏳,Browser: Chrome Android,PENDING,Manual — execute on device
+TC-X-015,Security/Negative/Compatibility,Security/Compat,P0,⏳,Browser: Safari iOS,PENDING,Manual — execute on device
+TC-X-016,Security/Negative/Compatibility,Security/Compat,P1,⏳,Browser: Firefox Desktop,PENDING,Manual — execute on device
+TC-X-017,Security/Negative/Compatibility,Security/Compat,P2,⏳,Browser: Edge Desktop,PENDING,Manual — execute on device
+TC-X-018,Security/Negative/Compatibility,Security/Compat,P1,⏳,OS: Android 10,PENDING,Manual — execute on device
+TC-X-019,Security/Negative/Compatibility,Security/Compat,P1,⏳,OS: iOS 15+,PENDING,Manual — execute on device
+TC-X-020,Security/Negative/Compatibility,Security/Compat,P1,⏳,Slow 3G simulated,PENDING,Manual — execute on device

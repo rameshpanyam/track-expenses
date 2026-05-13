@@ -19,6 +19,12 @@ const HEADERS          = ['Date', 'Category', 'Amount', 'Note', 'CreatedAt'];
 const BUDGET_TAB_NAME  = 'Budgets';
 const BUDGET_HEADERS   = ['Month', 'Year', 'Budget', 'Spent', 'Status', 'Spillover', 'UpdatedAt'];
 
+/* Categories tab — auto-created on first category save. Persisting custom
+   categories to the Sheet is essential so they survive a fresh sign-in or
+   a Safari "Clear Website Data" wipe (which kills localStorage). */
+const CATEGORY_TAB_NAME = 'Categories';
+const CATEGORY_HEADERS  = ['Key', 'Label', 'Icon', 'Color', 'CreatedAt'];
+
 /* ── Categories ────────────────────────────────────────────── */
 const CATEGORIES = [
   { key: 'food',     icon: '🍽️', label: 'Food',     color: '#FF6B6B' },
@@ -57,6 +63,7 @@ let tokenExpiry   = 0;
 let spreadsheetId = localStorage.getItem('expenseSheetId') || null;
 let sheetGid      = Number(localStorage.getItem('expenseSheetGid') ?? -1);
 let budgetGid     = Number(localStorage.getItem('budgetSheetGid') ?? -1);
+let categoryGid   = Number(localStorage.getItem('categorySheetGid') ?? -1);
 let allExpenses   = [];
 let allBudgets    = [];          /* { rowIndex, month, year, budget, spent, status, spillover, updatedAt } */
 let lastWrapMonth = localStorage.getItem('lastWrapMonth') || '';   /* yyyy-mm of last shown wrap-up */
@@ -441,6 +448,167 @@ async function deleteBudgetRow(year, month) {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   CUSTOM CATEGORIES DATA LAYER
+   - Source of truth: the "Categories" tab on the user's Sheet.
+   - localStorage is a hot cache only; if it's wiped (fresh sign-in,
+     clear-site-data, new device), we re-hydrate from the Sheet.
+   - One-time migration: if Sheet has none but localStorage has some,
+     push them up so they sync across devices going forward.
+   - Orphan recovery: expenses whose category key isn't in our list
+     get a generated placeholder so old rows stay visible.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Deterministic color for an orphan key — so the same key always
+   gets the same color across reloads and devices. */
+function colorForKey(key) {
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = ((hash << 5) - hash) + key.charCodeAt(i);
+    hash |= 0;
+  }
+  return CAT_COLOR_PALETTE[Math.abs(hash) % CAT_COLOR_PALETTE.length];
+}
+
+/* Best-effort label from a key: "custom_outside_food" → "Outside Food" */
+function labelFromKey(key) {
+  return key
+    .replace(/^custom_/, '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, m => m.toUpperCase());
+}
+
+/* Ensure the Categories tab exists; create + write headers if not. */
+async function ensureCategoryTab() {
+  if (!spreadsheetId) return false;
+  const meta = await sheetsRequest('GET', `/${spreadsheetId}?fields=sheets.properties`);
+  const tab  = meta.sheets.find(s => s.properties.title === CATEGORY_TAB_NAME);
+  if (tab) {
+    categoryGid = tab.properties.sheetId;
+    localStorage.setItem('categorySheetGid', categoryGid);
+    const data = await sheetsRequest('GET', `/${spreadsheetId}/values/${CATEGORY_TAB_NAME}!A1:E1`);
+    if (!data.values || data.values.length === 0) {
+      await sheetsRequest('POST',
+        `/${spreadsheetId}/values/${CATEGORY_TAB_NAME}!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+        { values: [CATEGORY_HEADERS] });
+    }
+    return true;
+  }
+  const res = await sheetsRequest('POST', `/${spreadsheetId}:batchUpdate`, {
+    requests: [{ addSheet: { properties: { title: CATEGORY_TAB_NAME } } }]
+  });
+  categoryGid = res.replies[0].addSheet.properties.sheetId;
+  localStorage.setItem('categorySheetGid', categoryGid);
+  await sheetsRequest('POST',
+    `/${spreadsheetId}/values/${CATEGORY_TAB_NAME}!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+    { values: [CATEGORY_HEADERS] });
+  return true;
+}
+
+/* Append a single custom category row to the Sheet. */
+async function appendCategoryRow(cat) {
+  await ensureCategoryTab();
+  await sheetsRequest('POST',
+    `/${spreadsheetId}/values/${CATEGORY_TAB_NAME}!A:E:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+    { values: [[cat.key, cat.label, cat.icon, cat.color, new Date().toISOString()]] });
+}
+
+/* Read all custom categories from the Sheet. Handles three scenarios:
+     1. Sheet has cats → that's the truth, overwrite local cache
+     2. Sheet missing/empty but localStorage has cats → push them up
+     3. Both empty → no-op
+   Local-only cats (added on this device before sync) are also pushed up. */
+async function loadCustomCategories() {
+  if (!spreadsheetId) return;
+  let sheetCats = null;
+  try {
+    const data = await sheetsRequest('GET', `/${spreadsheetId}/values/${CATEGORY_TAB_NAME}!A:E`);
+    sheetCats = (data.values || []).slice(1)
+      .map(r => ({
+        key:   r[0] || '',
+        label: r[1] || '',
+        icon:  r[2] || '📦',
+        color: r[3] || '#78909C',
+      }))
+      .filter(c => c.key && c.label);
+  } catch (e) {
+    /* Tab doesn't exist yet — treat as empty Sheet */
+    sheetCats = null;
+  }
+
+  if (sheetCats === null || sheetCats.length === 0) {
+    /* Sheet has nothing; if localStorage has cats, migrate them up so other
+       devices recover them. We DO NOT clear localStorage here. */
+    if (customCategories.length > 0) {
+      try {
+        await ensureCategoryTab();
+        for (const c of customCategories) await appendCategoryRow(c);
+        console.log('Migrated', customCategories.length, 'local categories to Sheet');
+      } catch (e) {
+        console.warn('Category migrate-up failed:', e.message);
+      }
+    }
+    rebuildCatMap();
+    return;
+  }
+
+  /* Sheet IS the truth — merge any local-only cats up first */
+  const sheetKeys = new Set(sheetCats.map(c => c.key));
+  const localOnly = customCategories.filter(c => !sheetKeys.has(c.key));
+  if (localOnly.length > 0) {
+    try {
+      await ensureCategoryTab();
+      for (const c of localOnly) await appendCategoryRow(c);
+      sheetCats.push(...localOnly);
+      console.log('Synced', localOnly.length, 'local-only categories up to Sheet');
+    } catch (e) {
+      console.warn('Local-only category sync failed:', e.message);
+    }
+  }
+
+  customCategories = sheetCats;
+  localStorage.setItem('customCategories', JSON.stringify(customCategories));
+  rebuildCatMap();
+}
+
+/* For any expense whose category key is unknown (e.g. user wiped localStorage
+   before we had Sheet sync), create a placeholder so the rows still render.
+   Placeholders are persisted to the Sheet so they survive future reloads
+   and other devices pick them up. User can later customize via UI. */
+async function reconcileOrphanCategories() {
+  const known = new Set(allCategories().map(c => c.key));
+  const orphanKeys = new Set();
+  for (const e of allExpenses) {
+    if (e.category && !known.has(e.category)) orphanKeys.add(e.category);
+  }
+  if (orphanKeys.size === 0) return;
+
+  const placeholders = [];
+  for (const key of orphanKeys) {
+    const placeholder = {
+      key,
+      label: labelFromKey(key),
+      icon:  '📦',
+      color: colorForKey(key),
+    };
+    customCategories.push(placeholder);
+    placeholders.push(placeholder);
+  }
+  localStorage.setItem('customCategories', JSON.stringify(customCategories));
+  rebuildCatMap();
+
+  /* Persist to the Sheet best-effort so other devices auto-recover too */
+  try {
+    await ensureCategoryTab();
+    for (const c of placeholders) await appendCategoryRow(c);
+    console.log('Reconciled', placeholders.length, 'orphan categories');
+  } catch (e) {
+    console.warn('Orphan persist failed:', e.message);
+  }
+
+  showToast(`Recovered ${placeholders.length} categor${placeholders.length === 1 ? 'y' : 'ies'} from your data ✓`);
+}
+
+/* ═══════════════════════════════════════════════════════════
    GOOGLE AUTH
    ═══════════════════════════════════════════════════════════ */
 function initGoogleAuth() {
@@ -494,6 +662,8 @@ async function enterMainApp() {
   setLoading('Loading your expenses…');
   try {
     await loadExpenses();
+    await loadCustomCategories();      /* Re-hydrate custom cats from Sheet */
+    await reconcileOrphanCategories(); /* Recover orphan keys from old data */
     await loadBudgets();
     clearLoading();
     buildAddView();
@@ -836,7 +1006,7 @@ function validateNewCat() {
   document.getElementById('add-cat-ok-btn').disabled = !(icon && name);
 }
 
-function saveNewCategory() {
+async function saveNewCategory() {
   const icon  = document.getElementById('new-cat-icon').value.trim();
   const name  = document.getElementById('new-cat-name').value.trim();
   if (!icon || !name) { showToast('Enter both an icon and a name', true); return; }
@@ -855,6 +1025,17 @@ function saveNewCategory() {
   closeAddCatModal();
   buildCatGrid();          /* rebuild cat grid with new button */
   showToast(`"${name}" added ✓`);
+
+  /* Persist to Sheet so it survives re-login / clear-site-data / new device.
+     Best-effort: if the sync fails the cat is still saved locally and will
+     be migrated up the next time loadCustomCategories runs successfully. */
+  try {
+    await ensureToken();
+    await appendCategoryRow(newCat);
+  } catch (e) {
+    console.warn('Category sync to Sheet failed (kept locally):', e.message);
+    showToast('Saved locally — will sync on next reload', true);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════

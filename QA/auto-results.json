@@ -1,0 +1,1519 @@
+{
+  "total": 252,
+  "pass": 252,
+  "fail": 0,
+  "results": [
+    {
+      "id": "TC-A-001",
+      "title": "dateToStr formats Date → yyyy-mm-dd",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-A-002",
+      "title": "dateToStr zero-pads month & day",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-A-003",
+      "title": "dateToStr handles Dec 31",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-A-004",
+      "title": "strToDate parses yyyy-mm-dd → Date",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-A-005",
+      "title": "strToDate round-trips dateToStr",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-A-006",
+      "title": "addDays +1 from May 13",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-A-007",
+      "title": "addDays -1 from May 1 crosses month",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-A-008",
+      "title": "addDays -1 from Jan 1 crosses year",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-A-009",
+      "title": "addDays +365 from Jan 1",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-A-010",
+      "title": "addDays handles leap year Feb",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-A-011",
+      "title": "startOfWeek on Wed gives Mon",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-A-012",
+      "title": "startOfWeek on Mon = same Mon",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-A-013",
+      "title": "startOfWeek on Sun shifts back 6 days",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-A-014",
+      "title": "startOfWeek on Sat = Mon of same week",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-A-015",
+      "title": "todayStr returns frozen today",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-A-016",
+      "title": "ymd same as dateToStr",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-A-017",
+      "title": "fmtDate strips year",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-A-018",
+      "title": "fmtDate handles single-digit day",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-A-019",
+      "title": "fmtFullDate with year",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-A-020",
+      "title": "fmtFullDate without year",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-B-001",
+      "title": "today preset = [today, today]",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-B-002",
+      "title": "yesterday preset = [yesterday, yesterday]",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-B-003",
+      "title": "this-week preset = [Mon, today]",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-B-004",
+      "title": "last-7 preset = [today-6, today]",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-B-005",
+      "title": "unknown preset returns null",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-B-006",
+      "title": "this-week on Monday = [Mon, Mon]",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-B-007",
+      "title": "this-week on Sunday = previous Mon → Sun",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-B-008",
+      "title": "last-7 always spans 7 days",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-B-009",
+      "title": "today preset has from===to",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-B-010",
+      "title": "yesterday preset has from===to",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-B-011",
+      "title": "yesterday is exactly 1 day before today",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-B-012",
+      "title": "rangeForPreset is deterministic with frozen clock",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-C-001",
+      "title": "filter today returns 2 rows",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-C-002",
+      "title": "filter yesterday returns 1 row",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-C-003",
+      "title": "filter this-week returns 4 rows",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-C-004",
+      "title": "filter last-7 returns 5 rows",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-C-005",
+      "title": "filter cross-month range",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-C-006",
+      "title": "filter empty range = no entries",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-C-007",
+      "title": "filter excludes empty-date rows",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-C-008",
+      "title": "filter inclusive boundaries",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-C-009",
+      "title": "filter single date with no match",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-C-010",
+      "title": "filter same from/to inclusive",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-C-011",
+      "title": "filter from>to gives 0 rows (safety)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-C-012",
+      "title": "filter today sums to 1200",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-C-013",
+      "title": "filter this-week sums to 3000",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-C-014",
+      "title": "filter last-7 sums to 3150",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-C-015",
+      "title": "filter on empty list returns []",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-001",
+      "title": "plain \"500\" → 500",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-002",
+      "title": "\"₹500\" → 500",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-003",
+      "title": "\"1,000\" → 1000",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-004",
+      "title": "\"25k\" → 25000",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-005",
+      "title": "\"25 k\" → 25000",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-006",
+      "title": "\"1.5k\" → 1500",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-007",
+      "title": "\"1 lakh\" → 100000",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-008",
+      "title": "\"1.5 lakh\" → 150000",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-009",
+      "title": "\"2 lakhs\" → 200000",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-010",
+      "title": "\"1 lac\" → 100000",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-011",
+      "title": "\"1 crore\" → 10000000",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-012",
+      "title": "\"1.2 crores\" → 12000000",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-013",
+      "title": "\"1 cr\" → 10000000",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-014",
+      "title": "\"fifty thousand\" → 50000",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-015",
+      "title": "\"twenty five thousand\" → 25000",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-016",
+      "title": "\"five hundred\" → 500",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-017",
+      "title": "\"one hundred\" → 100",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-018",
+      "title": "no number → null",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-019",
+      "title": "empty string → null",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-020",
+      "title": "picks largest number",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-021",
+      "title": "decimal \"123.45\" → 123",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-022",
+      "title": "\"0\" → null (no positive number)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-023",
+      "title": "case-insensitive \"LAKH\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-024",
+      "title": "mixed comma and decimal \"12,345.67\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-D-025",
+      "title": "very large \"99 crore\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-E-001",
+      "title": "\"5 may\" → 2026-05-05",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-E-002",
+      "title": "\"may 5\" → 2026-05-05",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-E-003",
+      "title": "\"5th may\" → 2026-05-05",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-E-004",
+      "title": "\"23rd june\" → 2026-06-23",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-E-005",
+      "title": "\"5 may 2025\" → 2025-05-05",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-E-006",
+      "title": "\"may 5 2025\" → 2025-05-05",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-E-007",
+      "title": "\"jan 1\" → 2026-01-01",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-E-008",
+      "title": "\"december 31\" → 2026-12-31",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-E-009",
+      "title": "\"feb 29 2024\" → 2024-02-29 (leap)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-E-010",
+      "title": "case insensitive \"MAY 5\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-E-011",
+      "title": "invalid month \"smay 5\" → null",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-E-012",
+      "title": "day=0 → null",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-E-013",
+      "title": "day=32 → null",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-E-014",
+      "title": "empty → null",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-E-015",
+      "title": "\"15th august\" → 2026-08-15",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-F-001",
+      "title": "\"set budget 50000\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-F-002",
+      "title": "\"set my monthly budget to 50000\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-F-003",
+      "title": "\"budget 50000\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-F-004",
+      "title": "\"my budget is 50000\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-F-005",
+      "title": "\"this month budget 50000\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-F-006",
+      "title": "\"set budget fifty thousand\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-F-007",
+      "title": "\"set budget 1 lakh\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-F-008",
+      "title": "\"set budget 25k\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-F-009",
+      "title": "\"make budget 30000\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-F-010",
+      "title": "\"update budget to 40000\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-F-011",
+      "title": "\"change budget at 60000\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-F-012",
+      "title": "\"monthly budget is 70000\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-F-013",
+      "title": "\"this month budget is 80000\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-F-014",
+      "title": "\"budget = 90000\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-F-015",
+      "title": "\"set budget 1.5 lakh\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-G-001",
+      "title": "\"budget left?\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-G-002",
+      "title": "\"how much budget left\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-G-003",
+      "title": "\"what is my budget\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-G-004",
+      "title": "\"did i overspend\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-G-005",
+      "title": "\"did i over spend\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-G-006",
+      "title": "\"am i over budget\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-G-007",
+      "title": "\"am i under budget\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-G-008",
+      "title": "\"good month or bad month\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-G-009",
+      "title": "\"how is my budget doing\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-G-010",
+      "title": "\"show me my verdict\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-G-011",
+      "title": "\"tell me my budget\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-G-012",
+      "title": "\"budget remaining\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-001",
+      "title": "\"how much did i spend yesterday\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-002",
+      "title": "\"what did i spend today\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-003",
+      "title": "\"show this week\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-004",
+      "title": "\"current week\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-005",
+      "title": "\"last 7 days\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-006",
+      "title": "\"last seven days\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-007",
+      "title": "\"last week\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-008",
+      "title": "\"last 30 days\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-009",
+      "title": "\"last thirty days\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-010",
+      "title": "\"from may 1 to may 10\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-011",
+      "title": "\"from may 1 till may 10\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-012",
+      "title": "\"from may 1 until may 10\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-013",
+      "title": "\"show me may 5\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-014",
+      "title": "\"how much on food yesterday\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-015",
+      "title": "\"how much spent on petrol today\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-016",
+      "title": "\"how much on grocery this week\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-017",
+      "title": "\"how many expenses today\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-018",
+      "title": "\"tell me yesterday\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-019",
+      "title": "\"total spent yesterday\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-020",
+      "title": "expenses for today phrasing",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-021",
+      "title": "\"last 7 days food\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-022",
+      "title": "\"this week petrol\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-023",
+      "title": "\"from may 1 to may 10 food\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-024",
+      "title": "disambig: \"spent 500 on food yesterday\" is NOT date-query",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-H-025",
+      "title": "disambig: \"yesterday spent 500 food\" is NOT date-query",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-I-001",
+      "title": "random sentence → none",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-I-002",
+      "title": "empty → none",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-I-003",
+      "title": "only \"yesterday\" with no question → none",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-I-004",
+      "title": "only \"today\" with no question → none",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-I-005",
+      "title": "expense-add: \"500 grocery today\" → none",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-I-006",
+      "title": "expense-add: \"twenty rupees food yesterday\" → none",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-I-007",
+      "title": "expense-add: \"spent 100 petrol\" → none",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-I-008",
+      "title": "garbage budget set: \"set budget abc\" → none",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-I-009",
+      "title": "\"budget\" alone → none",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-I-010",
+      "title": "\"set budget\" with no amount → none",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-I-011",
+      "title": "non-English chars handled",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-I-012",
+      "title": "very long noise → none",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-I-013",
+      "title": "\"spent 500 yesterday\" (no cat) is still none b/c no question",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-I-014",
+      "title": "\"yesterday food 500\" → none (expense pattern)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-I-015",
+      "title": "SQL-injection-ish \"today'); DROP TABLE\" → none safe",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-J-001",
+      "title": "\"today\" → today",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-J-002",
+      "title": "\"yesterday\" → today-1",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-J-003",
+      "title": "\"day before yesterday\" → today-2",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-J-004",
+      "title": "\"5 may\" → 2026-05-05",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-J-005",
+      "title": "\"may 5\" → 2026-05-05",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-J-006",
+      "title": "\"5th may\" → 2026-05-05",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-J-007",
+      "title": "\"23rd june\" → 2025-06-23 (future → prev year)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-J-008",
+      "title": "\"may 5 2025\" inline year",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-J-009",
+      "title": "\"in 2025\" explicit year",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-J-010",
+      "title": "no date phrase → null",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-J-011",
+      "title": "future month defaults to last year",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-J-012",
+      "title": "past month stays current year",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-J-013",
+      "title": "strips date from cleaned text",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-J-014",
+      "title": "\"jan 1\" lowercase",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-J-015",
+      "title": "4-digit amount NOT confused with year",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-J-016",
+      "title": "\"5 of june\" handled (→ prev year)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-J-017",
+      "title": "\"23rd of june\" handled (→ prev year)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-J-018",
+      "title": "\"june the 23rd\" handled (→ prev year)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-J-019",
+      "title": "this month on 5",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-J-020",
+      "title": "last month on 5",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-K-001",
+      "title": "\"spent 500 on food today\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-K-002",
+      "title": "\"500 petrol yesterday\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-K-003",
+      "title": "\"1000 grocery\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-K-004",
+      "title": "note via \"and note is\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-K-005",
+      "title": "note via \"note:\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-K-006",
+      "title": "note via \"for X\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-K-007",
+      "title": "note via dash separator",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-K-008",
+      "title": "date strips before amount detection",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-K-009",
+      "title": "keyword \"biryani\" → food",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-K-010",
+      "title": "keyword \"zepto\" → grocery",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-K-011",
+      "title": "keyword \"diesel\" → petrol",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-K-012",
+      "title": "keyword \"apollo\" → medicine",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-K-013",
+      "title": "no category → null",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-K-014",
+      "title": "\"for food\" treats food as category, not note",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-K-015",
+      "title": "word-boundary: \"seafood\" does NOT match food",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-K-016",
+      "title": "date defaults to today",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-K-017",
+      "title": "multi-keyword: petrol+fuel → petrol",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-K-018",
+      "title": "decimal amount",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-K-019",
+      "title": "empty input",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-K-020",
+      "title": "case-insensitive",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-L-001",
+      "title": "fmt 500 → ₹500",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-L-002",
+      "title": "fmt 1000 → ₹1,000",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-L-003",
+      "title": "fmt 100000 → ₹1,00,000 (Indian grouping)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-L-004",
+      "title": "fmt 0 → ₹0",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-L-005",
+      "title": "fmt negative",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-L-006",
+      "title": "fmt rounds decimals",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-L-007",
+      "title": "escapeHTML <script>",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-L-008",
+      "title": "escapeHTML &",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-L-009",
+      "title": "escapeHTML quotes",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-L-010",
+      "title": "escapeHTML apostrophe",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-L-011",
+      "title": "escapeHTML empty",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-L-012",
+      "title": "fmtDate \"2026-05-13\" → \"13 May\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-L-013",
+      "title": "fmtFullDate Dec 25",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-L-014",
+      "title": "fmt 1 crore",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-L-015",
+      "title": "escapeHTML handles non-string",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-M-001",
+      "title": "computeSpent for May 2026 sums correctly",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-M-002",
+      "title": "computeSpent for Apr 2026 = 100",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-M-003",
+      "title": "computeSpent for month with no data = 0",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-M-004",
+      "title": "computeSpent for empty list = 0",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-M-005",
+      "title": "computeSpent ignores empty-date rows",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-M-006",
+      "title": "verdict no budget",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-M-007",
+      "title": "verdict good (under)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-M-008",
+      "title": "verdict good (exactly at)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-M-009",
+      "title": "verdict bad (over)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-M-010",
+      "title": "verdict bad with large spillover",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-M-011",
+      "title": "verdict 0 spent under budget = good",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-M-012",
+      "title": "verdict negative budget treated as no-budget",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-M-013",
+      "title": "verdict spillover never negative",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-M-014",
+      "title": "computeSpent boundary first day of month",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-M-015",
+      "title": "computeSpent boundary last day Dec",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-N-001",
+      "title": "agg today: food=200,petrol=1000",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-N-002",
+      "title": "agg today counts",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-N-003",
+      "title": "agg week food = 200+300+150",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-N-004",
+      "title": "agg week food count = 3",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-N-005",
+      "title": "agg empty range = {}",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-N-006",
+      "title": "agg this-week petrol count",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-N-007",
+      "title": "agg this-week grocery total",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-N-008",
+      "title": "agg sum equals range total",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-N-009",
+      "title": "agg ignores empty-date rows",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-N-010",
+      "title": "agg with duplicate categories adds",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-O-001",
+      "title": "pct 200/1000 = 20",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-O-002",
+      "title": "pct 0/1000 = 0",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-O-003",
+      "title": "pct 1000/1000 = 100",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-O-004",
+      "title": "pct 333/1000 = 33",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-O-005",
+      "title": "pct guards divide-by-zero",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-O-006",
+      "title": "pct rounds half up",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-O-007",
+      "title": "pct very small",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-O-008",
+      "title": "pct sum may equal 100 (3 cats)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-P-001",
+      "title": "leap-year addDays Feb 28 → Feb 29 (2024)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-P-002",
+      "title": "non-leap addDays Feb 28 → Mar 1 (2025)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-P-003",
+      "title": "addDays across DST (Mar 8 2026 → Mar 9)",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-P-004",
+      "title": "startOfWeek across month boundary",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-P-005",
+      "title": "filter range spanning year boundary",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-P-006",
+      "title": "filter range with same start/end on last-of-month",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-P-007",
+      "title": "filter range lexical: \"2026-9-1\" not equal \"2026-09-01\"",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-P-008",
+      "title": "very large list 10000 entries — perf reasonable",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-P-009",
+      "title": "category match: longest first (\"outside food\" beats \"food\")",
+      "status": "PASS",
+      "error": null
+    },
+    {
+      "id": "TC-P-010",
+      "title": "startOfWeek Sunday Jan 4 2026 → Mon Dec 29 2025",
+      "status": "PASS",
+      "error": null
+    }
+  ]
+}
