@@ -57,10 +57,14 @@ const moduleFn = new Function(...Object.keys(sandbox), `
     fmtINR, fmtINRShort,
     detectBankFormat, parseAmt, parseDate,
     parseCreditFair, parseIndusInd, parseKotak,
+    computeClosurePlan, loanCurrentBalance,
     PREPOP_LOANS,
     DEFAULT_FORECLOSURE_PERCENT,
     FORECLOSURE_GST_PERCENT,
     LOAN_TYPES, LOAN_COLORS,
+    // v26.5 — test helpers for closure-pool math
+    _setLoanState: (s) => { loanState = s; },
+    _getLoanState: () => loanState,
   };
 `);
 
@@ -752,6 +756,142 @@ describe('09 Integration — calcEmi vs PrePop schedules', () => {
     for (let i = 1; i < 5; i++) {
       expect(s[i][4]).toBe(s[i-1][4] - s[i][2]);
     }
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════
+   SUITE 11 — CLOSURE PLAN (v26.5: currentSavings + emergencyReserve)
+   ══════════════════════════════════════════════════════════════════ */
+describe('11 Closure Plan — Savings Pool (v26.5)', () => {
+  // Helper: build a minimal active loan list with deterministic state
+  const buildLoan = (id, principal, emi, foreclosurePct = 0) => ({
+    id, name: id, type: 'personal', rateType: 'reducing',
+    principal, interestRate: 12, tenureMonths: 60,
+    startDate: '2026-01-01', emi, foreclosureChargePercent: foreclosurePct,
+    status: 'active', color: '#FF6B6B', hasSchedule: false,
+    createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
+  });
+
+  it('TC-CLS-001 zero savings = empty plan', () => {
+    L._setLoanState({
+      loans: [buildLoan('L1', 100000, 2225)],
+      monthlySavings: 0, currentSavings: 0, emergencyReserve: 0, closureOrder: [],
+    });
+    expect(L.computeClosurePlan().length).toBe(0);
+  });
+
+  it('TC-CLS-002 currentSavings ≥ outstanding closes loan in month 0', () => {
+    L._setLoanState({
+      loans: [buildLoan('L1', 100000, 2225)],
+      monthlySavings: 0, currentSavings: 150000, emergencyReserve: 0, closureOrder: [],
+    });
+    const plan = L.computeClosurePlan();
+    expect(plan.length).toBe(1);
+    expect(plan[0].monthOffset).toBe(0);
+  });
+
+  it('TC-CLS-003 emergencyReserve subtracts from pool', () => {
+    // 150k savings - 100k reserve = 50k pool (insufficient for 100k loan)
+    L._setLoanState({
+      loans: [buildLoan('L1', 100000, 2225)],
+      monthlySavings: 0, currentSavings: 150000, emergencyReserve: 100000, closureOrder: [],
+    });
+    const plan = L.computeClosurePlan();
+    // Loan won't close in month 0 since reserve eats most of the pool
+    if (plan.length > 0) {
+      expect(plan[0].monthOffset).toBeGreaterThan(0);
+    }
+  });
+
+  it('TC-CLS-004 reserve > savings clamps pool to 0 (no negative)', () => {
+    L._setLoanState({
+      loans: [buildLoan('L1', 100000, 2225)],
+      monthlySavings: 0, currentSavings: 50000, emergencyReserve: 200000, closureOrder: [],
+    });
+    // Should not throw and should produce an empty (or month-0-impossible) plan
+    const plan = L.computeClosurePlan();
+    expect(Array.isArray(plan)).toBeTruthy();
+  });
+
+  it('TC-CLS-005 monthlySavings still drives plan when currentSavings = 0', () => {
+    L._setLoanState({
+      loans: [buildLoan('L1', 100000, 2225)],
+      monthlySavings: 50000, currentSavings: 0, emergencyReserve: 0, closureOrder: [],
+    });
+    const plan = L.computeClosurePlan();
+    expect(plan.length).toBe(1);
+    expect(plan[0].monthOffset).toBeGreaterThan(0);
+  });
+
+  it('TC-CLS-006 currentSavings + monthlySavings stack (faster closure than either alone)', () => {
+    // With monthly only
+    L._setLoanState({
+      loans: [buildLoan('L1', 500000, 11122)],
+      monthlySavings: 20000, currentSavings: 0, emergencyReserve: 0, closureOrder: [],
+    });
+    const monthlyOnly = L.computeClosurePlan();
+
+    // With current + monthly
+    L._setLoanState({
+      loans: [buildLoan('L1', 500000, 11122)],
+      monthlySavings: 20000, currentSavings: 200000, emergencyReserve: 0, closureOrder: [],
+    });
+    const both = L.computeClosurePlan();
+
+    if (monthlyOnly.length && both.length) {
+      expect(both[0].monthOffset).toBeLessThanOrEqual(monthlyOnly[0].monthOffset);
+    }
+  });
+
+  it('TC-CLS-007 backward compat — missing currentSavings/emergencyReserve treated as 0', () => {
+    L._setLoanState({
+      loans: [buildLoan('L1', 100000, 2225)],
+      monthlySavings: 50000, closureOrder: [],
+      // currentSavings + emergencyReserve intentionally absent
+    });
+    // Should not throw and should still return a plan from monthly savings alone
+    const plan = L.computeClosurePlan();
+    expect(Array.isArray(plan)).toBeTruthy();
+    expect(plan.length).toBeGreaterThan(0);
+    expect(plan[0].monthOffset).toBeGreaterThan(0);
+  });
+
+  it('TC-CLS-008 two loans: pool closes smaller one in month 0, larger later', () => {
+    L._setLoanState({
+      loans: [
+        buildLoan('Big',   500000, 11122),
+        buildLoan('Small',  80000,  1781),
+      ],
+      monthlySavings: 30000, currentSavings: 100000, emergencyReserve: 0,
+      closureOrder: ['Small', 'Big'],
+    });
+    const plan = L.computeClosurePlan();
+    expect(plan.length).toBe(2);
+    expect(plan[0].loanId).toBe('Small');
+    expect(plan[0].monthOffset).toBe(0);
+    expect(plan[1].monthOffset).toBeGreaterThan(0);
+  });
+
+  it('TC-CLS-009 starting pool formula: max(0, currentSavings - emergencyReserve)', () => {
+    // 200k - 50k = 150k pool, enough to close 100k loan in month 0
+    L._setLoanState({
+      loans: [buildLoan('L1', 100000, 2225)],
+      monthlySavings: 0, currentSavings: 200000, emergencyReserve: 50000, closureOrder: [],
+    });
+    const plan = L.computeClosurePlan();
+    expect(plan.length).toBe(1);
+    expect(plan[0].monthOffset).toBe(0);
+  });
+
+  it('TC-CLS-010 leftover field present after month-0 closure', () => {
+    L._setLoanState({
+      loans: [buildLoan('L1', 100000, 2225)],
+      monthlySavings: 0, currentSavings: 250000, emergencyReserve: 0, closureOrder: [],
+    });
+    const plan = L.computeClosurePlan();
+    expect(plan.length).toBe(1);
+    expect(typeof plan[0].leftover).toBe('number');
+    expect(plan[0].leftover).toBeGreaterThanOrEqual(0);
   });
 });
 

@@ -33,6 +33,9 @@ const LOANS_HEADERS    = ['ID','Name','Type','RateType','Principal','InterestRat
                           'ClosedAmount','Color','HasSchedule','CreatedAt','UpdatedAt'];
 const SCH_TAB_NAME     = 'Loan_Schedule';
 const SCH_HEADERS      = ['LoanID','LoanName','InstNo','Date','EMI','Principal','Interest','Balance'];
+// v26.5 — Loans_Meta sheet stores closure-planning savings inputs (single row).
+const META_TAB_NAME    = 'Loans_Meta';
+const META_HEADERS     = ['Key','Value','UpdatedAt'];
 
 const LOAN_TYPES = [
   { key: 'personal',    icon: '💼', label: 'Personal Loan' },
@@ -66,10 +69,14 @@ function loadLoanState() {
   try {
     const raw = localStorage.getItem(LOAN_STORAGE_KEY);
     loanState = raw ? JSON.parse(raw)
-                    : { loans: [], monthlySavings: 0, targetDate: null, closureOrder: [] };
+                    : { loans: [], monthlySavings: 0, currentSavings: 0, emergencyReserve: 0,
+                        targetDate: null, closureOrder: [] };
     // Forward-compat backfill
     if (!loanState.loans)          loanState.loans = [];
-    if (loanState.monthlySavings == null) loanState.monthlySavings = 0;
+    if (loanState.monthlySavings   == null) loanState.monthlySavings   = 0;
+    // v26.5 — Closure planning: lump-sum pool + protected reserve.
+    if (loanState.currentSavings   == null) loanState.currentSavings   = 0;
+    if (loanState.emergencyReserve == null) loanState.emergencyReserve = 0;
     if (!loanState.closureOrder)   loanState.closureOrder = [];
     loanState.loans.forEach(l => {
       if (l.foreclosureChargePercent == null) l.foreclosureChargePercent = DEFAULT_FORECLOSURE_PERCENT;
@@ -83,7 +90,8 @@ function loadLoanState() {
     loanSchedules = rawSch ? JSON.parse(rawSch) : {};
   } catch (e) {
     console.warn('loadLoanState error', e);
-    loanState     = { loans: [], monthlySavings: 0, targetDate: null, closureOrder: [] };
+    loanState     = { loans: [], monthlySavings: 0, currentSavings: 0, emergencyReserve: 0,
+                      targetDate: null, closureOrder: [] };
     loanSchedules = {};
   }
 }
@@ -97,6 +105,7 @@ function saveLoanState() {
   }
   // Fire-and-forget sheet sync (non-blocking — UI stays instant)
   syncLoansToSheet().catch(e => console.warn('Loan sheet sync failed:', e.message));
+  syncLoanMetaToSheet().catch(e => console.warn('Loan meta sync failed:', e.message));
 }
 
 function saveLoanSchedule(loanId, rows) {
@@ -187,6 +196,30 @@ async function syncLoansToSheet() {
     await window.sheetsRequest('POST',
       `/${spreadsheetId}/values/${LOANS_TAB_NAME}!A${clearStart}:R${clearStart + 100}:clear`, null);
   }
+}
+
+/** v26.5 — Sync the 3 savings inputs to the Loans_Meta tab.
+ *  Tab format: { Key, Value, UpdatedAt } — one row per setting. */
+async function syncLoanMetaToSheet() {
+  if (!window.spreadsheetId || !window.accessToken) return;
+  const meta = await window.sheetsRequest('GET', `/${spreadsheetId}?fields=sheets.properties`);
+  const tab  = meta.sheets.find(s => s.properties.title === META_TAB_NAME);
+  if (!tab) {
+    await window.sheetsRequest('POST', `/${spreadsheetId}:batchUpdate`,
+      { requests: [{ addSheet: { properties: { title: META_TAB_NAME } } }] });
+    await window.sheetsRequest('POST',
+      `/${spreadsheetId}/values/${META_TAB_NAME}!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+      { values: [META_HEADERS] });
+  }
+  const now = new Date().toISOString();
+  const rows = [
+    ['currentSavings',   loanState.currentSavings   || 0, now],
+    ['monthlySavings',   loanState.monthlySavings   || 0, now],
+    ['emergencyReserve', loanState.emergencyReserve || 0, now],
+  ];
+  await window.sheetsRequest('PUT',
+    `/${spreadsheetId}/values/${META_TAB_NAME}!A2:C${rows.length + 1}?valueInputOption=RAW`,
+    { values: rows });
 }
 
 async function syncScheduleToSheet(loanId, rows) {
@@ -377,11 +410,16 @@ function computeClosurePlan() {
   }
 
   const savings = loanState.monthlySavings || 0;
+  // v26.5 — Starting pool = current savings - emergency reserve (never negative).
+  // currentSavings is a one-time lump sum the user has available today.
+  // emergencyReserve is held back from the pool as a safety buffer.
+  const currentSavings   = loanState.currentSavings   || 0;
+  const emergencyReserve = loanState.emergencyReserve || 0;
   const out = [];
   const balances = {};
   active.forEach(l => { balances[l.id] = loanCurrentBalance(l); });
   let freedEmi   = 0;
-  let pool       = 0;
+  let pool       = Math.max(0, currentSavings - emergencyReserve);
   const closed   = new Set();
 
   for (let month = 0; month < 120; month++) {
@@ -1013,29 +1051,64 @@ function renderLoanClosure() {
     el.innerHTML = '<div class="loan-empty"><p>No active loans for closure planning.</p></div>'; return;
   }
   const plan = computeClosurePlan();
+  const startingPool = Math.max(0,
+    (loanState.currentSavings || 0) - (loanState.emergencyReserve || 0));
 
   let html = `
-    <div class="loan-closure-input-card">
-      <div class="loan-closure-input-row">
-        <label class="loan-closure-input-lbl">Monthly savings available
-          <span class="loan-closure-input-hint">cash saved each month after EMIs</span>
-        </label>
-        <div class="loan-closure-input-wrap">
-          <span class="loan-closure-input-prefix">₹</span>
-          <input type="number" id="loan-monthly-savings" class="loan-closure-input"
-                 value="${loanState.monthlySavings || ''}" placeholder="50000"
-                 onchange="updateMonthlySavings(this.value)" />
+    <div class="loan-closure-input-card loan-closure-savings-card">
+      <div class="loan-closure-savings-grid">
+        <div class="loan-closure-savings-field">
+          <label class="loan-closure-input-lbl">Current savings
+            <span class="loan-closure-input-hint">lump sum you have today</span>
+          </label>
+          <div class="loan-closure-input-wrap">
+            <span class="loan-closure-input-prefix">₹</span>
+            <input type="number" id="loan-current-savings" class="loan-closure-input"
+                   value="${loanState.currentSavings || ''}" placeholder="200000"
+                   onchange="updateCurrentSavings(this.value)" />
+          </div>
+        </div>
+        <div class="loan-closure-savings-field">
+          <label class="loan-closure-input-lbl">Monthly savings
+            <span class="loan-closure-input-hint">saved each month after EMIs</span>
+          </label>
+          <div class="loan-closure-input-wrap">
+            <span class="loan-closure-input-prefix">₹</span>
+            <input type="number" id="loan-monthly-savings" class="loan-closure-input"
+                   value="${loanState.monthlySavings || ''}" placeholder="50000"
+                   onchange="updateMonthlySavings(this.value)" />
+          </div>
+        </div>
+        <div class="loan-closure-savings-field">
+          <label class="loan-closure-input-lbl">Emergency reserve
+            <span class="loan-closure-input-hint">held back from closure pool</span>
+          </label>
+          <div class="loan-closure-input-wrap">
+            <span class="loan-closure-input-prefix">₹</span>
+            <input type="number" id="loan-emergency-reserve" class="loan-closure-input"
+                   value="${loanState.emergencyReserve || ''}" placeholder="50000"
+                   onchange="updateEmergencyReserve(this.value)" />
+          </div>
         </div>
       </div>
+      ${(loanState.currentSavings || loanState.emergencyReserve) ? `
+      <div class="loan-closure-pool-note">
+        <span>💰 Starting pool:</span>
+        <strong>${fmtINR(startingPool)}</strong>
+        ${loanState.emergencyReserve ? `
+          <span class="loan-closure-pool-sub">(₹${(loanState.currentSavings||0).toLocaleString('en-IN')} − ₹${(loanState.emergencyReserve||0).toLocaleString('en-IN')} reserve)</span>
+        ` : ''}
+      </div>` : ''}
     </div>
   `;
 
-  if (!loanState.monthlySavings) {
-    html += `<div class="loan-closure-empty"><p>👆 Enter monthly savings to see the closure plan.</p>
-      <p class="muted">We cascade savings + freed EMIs to project when each loan closes.</p></div>`;
+  if (!loanState.monthlySavings && !loanState.currentSavings) {
+    html += `<div class="loan-closure-empty"><p>👆 Enter current and/or monthly savings to see the closure plan.</p>
+      <p class="muted">We cascade your starting pool + monthly savings + freed EMIs to project when each loan closes.</p></div>`;
   } else if (!plan.length) {
-    html += `<div class="loan-closure-empty"><p>⚠️ Savings of ${fmtINRShort(loanState.monthlySavings)} aren't enough to close any loan within 10 years.</p>
-      <p class="muted">Increase savings or wait — loans close naturally via EMIs.</p></div>`;
+    const totalIn = (loanState.currentSavings || 0) + (loanState.monthlySavings || 0) * 12;
+    html += `<div class="loan-closure-empty"><p>⚠️ Your savings (${fmtINRShort(totalIn)} in year 1) aren't enough to close any loan within 10 years.</p>
+      <p class="muted">Increase savings, lower the emergency reserve, or wait — loans close naturally via EMIs.</p></div>`;
   } else {
     html += '<p class="loan-section-label">Closure timeline</p><div class="loan-closure-timeline">';
     plan.forEach((step, i) => {
@@ -1043,13 +1116,16 @@ function renderLoanClosure() {
       const t    = loanTypeMeta(loan.type);
       const b    = step.breakdown;
       const isZeroCharge = b.chargePercent === 0;
+      // v26.5 — Step in month 0 can be paid immediately from current savings
+      const isPayNow = step.monthOffset === 0;
       html += `
-        <div class="loan-closure-step">
+        <div class="loan-closure-step ${isPayNow ? 'loan-closure-step-paynow' : ''}">
           <div class="loan-closure-step-num">${i + 1}</div>
           <div class="loan-closure-step-body">
             <div class="loan-closure-step-head">
               <span class="loan-closure-step-icon" style="background:${loan.color}20; color:${loan.color}">${t.icon}</span>
               <span class="loan-closure-step-name">${loan.name}${loan.hasSchedule ? ' 📋' : ''}</span>
+              ${isPayNow ? '<span class="loan-closure-paynow-badge">⚡ Pay now</span>' : ''}
               <span class="loan-closure-step-when">${step.closureMonth}</span>
             </div>
             <div class="loan-closure-breakdown">
@@ -1091,6 +1167,18 @@ function renderLoanClosure() {
 
 function updateMonthlySavings(v) {
   loanState.monthlySavings = Math.max(0, parseInt(v, 10) || 0);
+  saveLoanState();
+  renderLoans();
+}
+// v26.5 — Current savings (lump sum) and emergency reserve setters.
+// Both feed into computeClosurePlan() via starting pool computation.
+function updateCurrentSavings(v) {
+  loanState.currentSavings = Math.max(0, parseInt(v, 10) || 0);
+  saveLoanState();
+  renderLoans();
+}
+function updateEmergencyReserve(v) {
+  loanState.emergencyReserve = Math.max(0, parseInt(v, 10) || 0);
   saveLoanState();
   renderLoans();
 }
@@ -1638,6 +1726,8 @@ window.saveLoanForm          = saveLoanForm;
 window.deleteLoanForm        = deleteLoanForm;
 window.pickLoanColor         = pickLoanColor;
 window.updateMonthlySavings  = updateMonthlySavings;
+window.updateCurrentSavings  = updateCurrentSavings;
+window.updateEmergencyReserve = updateEmergencyReserve;
 window.moveLoanInOrder       = moveLoanInOrder;
 window.markLoanClosed        = markLoanClosed;
 window.runLoanSim            = runLoanSim;

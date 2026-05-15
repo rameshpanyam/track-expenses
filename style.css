@@ -3498,6 +3498,53 @@ html, body {
   margin-bottom: 14px;
   box-shadow: var(--shadow);
 }
+/* v26.5 — Multi-field savings card (Current / Monthly / Reserve) */
+.loan-closure-savings-card { padding: 16px; }
+.loan-closure-savings-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 480px) {
+  .loan-closure-savings-grid { grid-template-columns: 1fr 1fr; }
+  .loan-closure-savings-field:nth-child(3) { grid-column: 1 / -1; }
+}
+.loan-closure-savings-field { display: flex; flex-direction: column; gap: 6px; }
+.loan-closure-savings-field .loan-closure-input-lbl { min-width: 0; }
+.loan-closure-savings-field .loan-closure-input-wrap { min-width: 0; width: 100%; }
+.loan-closure-pool-note {
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #F5F0FF 0%, #EEF6FF 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+  flex-wrap: wrap;
+}
+.loan-closure-pool-note strong { color: #5B3FD6; font-size: 15px; }
+.loan-closure-pool-sub { font-size: 11px; color: var(--muted); }
+/* Pay-now badge on Month-0 closure steps */
+.loan-closure-step-paynow {
+  border: 1.5px solid #FFB300;
+  background: linear-gradient(135deg, #FFFBEA 0%, #FFF5D4 100%);
+}
+.loan-closure-paynow-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #B25C00;
+  background: #FFB300;
+  padding: 3px 7px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-left: 6px;
+}
 .loan-closure-input-row {
   display: flex;
   align-items: center;
