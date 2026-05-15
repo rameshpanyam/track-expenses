@@ -3840,3 +3840,56 @@ html, body {
 /* ── 4-tab bottom nav adjustment ── */
 .bottom-nav .nav-btn { flex: 1; min-width: 0; padding: 8px 4px; }
 .bottom-nav .nav-btn span:last-child { font-size: 11px; }
+
+/* ── v26.1: Foreclosure cost breakdown in closure cards ── */
+.loan-closure-breakdown {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 10px 0 8px;
+}
+.loan-closure-bd-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  padding: 4px 0;
+  color: var(--muted);
+}
+.loan-closure-bd-val {
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.loan-closure-bd-total {
+  border-top: 1px dashed var(--border);
+  margin-top: 6px;
+  padding-top: 8px;
+  color: var(--text);
+}
+.loan-closure-bd-total .loan-closure-bd-val {
+  font-size: 14px;
+}
+
+/* ── v26.1: Edit affordance on loan cards ── */
+.loan-edit-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 4px 0 10px;
+  padding: 8px 12px;
+  background: var(--bg);
+  border-left: 3px solid var(--accent, #7C5CFC);
+  border-radius: 6px;
+  line-height: 1.5;
+}
+.loan-card-edit-icon {
+  margin-left: auto;
+  font-size: 14px;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+.loan-card:hover .loan-card-edit-icon,
+.loan-card:active .loan-card-edit-icon {
+  opacity: 1;
+}

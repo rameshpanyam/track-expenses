@@ -18,7 +18,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
   <title>Expense Tracker</title>
-  <link rel="stylesheet" href="style.css?v=26" />
+  <link rel="stylesheet" href="style.css?v=26.1" />
 
   <!-- Chart.js for the Dashboard -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
@@ -863,6 +863,12 @@
         <span class="loan-form-emi-hint" id="loan-form-emi-hint"></span>
       </label>
 
+      <label class="loan-form-lbl">
+        Foreclosure charge (% of outstanding)
+        <input id="loan-form-foreclosure" type="number" inputmode="decimal" step="0.1" class="bydate-date-input" placeholder="5" />
+        <span class="loan-form-emi-hint">Most Indian banks charge 4–5%. GST (18%) is auto-added on the charge.</span>
+      </label>
+
       <div class="loan-form-lbl">
         Color
         <div id="loan-form-colors" class="loan-form-color-grid"></div>
@@ -877,8 +883,8 @@
   </div>
 </div>
 
-<script src="app.js?v=26"></script>
-<script src="features.js?v=26"></script>
-<script src="loans.js?v=26"></script>
+<script src="app.js?v=26.1"></script>
+<script src="features.js?v=26.1"></script>
+<script src="loans.js?v=26.1"></script>
 </body>
 </html>

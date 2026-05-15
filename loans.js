@@ -1,6 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════
-   LOAN TRACKER MODULE — v26
+   LOAN TRACKER MODULE — v26.1
    Track loans, project monthly outstanding, plan closures, simulate.
+   v26.1: foreclosure charges (per-loan %, 18% GST), visual breakdown,
+          partial-vs-full-foreclosure simulator, edit affordance hint.
    Storage: localStorage (separate from expense Google Sheet, by design).
 
    Data model (window.loanState):
@@ -24,6 +26,10 @@ var loanActiveSubtab = 'overview'; // overview | projection | closure | simulato
 var loanEditingId = null;
 
 const LOAN_STORAGE_KEY = 'expense-tracker.loans.v1';
+
+/* Indian GST on foreclosure charges (18% is standard). */
+const FORECLOSURE_GST_PERCENT = 18;
+const DEFAULT_FORECLOSURE_PERCENT = 5;
 
 const LOAN_TYPES = [
   { key: 'personal',     icon: '💼', label: 'Personal Loan' },
@@ -53,6 +59,10 @@ function loadLoanState() {
     if (!loanState.loans) loanState.loans = [];
     if (loanState.monthlySavings == null) loanState.monthlySavings = 0;
     if (!loanState.closureOrder) loanState.closureOrder = [];
+    // v26.1: backfill foreclosure charge for older loans
+    loanState.loans.forEach(l => {
+      if (l.foreclosureChargePercent == null) l.foreclosureChargePercent = DEFAULT_FORECLOSURE_PERCENT;
+    });
   } catch (e) {
     console.warn('loadLoanState failed', e);
     loanState = { loans: [], monthlySavings: 0, targetDate: null, closureOrder: [] };
@@ -165,6 +175,32 @@ function projectLoan(loan, nMonths) {
   return out;
 }
 
+/* ═══════════ FORECLOSURE COST ═══════════ */
+
+/**
+ * Total cost to foreclose a loan at given outstanding balance.
+ * Returns { principal, charge, gst, total } breakdown.
+ *
+ * Indian personal loan foreclosure math:
+ *   charge = outstanding × foreclosurePct / 100
+ *   gst    = charge × 18 / 100      (GST on the charge, not on principal)
+ *   total  = principal + charge + gst
+ */
+function foreclosureCost(loan, balance) {
+  const principal = Math.max(0, balance || 0);
+  const pct = loan.foreclosureChargePercent != null ? loan.foreclosureChargePercent : DEFAULT_FORECLOSURE_PERCENT;
+  const charge = principal * pct / 100;
+  const gst = charge * FORECLOSURE_GST_PERCENT / 100;
+  const total = principal + charge + gst;
+  return {
+    principal: Math.round(principal),
+    chargePercent: pct,
+    charge: Math.round(charge),
+    gst: Math.round(gst),
+    total: Math.round(total),
+  };
+}
+
 /* ═══════════ CLOSURE PLAN (Debt Snowball) ═══════════ */
 
 /**
@@ -223,9 +259,11 @@ function computeClosurePlan() {
         if (closedSet.has(id)) continue;
         const loan = active.find(l => l.id === id);
         const bal = balances[id];
-        if (savingsPool >= bal && bal > 0) {
+        const cost = foreclosureCost(loan, bal);
+        // Need enough savings to cover outstanding + foreclosure fee + GST
+        if (savingsPool >= cost.total && cost.total > 0) {
           // Close it
-          savingsPool -= bal;
+          savingsPool -= cost.total;
           freedEmi += loan.emi;
           closedSet.add(id);
           const d = new Date();
@@ -235,7 +273,8 @@ function computeClosurePlan() {
             name: loan.name,
             closureMonth: d.toLocaleString('en-US', { month: 'short', year: 'numeric' }),
             monthOffset: month,
-            lumpSum: bal,
+            lumpSum: cost.total,
+            breakdown: cost,
             leftover: savingsPool,
           });
           closedThisMonth = true;
@@ -263,19 +302,39 @@ function simulatePrepayment(loanId, amount) {
   if (!loan || amount <= 0) return null;
 
   const currentBal = loanCurrentBalance(loan);
-  const newBal = Math.max(0, currentBal - amount);
+  const fullForeclosure = foreclosureCost(loan, currentBal);
+
+  // Two scenarios: full foreclosure OR partial prepayment
+  const isForeclosure = amount >= fullForeclosure.total;
+
+  let newBal, newMonthsLeft, scenarioCost, scenarioBreakdown;
+  if (isForeclosure) {
+    // Pays off entire loan + foreclosure charges
+    newBal = 0;
+    newMonthsLeft = 0;
+    scenarioCost = fullForeclosure.total;
+    scenarioBreakdown = fullForeclosure;
+  } else {
+    // Partial prepayment — chunk goes against principal, no foreclosure charge
+    newBal = Math.max(0, currentBal - amount);
+    newMonthsLeft = monthsToPayoff(newBal, loan.interestRate, loan.emi);
+    scenarioCost = amount;
+    scenarioBreakdown = null; // no charges for partial
+  }
 
   const oldMonthsLeft = monthsToPayoff(currentBal, loan.interestRate, loan.emi);
-  const newMonthsLeft = monthsToPayoff(newBal, loan.interestRate, loan.emi);
 
+  // Interest saved = (what you'd pay across remaining EMIs) − (what you pay now)
   const oldTotalPayout = oldMonthsLeft * loan.emi;
-  const newTotalPayout = amount + newMonthsLeft * loan.emi;
+  const newTotalPayout = scenarioCost + newMonthsLeft * loan.emi;
   const interestSaved = oldTotalPayout - newTotalPayout;
 
   const monthsSaved = oldMonthsLeft - newMonthsLeft;
   const d = new Date();
   d.setMonth(d.getMonth() + newMonthsLeft);
-  const newClosureMonth = d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+  const newClosureMonth = newMonthsLeft === 0
+    ? 'Closed now 🎉'
+    : d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
 
   return {
     loanName: loan.name,
@@ -286,6 +345,9 @@ function simulatePrepayment(loanId, amount) {
     monthsSaved,
     interestSaved: Math.round(interestSaved),
     newClosureMonth,
+    isForeclosure,
+    foreclosureCost: scenarioBreakdown,
+    fullForeclosureCost: fullForeclosure,
   };
 }
 
@@ -402,6 +464,7 @@ function renderLoanOverview() {
   let html = '';
   if (active.length > 0) {
     html += '<p class="loan-section-label">Active loans</p>';
+    html += '<p class="loan-edit-hint">💡 Tap any card to edit details (principal, rate, start date, foreclosure %)</p>';
     active.forEach(l => { html += renderLoanCard(l); });
   }
   if (closed.length > 0) {
@@ -428,7 +491,7 @@ function renderLoanCard(loan) {
           <div class="loan-card-name">${loan.name}</div>
           <div class="loan-card-sub">${t.label} · ${loan.interestRate}% · ${loan.tenureMonths} mo</div>
         </div>
-        ${isClosed ? '<span class="loan-card-badge-closed">CLOSED</span>' : ''}
+        ${isClosed ? '<span class="loan-card-badge-closed">CLOSED</span>' : '<span class="loan-card-edit-icon" title="Tap to edit">✏️</span>'}
       </div>
       <div class="loan-card-amount-row">
         <div>
@@ -549,6 +612,7 @@ function renderLoanClosure() {
     plan.forEach((step, i) => {
       const loan = loanState.loans.find(l => l.id === step.loanId);
       const t = loanTypeMeta(loan.type);
+      const b = step.breakdown;
       html += `
         <div class="loan-closure-step" data-loan-id="${step.loanId}">
           <div class="loan-closure-step-num">${i + 1}</div>
@@ -558,10 +622,30 @@ function renderLoanClosure() {
               <span class="loan-closure-step-name">${loan.name}</span>
               <span class="loan-closure-step-when">${step.closureMonth}</span>
             </div>
+
+            <!-- Foreclosure cost breakdown -->
+            <div class="loan-closure-breakdown">
+              <div class="loan-closure-bd-row">
+                <span>Outstanding principal</span>
+                <span class="loan-closure-bd-val">${fmtINR(b.principal)}</span>
+              </div>
+              <div class="loan-closure-bd-row">
+                <span>Foreclosure fee (${b.chargePercent}%)</span>
+                <span class="loan-closure-bd-val">+${fmtINR(b.charge)}</span>
+              </div>
+              <div class="loan-closure-bd-row">
+                <span>GST on fee (${FORECLOSURE_GST_PERCENT}%)</span>
+                <span class="loan-closure-bd-val">+${fmtINR(b.gst)}</span>
+              </div>
+              <div class="loan-closure-bd-row loan-closure-bd-total">
+                <span><strong>Total lump sum to pay bank</strong></span>
+                <span class="loan-closure-bd-val"><strong>${fmtINR(b.total)}</strong></span>
+              </div>
+            </div>
+
             <div class="loan-closure-step-meta">
-              Lump sum needed: <strong>${fmtINRShort(step.lumpSum)}</strong>
-              · Leftover savings: <strong>${fmtINRShort(step.leftover)}</strong>
-              · Frees EMI: <strong>${fmtINRShort(loan.emi)}/mo</strong>
+              💰 Leftover savings after closure: <strong>${fmtINR(step.leftover)}</strong>
+              · Frees <strong>${fmtINR(loan.emi)}/mo</strong> EMI for the next loan
             </div>
             <div class="loan-closure-step-actions">
               ${i > 0 ? `<button class="loan-closure-mv-btn" onclick="moveLoanInOrder('${step.loanId}', -1)">↑ Earlier</button>` : ''}
@@ -718,6 +802,8 @@ function openLoanAddModal() {
   document.getElementById('loan-form-startdate').value = today;
   document.getElementById('loan-form-emi').value = '';
   document.getElementById('loan-form-emi-hint').textContent = '';
+  const fcEl = document.getElementById('loan-form-foreclosure');
+  if (fcEl) fcEl.value = DEFAULT_FORECLOSURE_PERCENT;
   document.getElementById('loan-form-delete').style.display = 'none';
   renderLoanColorPicker(LOAN_COLORS[Math.floor(Math.random() * LOAN_COLORS.length)]);
   document.getElementById('loan-form-modal').style.display = 'flex';
@@ -736,6 +822,8 @@ function openLoanEditModal(loanId) {
   document.getElementById('loan-form-startdate').value = loan.startDate;
   document.getElementById('loan-form-emi').value = loan.emi;
   document.getElementById('loan-form-emi-hint').textContent = '';
+  const fcEl = document.getElementById('loan-form-foreclosure');
+  if (fcEl) fcEl.value = loan.foreclosureChargePercent != null ? loan.foreclosureChargePercent : DEFAULT_FORECLOSURE_PERCENT;
   document.getElementById('loan-form-delete').style.display = 'inline-block';
   renderLoanColorPicker(loan.color);
   document.getElementById('loan-form-modal').style.display = 'flex';
@@ -786,6 +874,9 @@ function saveLoanForm() {
   const startDate = document.getElementById('loan-form-startdate').value;
   let emi = parseInt(document.getElementById('loan-form-emi').value, 10) || 0;
   const color = document.getElementById('loan-form-colors').dataset.color;
+  const fcRaw = document.getElementById('loan-form-foreclosure')?.value;
+  let foreclosurePct = parseFloat(fcRaw);
+  if (isNaN(foreclosurePct) || foreclosurePct < 0) foreclosurePct = DEFAULT_FORECLOSURE_PERCENT;
 
   if (!name) { window.toast?.('Enter a loan name', 'error'); return; }
   if (!principal || principal <= 0) { window.toast?.('Enter principal amount', 'error'); return; }
@@ -806,6 +897,7 @@ function saveLoanForm() {
       loan.startDate = startDate;
       loan.emi = emi;
       loan.color = color;
+      loan.foreclosureChargePercent = foreclosurePct;
       loan.updatedAt = now;
     }
   } else {
@@ -813,6 +905,7 @@ function saveLoanForm() {
       id: 'loan-' + now + '-' + Math.floor(Math.random() * 1000),
       name, type, principal, interestRate: rate, tenureMonths: tenure,
       startDate, emi, color,
+      foreclosureChargePercent: foreclosurePct,
       status: 'active', closedDate: null, closedAmount: null,
       createdAt: now, updatedAt: now,
     });
