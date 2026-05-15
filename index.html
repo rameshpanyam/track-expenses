@@ -382,7 +382,7 @@
     <div style="height:16px;"></div>
   </div>
 
-  <!-- ── Loans View (v26) ── -->
+  <!-- ── Loans View (v27) ── -->
   <div id="view-loans" class="view">
     <!-- Hero: total outstanding + debt-free countdown -->
     <div class="loan-hero" id="loan-hero"></div>
@@ -398,7 +398,12 @@
     <!-- Sub-panels -->
     <div class="loan-subpanel active" id="loan-sub-overview">
       <div id="loan-cards-list"></div>
-      <button class="loan-add-btn" onclick="openLoanAddModal()">+ Add Loan</button>
+      <div class="loan-overview-actions">
+        <button class="loan-add-btn" onclick="openLoanAddModal()">+ Add Loan</button>
+        <button class="loan-import-btn" id="loan-import-btn" onclick="initPrePopulatedLoans()" style="display:none;">
+          📥 Import My Loans
+        </button>
+      </div>
     </div>
 
     <div class="loan-subpanel" id="loan-sub-projection">
@@ -809,12 +814,12 @@
 <!-- jsPDF library for PDF export (loaded lazily — only when user opens Export) -->
 
 <!-- ═══════════════════════════════════════════════════════════════
-     LOAN FORM MODAL (v26 — add/edit loan)
+     LOAN FORM MODAL (v27 — add/edit loan)
      ═══════════════════════════════════════════════════════════════ -->
 <div id="loan-form-modal" class="confirm-modal" style="display:none;">
   <div class="confirm-box loan-form-box">
     <p class="confirm-msg" id="loan-modal-title">Add Loan</p>
-    <p class="confirm-sub">Enter principal, rate, tenure — EMI auto-calculates. We'll project outstanding for you.</p>
+    <p class="confirm-sub">Enter principal, rate, tenure — EMI auto-calculates. Optionally upload your bank's repayment schedule PDF for precision.</p>
 
     <div class="loan-form-grid">
       <label class="loan-form-lbl">
@@ -848,6 +853,22 @@
 
       <div class="loan-form-row">
         <label class="loan-form-lbl">
+          Rate type
+          <select id="loan-form-rate-type" class="bydate-date-input" onchange="recalcEmiHint()">
+            <option value="reducing">📉 Reducing balance</option>
+            <option value="flat">📊 Flat rate</option>
+          </select>
+        </label>
+        <label class="loan-form-lbl">
+          EMI due day
+          <input id="loan-form-emi-due-day" type="number" inputmode="numeric" class="bydate-date-input"
+                 placeholder="5" min="1" max="28" />
+          <span class="loan-form-emi-hint">Day of month EMI is debited</span>
+        </label>
+      </div>
+
+      <div class="loan-form-row">
+        <label class="loan-form-lbl">
           Tenure (months)
           <input id="loan-form-tenure" type="number" inputmode="numeric" class="bydate-date-input" placeholder="36" oninput="recalcEmiHint()" />
         </label>
@@ -864,14 +885,31 @@
       </label>
 
       <label class="loan-form-lbl">
-        Foreclosure charge (% of outstanding)
+        Foreclosure charge (% of outstanding principal)
         <input id="loan-form-foreclosure" type="number" inputmode="decimal" step="0.1" class="bydate-date-input" placeholder="5" />
-        <span class="loan-form-emi-hint">Most Indian banks charge 4–5%. GST (18%) is auto-added on the charge.</span>
+        <span class="loan-form-emi-hint">Enter 0 if no charge. GST (18%) is auto-added on the charge amount.</span>
       </label>
 
       <div class="loan-form-lbl">
         Color
         <div id="loan-form-colors" class="loan-form-color-grid"></div>
+      </div>
+
+      <!-- PDF Schedule Upload -->
+      <div class="loan-form-lbl">
+        <div class="loan-sch-upload-header">
+          📄 Repayment schedule (optional)
+          <span class="loan-sch-badge" id="loan-form-sch-badge"></span>
+        </div>
+        <label class="loan-sch-upload-area" for="loan-form-sch-file">
+          <span id="loan-sch-upload-label">Tap to upload bank PDF — overrides manual calculations</span>
+          <input id="loan-form-sch-file" type="file" accept=".pdf" style="display:none;"
+                 onchange="handleScheduleUpload(this)" />
+        </label>
+        <!-- Schedule preview table (shown after parsing) -->
+        <div id="loan-form-sch-preview-wrap" style="display:none;">
+          <div id="loan-form-sch-table"></div>
+        </div>
       </div>
     </div>
 
@@ -883,8 +921,8 @@
   </div>
 </div>
 
-<script src="app.js?v=26.1"></script>
-<script src="features.js?v=26.1"></script>
-<script src="loans.js?v=26.1"></script>
+<script src="app.js?v=27.0"></script>
+<script src="features.js?v=27.0"></script>
+<script src="loans.js?v=27.0"></script>
 </body>
 </html>

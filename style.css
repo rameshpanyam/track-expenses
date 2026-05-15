@@ -3893,3 +3893,270 @@ html, body {
 .loan-card:active .loan-card-edit-icon {
   opacity: 1;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   v27.0 — Schedule table, PDF upload, rate-type badge styles
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Overview action row (Add + Import) ── */
+.loan-overview-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 0 24px;
+}
+.loan-import-btn {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #7C5CFC 0%, #5B3FD6 100%);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 16px rgba(124,92,252,0.25);
+}
+.loan-import-btn:active {
+  transform: scale(0.98);
+}
+
+/* ── Schedule badge on loan cards ── */
+.loan-sch-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+.loan-sch-badge.has-schedule {
+  background: #E8F5E9;
+  color: #2E7D32;
+  border: 1px solid #A5D6A7;
+}
+.loan-sch-badge.no-schedule {
+  background: #F5F5F5;
+  color: #9E9E9E;
+  border: 1px solid #E0E0E0;
+}
+
+/* ── Zero foreclosure charge badge ── */
+.loan-zero-charge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  background: #E8F5E9;
+  color: #2E7D32;
+  border: 1px solid #A5D6A7;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+/* ── PDF Upload area inside loan form ── */
+.loan-sch-upload-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text, #1A1A2E);
+  margin-bottom: 8px;
+}
+.loan-sch-upload-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 60px;
+  padding: 14px;
+  background: #FAFAFA;
+  border: 2px dashed #D0D0D0;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #888;
+  text-align: center;
+  transition: border-color 0.2s, background 0.2s;
+  box-sizing: border-box;
+}
+.loan-sch-upload-area:hover,
+.loan-sch-upload-area:active {
+  border-color: #7C5CFC;
+  background: #F3F0FF;
+  color: #7C5CFC;
+}
+.loan-sch-upload-area.upload-success {
+  border-color: #2E7D32;
+  background: #E8F5E9;
+  color: #2E7D32;
+}
+.loan-sch-upload-area.upload-error {
+  border-color: #C62828;
+  background: #FFEBEE;
+  color: #C62828;
+}
+
+/* ── Repayment schedule table ── */
+.loan-sch-table-wrap {
+  overflow-x: auto;
+  margin-top: 8px;
+  border-radius: 10px;
+  border: 1px solid #E8E8E8;
+}
+.loan-sch-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  min-width: 460px;
+}
+.loan-sch-table th {
+  background: #F5F0FF;
+  color: #5B3FD6;
+  font-weight: 700;
+  text-align: right;
+  padding: 7px 10px;
+  border-bottom: 2px solid #E0D7FF;
+  white-space: nowrap;
+}
+.loan-sch-table th:first-child { text-align: center; }
+.loan-sch-table th:nth-child(2) { text-align: left; }
+.loan-sch-table td {
+  padding: 6px 10px;
+  text-align: right;
+  border-bottom: 1px solid #F0F0F0;
+  color: #333;
+}
+.loan-sch-table td:first-child { text-align: center; color: #888; }
+.loan-sch-table td:nth-child(2) { text-align: left; font-weight: 500; }
+.loan-sch-table tr:last-child td { border-bottom: none; }
+
+/* Paid rows — green tint */
+.sch-row-paid {
+  background: #F1FBF4;
+}
+.sch-row-paid td { color: #4CAF50; }
+.sch-row-paid td:nth-child(2) { color: #2E7D32; font-weight: 600; }
+
+/* Next-due row — amber highlight */
+.sch-row-next {
+  background: #FFF8E1;
+}
+.sch-row-next td { color: #E65100; font-weight: 600; }
+
+/* Upcoming rows — normal but slightly muted */
+.sch-row-upcoming {
+  background: #fff;
+}
+
+/* ── Schedule preview summary bar ── */
+.loan-sch-summary {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  background: #F5F0FF;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+.loan-sch-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.loan-sch-summary-label {
+  color: #888;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.loan-sch-summary-value {
+  color: #3A1FA0;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* ── Projection detail popup (schedule-aware) ── */
+.loan-proj-detail {
+  background: #fff;
+  border: 1px solid #E8E8E8;
+  border-radius: 12px;
+  padding: 14px;
+  margin-top: 8px;
+  font-size: 13px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+.loan-proj-detail-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #1A1A2E;
+  margin-bottom: 10px;
+}
+.loan-proj-detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid #F5F5F5;
+}
+.loan-proj-detail-row:last-child { border-bottom: none; }
+.loan-proj-detail-lbl { color: #666; }
+.loan-proj-detail-val { font-weight: 600; color: #1A1A2E; }
+
+/* ── Next EMI chip on loan cards ── */
+.loan-next-emi-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #FFF8E1;
+  color: #E65100;
+  border: 1px solid #FFE082;
+  margin-top: 4px;
+}
+.loan-next-emi-chip.overdue {
+  background: #FFEBEE;
+  color: #C62828;
+  border-color: #FFCDD2;
+}
+.loan-next-emi-chip.paid {
+  background: #E8F5E9;
+  color: #2E7D32;
+  border-color: #A5D6A7;
+}
+
+/* ── Simulator foreclosure note ── */
+.loan-sim-foreclosure-note {
+  font-size: 12px;
+  color: #666;
+  background: #F9F9F9;
+  border-left: 3px solid var(--accent, #E23744);
+  padding: 8px 12px;
+  border-radius: 0 8px 8px 0;
+  margin-top: 8px;
+  line-height: 1.6;
+}
+
+/* ── Flat-rate info tooltip ── */
+.loan-flat-rate-note {
+  font-size: 11px;
+  color: #7C5CFC;
+  background: #F3F0FF;
+  padding: 6px 10px;
+  border-radius: 8px;
+  margin-top: 4px;
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  line-height: 1.5;
+}

@@ -1,0 +1,26 @@
+{
+  "name": "expense-tracker-pwa-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Comprehensive Playwright test suite — Loans module (610 tests)",
+  "scripts": {
+    "test":           "playwright test",
+    "test:headed":    "playwright test --headed",
+    "test:ui":        "playwright test --ui",
+    "test:report":    "playwright show-report",
+    "test:loans":     "playwright test tests/loans/",
+    "test:emi":       "playwright test tests/loans/01-emi-calculation.spec.js",
+    "test:balance":   "playwright test tests/loans/02-balance-calculation.spec.js",
+    "test:foreclosure":"playwright test tests/loans/03-foreclosure-calculation.spec.js",
+    "test:form":      "playwright test tests/loans/04-form-ui.spec.js",
+    "test:upload":    "playwright test tests/loans/05-pdf-upload.spec.js",
+    "test:schedule":  "playwright test tests/loans/06-schedule-display.spec.js",
+    "test:prepop":    "playwright test tests/loans/07-pre-populated.spec.js",
+    "test:integration":"playwright test tests/loans/08-integration.spec.js",
+    "test:corner":    "playwright test tests/loans/09-corner-cases.spec.js",
+    "test:regression":"playwright test tests/loans/10-regression.spec.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.0"
+  }
+}
