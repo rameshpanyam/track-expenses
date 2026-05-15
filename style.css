@@ -4011,6 +4011,26 @@ html, body {
   border-radius: 10px;
   border: 1px solid #E8E8E8;
 }
+/* Inside the edit-loan modal, cap the inline preview so the form stays usable.
+   v26.3 fix: 60-row schedule was pushing form fields & Save button off-screen. */
+#loan-form-sch-preview-wrap {
+  max-height: 320px;
+  overflow-y: auto;
+  margin-top: 8px;
+  border: 1px solid #E8E8E8;
+  border-radius: 10px;
+  background: #FAFAFA;
+}
+#loan-form-sch-preview-wrap .loan-sch-table-wrap {
+  border: none;
+  margin-top: 0;
+  border-radius: 0;
+}
+#loan-form-sch-preview-wrap .loan-sch-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
 .loan-sch-table {
   width: 100%;
   border-collapse: collapse;

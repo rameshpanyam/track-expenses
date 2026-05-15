@@ -546,13 +546,30 @@ function parseDate(s) {
 /** Parse Credit Fair schedule.
  *  Columns: No | Date | EMI | Principal | Interest | ForeClosureAmount
  *  The "Foreclosure Amount" IS the closing outstanding principal.
+ *
+ *  v26.3 — Robustness for real-world PDF.js extractions:
+ *    (a) Tolerate Unicode superscript ordinals (ˢᵗ ⁿᵈ ʳᵈ ᵗʰ) that some
+ *        PDF fonts emit instead of plain "st/nd/rd/th".
+ *    (b) Tolerate space between ₹ and digits ("₹ 7,289.00").
+ *    (c) Tolerate ₹ symbol stripped entirely.
  */
 function parseCreditFair(text) {
   const rows = [];
-  // Match: {n}(st|nd|rd|th) Installment {date} ₹{emi} ₹{principal} ₹{interest} ₹{balance}
-  const re = /(\d+)\s*(?:st|nd|rd|th)\s*Installment\s+([\d]+\s+\w+,?\s+\d{4})\s+([\d,₹.]+)\s+([\d,₹.]+)\s+([\d,₹.]+)\s+([\d,₹.]+)/gi;
+  // Normalize unicode superscript ordinals → plain ASCII so the regex can match
+  const normalized = text
+    .replace(/ˢᵗ/g, 'st')
+    .replace(/ⁿᵈ/g, 'nd')
+    .replace(/ʳᵈ/g, 'rd')
+    .replace(/ᵗʰ/g, 'th');
+  // Amount cell: optional ₹ (with optional whitespace) then digits/commas/dots
+  const AMT = '₹?\\s*([\\d][\\d,.]*)';
+  const re = new RegExp(
+    '(\\d+)\\s*(?:st|nd|rd|th)\\s*Installment\\s+(\\d{1,2}\\s+\\w+,?\\s+\\d{4})\\s+' +
+    AMT + '\\s+' + AMT + '\\s+' + AMT + '\\s+' + AMT,
+    'gi'
+  );
   let m;
-  while ((m = re.exec(text)) !== null) {
+  while ((m = re.exec(normalized)) !== null) {
     const date = parseDate(m[2]);
     if (!date) continue;
     rows.push({
