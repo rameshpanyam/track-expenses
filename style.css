@@ -3776,8 +3776,25 @@ html, body {
   color: var(--muted);
 }
 
-/* ── Loan Form Modal ── */
-.loan-form-box { max-width: 460px; }
+/* ── Loan Form Modal ──
+   v26.4 fix: make the entire form box scrollable so users can always reach
+   the Principal / Interest fields at the top, even when a 60-row schedule
+   preview is attached at the bottom. Sticky action bar keeps Save in view. */
+.loan-form-box {
+  max-width: 460px;
+  max-height: 90vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+.loan-form-box .loan-form-actions {
+  position: sticky;
+  bottom: 0;
+  background: var(--bg2);
+  margin-top: 8px;
+  padding-top: 12px;
+  z-index: 2;
+}
 .loan-form-grid {
   display: flex;
   flex-direction: column;
@@ -4012,9 +4029,10 @@ html, body {
   border: 1px solid #E8E8E8;
 }
 /* Inside the edit-loan modal, cap the inline preview so the form stays usable.
-   v26.3 fix: 60-row schedule was pushing form fields & Save button off-screen. */
+   v26.3 fix: 60-row schedule was pushing form fields & Save button off-screen.
+   v26.4: lowered cap to 240px since the outer .loan-form-box also scrolls. */
 #loan-form-sch-preview-wrap {
-  max-height: 320px;
+  max-height: 240px;
   overflow-y: auto;
   margin-top: 8px;
   border: 1px solid #E8E8E8;

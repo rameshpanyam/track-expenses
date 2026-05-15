@@ -543,33 +543,57 @@ function parseDate(s) {
   return null;
 }
 
+/** Normalize PDF.js text quirks before regex matching.
+ *  v26.4 — covers more real-world extraction artifacts:
+ *    - Unicode superscript ordinals (ˢᵗ ⁿᵈ ʳᵈ ᵗʰ) → drop them
+ *    - Non-breaking / thin spaces → regular space
+ *    - "₹" sometimes extracted as "Rs." or "Rs " — strip both
+ */
+function normalizePdfText(text) {
+  return text
+    .replace(/ˢᵗ|ⁿᵈ|ʳᵈ|ᵗʰ/g, '')
+    .replace(/[\u00A0\u2007\u202F\u200B]/g, ' ')
+    .replace(/\bRs\.?\s*/gi, '₹');
+}
+
 /** Parse Credit Fair schedule.
  *  Columns: No | Date | EMI | Principal | Interest | ForeClosureAmount
  *  The "Foreclosure Amount" IS the closing outstanding principal.
  *
- *  v26.3 — Robustness for real-world PDF.js extractions:
- *    (a) Tolerate Unicode superscript ordinals (ˢᵗ ⁿᵈ ʳᵈ ᵗʰ) that some
- *        PDF fonts emit instead of plain "st/nd/rd/th".
- *    (b) Tolerate space between ₹ and digits ("₹ 7,289.00").
- *    (c) Tolerate ₹ symbol stripped entirely.
+ *  v26.4 — Two-strategy approach for robustness:
+ *    Strategy 1: Tight match (row#, ordinal, "Installment", date, 4 amounts)
+ *    Strategy 2: Loose fallback — just row# + date + 4 amounts (drops keywords)
+ *  Returns the strategy with more rows.
  */
 function parseCreditFair(text) {
-  const rows = [];
-  // Normalize unicode superscript ordinals → plain ASCII so the regex can match
-  const normalized = text
-    .replace(/ˢᵗ/g, 'st')
-    .replace(/ⁿᵈ/g, 'nd')
-    .replace(/ʳᵈ/g, 'rd')
-    .replace(/ᵗʰ/g, 'th');
-  // Amount cell: optional ₹ (with optional whitespace) then digits/commas/dots
+  const normalized = normalizePdfText(text);
   const AMT = '₹?\\s*([\\d][\\d,.]*)';
-  const re = new RegExp(
-    '(\\d+)\\s*(?:st|nd|rd|th)\\s*Installment\\s+(\\d{1,2}\\s+\\w+,?\\s+\\d{4})\\s+' +
+
+  // Strategy 1 — original "Installment" keyword pattern
+  const reTight = new RegExp(
+    '(\\d+)\\s*(?:st|nd|rd|th)?\\s*Installment\\s+(\\d{1,2}\\s+\\w+,?\\s+\\d{4})\\s+' +
     AMT + '\\s+' + AMT + '\\s+' + AMT + '\\s+' + AMT,
     'gi'
   );
+  const tight = collectRows(normalized, reTight);
+
+  // Strategy 2 — keyword-less fallback. Anchored on "1..60" + date + 4 amounts.
+  // Constrained to first capture being ≤ 3 digits to avoid false matches.
+  const reLoose = new RegExp(
+    '(?:^|\\s)(\\d{1,3})\\s*(?:st|nd|rd|th)?\\s+(\\d{1,2}\\s+\\w+,?\\s+\\d{4})\\s+' +
+    AMT + '\\s+' + AMT + '\\s+' + AMT + '\\s+' + AMT,
+    'gi'
+  );
+  const loose = collectRows(normalized, reLoose);
+
+  return tight.length >= loose.length ? tight : loose;
+}
+
+/** Shared helper: run regex against text, build row objects. */
+function collectRows(text, re) {
+  const rows = [];
   let m;
-  while ((m = re.exec(normalized)) !== null) {
+  while ((m = re.exec(text)) !== null) {
     const date = parseDate(m[2]);
     if (!date) continue;
     rows.push({
@@ -648,9 +672,11 @@ function parseKotak(text) {
 /** Generic fallback: tries to find rows with 4-5 numbers separated by spaces. */
 function parseGeneric(text) {
   const rows = [];
-  const re = /(\d{2}[-/]\d{2}[-/]\d{4}|\d{1,2}\s+\w+\s+\d{4})\s+([\d,₹.]+)\s+([\d,₹.]+)\s+([\d,₹.]+)\s+([\d,₹.]+)/g;
+  const normalized = normalizePdfText(text);
+  // Accept DD-MM-YYYY, DD/MM/YYYY, DD Month YYYY (with optional comma), DD MMM, YYYY
+  const re = /(\d{2}[-/]\d{2}[-/]\d{4}|\d{1,2}\s+\w+,?\s+\d{4})\s+₹?\s*([\d][\d,.]*)\s+₹?\s*([\d][\d,.]*)\s+₹?\s*([\d][\d,.]*)\s+₹?\s*([\d][\d,.]*)/g;
   let m, no = 1;
-  while ((m = re.exec(text)) !== null) {
+  while ((m = re.exec(normalized)) !== null) {
     const date = parseDate(m[1]);
     if (!date) continue;
     rows.push({ no: no++, date, emi: parseAmt(m[2]), principal: parseAmt(m[3]),
@@ -662,12 +688,34 @@ function parseGeneric(text) {
 async function parseLoanPDF(file) {
   const text   = await extractPDFText(file);
   const format = detectBankFormat(text);
-  let rows;
-  if      (format === 'creditfair') rows = parseCreditFair(text);
-  else if (format === 'indusind')   rows = parseIndusInd(text);
-  else if (format === 'kotak')      rows = parseKotak(text);
-  else                              rows = parseGeneric(text);
-  return { rows, format };
+
+  // Run the format-specific parser first.
+  let primary;
+  if      (format === 'creditfair') primary = parseCreditFair(text);
+  else if (format === 'indusind')   primary = parseIndusInd(text);
+  else if (format === 'kotak')      primary = parseKotak(text);
+  else                              primary = parseGeneric(text);
+
+  // v26.4 — Defensive fallback: if the detected parser yielded 0 rows,
+  // try every other parser and pick whichever extracts the most rows.
+  // Real-world PDFs are messy — better to recover than fail.
+  if (!primary.length) {
+    const candidates = [
+      parseCreditFair(text),
+      parseIndusInd(text),
+      parseKotak(text),
+      parseGeneric(text),
+    ];
+    primary = candidates.reduce((best, cur) => cur.length > best.length ? cur : best, []);
+  }
+
+  // Expose raw text on debug hook so end-users can share for diagnosis.
+  if (!primary.length && typeof window !== 'undefined') {
+    window.__lastPdfText = text;
+    console.warn('[Loans] PDF parsed but 0 rows detected. Inspect window.__lastPdfText. First 500 chars:\n', text.slice(0, 500));
+  }
+
+  return { rows: primary, format };
 }
 
 /* ═══════════════════════════════════════════════════════════════════
