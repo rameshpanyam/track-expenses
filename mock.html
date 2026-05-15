@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Wibey Expense Tracker — Design Mock v27.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ════════════════════════════════════════════════════════════
+   DESIGN TOKENS — Modern Fintech v27.0
+   ════════════════════════════════════════════════════════════ */
+:root {
+  /* Surfaces */
+  --ink:           #0B0E14;
+  --ink-2:         #1F2430;
+  --paper:         #FAFAF7;
+  --card:          #FFFFFF;
+  --inset:         #F5F5F0;
+
+  /* Lines & type */
+  --line:          rgba(11,14,20,.06);
+  --line-strong:   rgba(11,14,20,.10);
+  --text:          #0B0E14;
+  --muted:         #6B7280;
+  --subtle:        #9CA3AF;
+
+  /* Accent — emerald (finance native) */
+  --accent:        #0D9F6E;
+  --accent-2:      #047857;
+  --accent-soft:   rgba(13,159,110,.10);
+
+  /* Semantic */
+  --pos:           #0D9F6E;
+  --neg:           #DC2626;
+  --warn:          #D97706;
+  --neg-soft:      rgba(220,38,38,.08);
+  --warn-soft:     rgba(217,119,6,.10);
+  --pos-soft:      rgba(13,159,110,.10);
+
+  /* Elevation */
+  --elev-0:        none;
+  --elev-1:        0 1px 2px rgba(11,14,20,.04), 0 1px 0 var(--line);
+  --elev-2:        0 1px 2px rgba(11,14,20,.04), 0 8px 24px rgba(11,14,20,.06);
+  --elev-3:        0 12px 40px rgba(11,14,20,.12);
+
+  /* Radii */
+  --r-sm:          10px;
+  --r-md:          16px;
+  --r-lg:          22px;
+  --r-pill:        999px;
+
+  /* Spacing rhythm — 8pt */
+  --s-1:           4px;
+  --s-2:           8px;
+  --s-3:           12px;
+  --s-4:           16px;
+  --s-5:           24px;
+  --s-6:           32px;
+
+  /* Type scale */
+  --t-display:     32px;
+  --t-h1:          22px;
+  --t-h2:          17px;
+  --t-body:        15px;
+  --t-meta:        13px;
+  --t-micro:       11px;
+}
+
+/* ────────────────── Reset ────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%;
+  background: var(--paper);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: var(--t-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'cv11';
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input  { font-family: inherit; }
+.num   { font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.muted { color: var(--muted); }
+
+/* ────────────────── Layout shell ────────────────── */
+.stage {
+  display: grid;
+  grid-template-columns: 420px 420px;
+  gap: 32px;
+  padding: 32px;
+  max-width: 920px;
+  margin: 0 auto;
+}
+@media (max-width: 920px) {
+  .stage { grid-template-columns: 1fr; max-width: 460px; }
+}
+.frame {
+  background: var(--paper);
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: var(--elev-3);
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  min-height: 760px;
+  position: relative;
+}
+.frame-label {
+  position: absolute;
+  top: -28px;
+  left: 0;
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ────────────────── Header ────────────────── */
+.appbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 12px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+}
+.appbar-month {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.appbar-month-name {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+.appbar-month-chev {
+  width: 28px; height: 28px;
+  border-radius: var(--r-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+.appbar-month-chev:hover { background: var(--inset); color: var(--text); }
+.appbar-icons { display: flex; gap: 4px; }
+.icon-btn {
+  width: 36px; height: 36px;
+  border-radius: var(--r-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-2);
+  transition: background .15s ease;
+}
+.icon-btn:hover { background: var(--inset); }
+.icon-btn svg { width: 20px; height: 20px; }
+
+/* ────────────────── Page content ────────────────── */
+.view {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px 100px;
+}
+.section-label {
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 24px 0 10px;
+}
+.section-label:first-child { margin-top: 0; }
+
+/* ────────────────── Hero card (charcoal) ────────────────── */
+.hero {
+  background: var(--ink);
+  background-image:
+    radial-gradient(at 100% 0%, rgba(13,159,110,.18) 0%, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(13,159,110,.08) 0%, transparent 50%);
+  border-radius: var(--r-lg);
+  padding: 22px 20px 20px;
+  color: #FFF;
+  box-shadow: var(--elev-2);
+}
+.hero-eyebrow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--t-meta);
+  color: rgba(255,255,255,.66);
+  font-weight: 500;
+}
+.hero-eyebrow .mom-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(13,159,110,.18);
+  color: #6FE3B5;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  font-size: var(--t-micro);
+  font-weight: 600;
+}
+.mom-pill svg { width: 12px; height: 12px; }
+.hero-num {
+  font-size: var(--t-display);
+  font-weight: 700;
+  letter-spacing: -.02em;
+  margin-top: 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.hero-num .currency {
+  font-size: 22px;
+  font-weight: 500;
+  color: rgba(255,255,255,.66);
+}
+.hero-sub {
+  font-size: var(--t-meta);
+  color: rgba(255,255,255,.66);
+  margin-top: 4px;
+}
+.hero-budget {
+  margin-top: 18px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--r-md);
+  padding: 14px 14px 12px;
+}
+.hero-budget-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--t-meta);
+  color: rgba(255,255,255,.74);
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+.hero-budget-head .amt { color: #FFF; font-weight: 600; }
+.bar {
+  height: 6px;
+  background: rgba(255,255,255,.08);
+  border-radius: var(--r-pill);
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0D9F6E 0%, #6FE3B5 100%);
+  border-radius: var(--r-pill);
+  transition: width .3s ease;
+}
+.hero-budget-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-size: var(--t-micro);
+  color: rgba(255,255,255,.55);
+  font-weight: 500;
+}
+
+/* ────────────────── KPI strip ────────────────── */
+.kpis {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+.kpi {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: var(--elev-1);
+}
+.kpi-label {
+  font-size: var(--t-micro);
+  color: var(--muted);
+  font-weight: 500;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.kpi-value {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+.kpi-meta {
+  font-size: var(--t-micro);
+  color: var(--subtle);
+  font-weight: 500;
+}
+
+/* ────────────────── Card primitive ────────────────── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 18px;
+  box-shadow: var(--elev-1);
+}
+.card + .card { margin-top: 12px; }
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.card-title {
+  font-size: var(--t-h2);
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+.card-sub {
+  font-size: var(--t-meta);
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* ────────────────── Bar chart (CSS mock) ────────────────── */
+.bars-chart {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  height: 140px;
+  padding-top: 12px;
+}
+.bars-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.bars-bar {
+  width: 100%;
+  background: linear-gradient(180deg, var(--accent) 0%, var(--accent-2) 100%);
+  border-radius: 4px 4px 2px 2px;
+  min-height: 8px;
+}
+.bars-bar.current { background: linear-gradient(180deg, #6FE3B5 0%, var(--accent) 100%); }
+.bars-bar.over { background: var(--neg); }
+.bars-label {
+  font-size: var(--t-micro);
+  color: var(--muted);
+  font-weight: 500;
+}
+.bars-val {
+  font-size: var(--t-micro);
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* ────────────────── Donut chart (SVG) ────────────────── */
+.donut-wrap {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding-top: 4px;
+}
+.donut {
+  width: 132px;
+  height: 132px;
+  flex-shrink: 0;
+  position: relative;
+}
+.donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.donut-center-val {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+.donut-center-lbl {
+  font-size: var(--t-micro);
+  color: var(--muted);
+  margin-top: 2px;
+}
+.donut-legend {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.donut-leg-row {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--t-meta);
+}
+.donut-leg-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+}
+.donut-leg-name { color: var(--text); font-weight: 500; }
+.donut-leg-val  { color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ────────────────── Entry list ────────────────── */
+.entry {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  align-items: center;
+}
+.entry:last-child { border-bottom: none; }
+.entry-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-sm);
+  background: var(--inset);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+.entry-body { min-width: 0; }
+.entry-name {
+  font-size: var(--t-body);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.entry-meta {
+  font-size: var(--t-micro);
+  color: var(--muted);
+  font-weight: 500;
+  margin-top: 2px;
+}
+.entry-amount {
+  font-size: var(--t-body);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ────────────────── Bottom nav ────────────────── */
+.botnav {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  background: rgba(250,250,247,.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 8px 0 14px;
+}
+.botnav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .02em;
+}
+.botnav-btn.active { color: var(--accent); }
+.botnav-btn.active .botnav-icon { background: var(--accent-soft); color: var(--accent); }
+.botnav-icon {
+  width: 44px;
+  height: 30px;
+  border-radius: var(--r-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s ease;
+}
+.botnav-icon svg { width: 20px; height: 20px; }
+
+/* ────────────────── Loans Closure UI ────────────────── */
+.savings-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 18px;
+  box-shadow: var(--elev-1);
+}
+.savings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.savings-grid > div:last-child { grid-column: 1 / -1; }
+.field-label {
+  font-size: var(--t-micro);
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.field-hint {
+  font-size: var(--t-micro);
+  color: var(--subtle);
+  margin-top: 4px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.input {
+  display: flex;
+  align-items: center;
+  background: var(--inset);
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  padding: 0 12px;
+  transition: border-color .15s ease, background .15s ease;
+}
+.input:focus-within { background: var(--card); border-color: var(--accent); }
+.input-prefix { color: var(--muted); margin-right: 6px; font-weight: 500; }
+.input input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 11px 0;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  width: 100%;
+}
+.pool-note {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--pos-soft);
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--t-meta);
+}
+.pool-note strong {
+  color: var(--accent-2);
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+}
+.pool-note .pool-sub { color: var(--muted); font-size: var(--t-micro); }
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tl-step {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 16px;
+  box-shadow: var(--elev-1);
+  position: relative;
+}
+.tl-step.paynow {
+  border-color: var(--warn);
+  background: linear-gradient(135deg, #FFFBEA 0%, var(--card) 60%);
+}
+.tl-step-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.tl-step-num {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--inset);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--t-meta);
+  font-weight: 700;
+  color: var(--muted);
+}
+.tl-step.paynow .tl-step-num { background: var(--warn); color: #FFF; }
+.tl-step-name {
+  font-size: var(--t-h2);
+  font-weight: 600;
+  letter-spacing: -.01em;
+  flex: 1;
+}
+.tl-step-when {
+  font-size: var(--t-micro);
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.paynow-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  background: var(--warn);
+  color: #FFF;
+  padding: 3px 8px;
+  border-radius: var(--r-pill);
+}
+.paynow-pill svg { width: 10px; height: 10px; }
+.tl-bd {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  background: var(--inset);
+  border-radius: var(--r-sm);
+  margin-bottom: 12px;
+}
+.tl-bd-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--t-meta);
+  color: var(--muted);
+}
+.tl-bd-row .amt { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.tl-bd-row.total {
+  padding-top: 8px;
+  border-top: 1px solid var(--line-strong);
+  color: var(--text);
+  font-weight: 600;
+}
+.tl-bd-row.total .amt { color: var(--text); font-size: 16px; }
+.tl-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--t-micro);
+  color: var(--muted);
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+.tl-meta strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.tl-actions { display: flex; gap: 8px; }
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border-radius: var(--r-pill);
+  font-size: var(--t-meta);
+  font-weight: 600;
+  letter-spacing: -.005em;
+  transition: all .15s ease;
+}
+.btn--primary {
+  background: var(--accent);
+  color: #FFF;
+}
+.btn--primary:hover { background: var(--accent-2); }
+.btn--ghost {
+  background: var(--inset);
+  color: var(--text);
+}
+.btn--ghost:hover { background: var(--line); }
+.btn svg { width: 14px; height: 14px; }
+
+.summary-card {
+  margin-top: 14px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+  border-radius: var(--r-md);
+  padding: 18px;
+  color: #FFF;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.summary-emoji {
+  font-size: 28px;
+  width: 48px;
+  height: 48px;
+  background: rgba(255,255,255,.18);
+  border-radius: var(--r-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.summary-title { font-size: var(--t-h1); font-weight: 700; letter-spacing: -.01em; }
+.summary-sub { font-size: var(--t-meta); opacity: .8; margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ════ HERO BANNER ════ -->
+<div style="text-align:center; padding:32px 20px 8px;">
+  <div style="font-size:11px; font-weight:600; letter-spacing:.14em; color:#6B7280; text-transform:uppercase;">Wibey Expense Tracker · Design Refresh</div>
+  <h1 style="font-size:28px; font-weight:700; letter-spacing:-.02em; margin-top:4px;">v27.0 — Modern Fintech</h1>
+  <p style="color:#6B7280; font-size:14px; margin-top:4px;">All features preserved. Emerald accent · IBM Plex Sans · 8pt rhythm · Single elevation scale.</p>
+</div>
+
+<div class="stage">
+
+  <!-- ═════════════════════════════════════════════════════════
+       FRAME 1 — DASHBOARD
+       ═════════════════════════════════════════════════════════ -->
+  <div class="frame">
+    <span class="frame-label">Dashboard</span>
+
+    <header class="appbar">
+      <div class="appbar-month">
+        <button class="appbar-month-chev" aria-label="Previous month">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <span class="appbar-month-name num">May 2026</span>
+        <button class="appbar-month-chev" aria-label="Next month">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+      <div class="appbar-icons">
+        <button class="icon-btn" aria-label="Search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
+        <button class="icon-btn" aria-label="Tools">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </button>
+        <button class="icon-btn" aria-label="Account">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="view">
+      <!-- HERO -->
+      <div class="hero">
+        <div class="hero-eyebrow">
+          <span>Spent this month</span>
+          <span class="mom-pill">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            12% less
+          </span>
+        </div>
+        <div class="hero-num num"><span class="currency">₹</span>42,180</div>
+        <div class="hero-sub num">vs ₹47,920 last month · 21 entries</div>
+        <div class="hero-budget">
+          <div class="hero-budget-head">
+            <span>Budget</span>
+            <span class="num"><span class="amt">42,180</span> / 60,000</span>
+          </div>
+          <div class="bar"><div class="bar-fill" style="width:70%"></div></div>
+          <div class="hero-budget-meta">
+            <span>70% used · 19 days left</span>
+            <span class="num">₹17,820 left</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPIs -->
+      <div class="kpis">
+        <div class="kpi">
+          <span class="kpi-label">Avg / day</span>
+          <span class="kpi-value num">₹1,406</span>
+          <span class="kpi-meta">Across 30 days</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">Top category</span>
+          <span class="kpi-value">Food</span>
+          <span class="kpi-meta num">₹18,200 · 43%</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">Entries</span>
+          <span class="kpi-value num">21</span>
+          <span class="kpi-meta">3 today</span>
+        </div>
+      </div>
+
+      <!-- Bar chart -->
+      <p class="section-label">6-month trend</p>
+      <div class="card">
+        <div class="bars-chart">
+          <div class="bars-col"><div class="bars-bar" style="height:45%"></div><div class="bars-val num">38k</div><div class="bars-label">Dec</div></div>
+          <div class="bars-col"><div class="bars-bar" style="height:60%"></div><div class="bars-val num">51k</div><div class="bars-label">Jan</div></div>
+          <div class="bars-col"><div class="bars-bar over" style="height:78%"></div><div class="bars-val num">64k</div><div class="bars-label">Feb</div></div>
+          <div class="bars-col"><div class="bars-bar" style="height:52%"></div><div class="bars-val num">44k</div><div class="bars-label">Mar</div></div>
+          <div class="bars-col"><div class="bars-bar" style="height:58%"></div><div class="bars-val num">48k</div><div class="bars-label">Apr</div></div>
+          <div class="bars-col"><div class="bars-bar current" style="height:50%"></div><div class="bars-val num">42k</div><div class="bars-label">May</div></div>
+        </div>
+      </div>
+
+      <!-- Donut -->
+      <p class="section-label">Category breakdown</p>
+      <div class="card">
+        <div class="donut-wrap">
+          <div class="donut">
+            <svg viewBox="0 0 36 36" style="width:100%; height:100%; transform: rotate(-90deg);">
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="#F5F5F0" stroke-width="3.6"/>
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="#0D9F6E" stroke-width="3.6"
+                      stroke-dasharray="43 100" stroke-dashoffset="0" stroke-linecap="round"/>
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="#5B5BD6" stroke-width="3.6"
+                      stroke-dasharray="22 100" stroke-dashoffset="-43" stroke-linecap="round"/>
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="#D97706" stroke-width="3.6"
+                      stroke-dasharray="18 100" stroke-dashoffset="-65" stroke-linecap="round"/>
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="#0EA5E9" stroke-width="3.6"
+                      stroke-dasharray="17 100" stroke-dashoffset="-83" stroke-linecap="round"/>
+            </svg>
+            <div class="donut-center">
+              <div class="donut-center-val num">₹42,180</div>
+              <div class="donut-center-lbl">May total</div>
+            </div>
+          </div>
+          <div class="donut-legend">
+            <div class="donut-leg-row"><span class="donut-leg-dot" style="background:#0D9F6E"></span><span class="donut-leg-name">Food</span><span class="donut-leg-val">43%</span></div>
+            <div class="donut-leg-row"><span class="donut-leg-dot" style="background:#5B5BD6"></span><span class="donut-leg-name">Grocery</span><span class="donut-leg-val">22%</span></div>
+            <div class="donut-leg-row"><span class="donut-leg-dot" style="background:#D97706"></span><span class="donut-leg-name">Petrol</span><span class="donut-leg-val">18%</span></div>
+            <div class="donut-leg-row"><span class="donut-leg-dot" style="background:#0EA5E9"></span><span class="donut-leg-name">Recharge</span><span class="donut-leg-val">17%</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent entries -->
+      <p class="section-label">Today</p>
+      <div class="card" style="padding:6px 18px;">
+        <div class="entry">
+          <div class="entry-icon">🍔</div>
+          <div class="entry-body">
+            <div class="entry-name">Zomato — Dinner</div>
+            <div class="entry-meta">Food · 8:42 PM</div>
+          </div>
+          <div class="entry-amount num">−₹840</div>
+        </div>
+        <div class="entry">
+          <div class="entry-icon">⛽</div>
+          <div class="entry-body">
+            <div class="entry-name">HP Petrol Pump</div>
+            <div class="entry-meta">Petrol · 6:15 PM</div>
+          </div>
+          <div class="entry-amount num">−₹2,000</div>
+        </div>
+        <div class="entry">
+          <div class="entry-icon">🛒</div>
+          <div class="entry-body">
+            <div class="entry-name">BigBasket</div>
+            <div class="entry-meta">Grocery · 11:20 AM</div>
+          </div>
+          <div class="entry-amount num">−₹1,420</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOTTOM NAV -->
+    <nav class="botnav">
+      <button class="botnav-btn active">
+        <span class="botnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+        Dashboard
+      </button>
+      <button class="botnav-btn">
+        <span class="botnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+        Add
+      </button>
+      <button class="botnav-btn">
+        <span class="botnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></span>
+        Insights
+      </button>
+      <button class="botnav-btn">
+        <span class="botnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><line x1="2" y1="11" x2="22" y2="11"/></svg></span>
+        Loans
+      </button>
+    </nav>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════
+       FRAME 2 — LOANS · CLOSURE TAB
+       ═════════════════════════════════════════════════════════ -->
+  <div class="frame">
+    <span class="frame-label">Loans → Closure plan</span>
+
+    <header class="appbar">
+      <div class="appbar-month">
+        <button class="appbar-month-chev" aria-label="Back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <span class="appbar-month-name">Closure plan</span>
+      </div>
+      <div class="appbar-icons">
+        <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></button>
+      </div>
+    </header>
+
+    <div class="view">
+      <!-- Sub-tabs (segmented) -->
+      <div style="display:flex; gap:4px; background:var(--inset); padding:4px; border-radius:var(--r-pill); margin-bottom:18px;">
+        <button class="btn btn--ghost" style="flex:1; background:transparent; box-shadow:none;">Overview</button>
+        <button class="btn btn--ghost" style="flex:1; background:transparent; box-shadow:none;">Projection</button>
+        <button class="btn btn--primary" style="flex:1;">Closure</button>
+        <button class="btn btn--ghost" style="flex:1; background:transparent; box-shadow:none;">Simulator</button>
+      </div>
+
+      <!-- Savings card -->
+      <div class="savings-card">
+        <div class="savings-grid">
+          <div>
+            <div class="field-label">Current savings</div>
+            <div class="input">
+              <span class="input-prefix">₹</span>
+              <input type="text" value="2,00,000" />
+            </div>
+            <div class="field-hint">Lump sum you have today</div>
+          </div>
+          <div>
+            <div class="field-label">Monthly savings</div>
+            <div class="input">
+              <span class="input-prefix">₹</span>
+              <input type="text" value="50,000" />
+            </div>
+            <div class="field-hint">Saved each month after EMIs</div>
+          </div>
+          <div>
+            <div class="field-label">Emergency reserve</div>
+            <div class="input">
+              <span class="input-prefix">₹</span>
+              <input type="text" value="50,000" />
+            </div>
+            <div class="field-hint">Held back from closure pool</div>
+          </div>
+        </div>
+        <div class="pool-note">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent-2)"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <span>Starting pool</span>
+          <strong class="num">₹1,50,000</strong>
+          <span class="pool-sub">(2,00,000 − 50,000 reserve)</span>
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <p class="section-label">Closure timeline</p>
+      <div class="timeline">
+
+        <!-- Step 1 — Pay now -->
+        <div class="tl-step paynow">
+          <div class="tl-step-head">
+            <div class="tl-step-num">1</div>
+            <div class="tl-step-name">Personal Loan</div>
+            <span class="paynow-pill">
+              <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/></svg>
+              Pay now
+            </span>
+            <span class="tl-step-when">This month</span>
+          </div>
+          <div class="tl-bd">
+            <div class="tl-bd-row"><span>Outstanding principal</span><span class="amt num">₹1,42,000</span></div>
+            <div class="tl-bd-row"><span style="color:var(--pos);">Zero preclosure charges</span><span class="amt num" style="color:var(--pos);">₹0</span></div>
+            <div class="tl-bd-row total"><span>Total to bank</span><span class="amt num">₹1,42,000</span></div>
+          </div>
+          <div class="tl-meta">
+            <span>Leftover: <strong class="num">₹8,000</strong></span>
+            <span>Frees <strong class="num">₹7,289/mo</strong></span>
+          </div>
+          <div class="tl-actions">
+            <button class="btn btn--ghost">↓ Move later</button>
+            <button class="btn btn--primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Mark closed
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="tl-step">
+          <div class="tl-step-head">
+            <div class="tl-step-num">2</div>
+            <div class="tl-step-name">Kotak Auto Loan</div>
+            <span class="tl-step-when">Mar 2028</span>
+          </div>
+          <div class="tl-bd">
+            <div class="tl-bd-row"><span>Outstanding principal</span><span class="amt num">₹4,80,000</span></div>
+            <div class="tl-bd-row"><span>Preclosure fee (3%)</span><span class="amt num">+₹14,400</span></div>
+            <div class="tl-bd-row"><span>GST on fee (18%)</span><span class="amt num">+₹2,592</span></div>
+            <div class="tl-bd-row total"><span>Total to bank</span><span class="amt num">₹4,96,992</span></div>
+          </div>
+          <div class="tl-meta">
+            <span>Leftover: <strong class="num">₹12,408</strong></span>
+            <span>Frees <strong class="num">₹13,205/mo</strong></span>
+          </div>
+          <div class="tl-actions">
+            <button class="btn btn--ghost">↑ Move earlier</button>
+            <button class="btn btn--ghost">↓ Move later</button>
+            <button class="btn btn--primary">Mark closed</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Summary -->
+      <div class="summary-card">
+        <span class="summary-emoji">🎉</span>
+        <div>
+          <div class="summary-title">Debt-free by Mar 2028</div>
+          <div class="summary-sub num">22 months · ₹12,408 left in savings</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom nav -->
+    <nav class="botnav">
+      <button class="botnav-btn"><span class="botnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>Dashboard</button>
+      <button class="botnav-btn"><span class="botnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>Add</button>
+      <button class="botnav-btn"><span class="botnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></span>Insights</button>
+      <button class="botnav-btn active"><span class="botnav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><line x1="2" y1="11" x2="22" y2="11"/></svg></span>Loans</button>
+    </nav>
+  </div>
+
+</div>
+
+<!-- Design system footer -->
+<div style="max-width:920px; margin: 24px auto 60px; padding: 0 32px;">
+  <div style="display:grid; grid-template-columns: repeat(4,1fr); gap:16px;">
+    <div style="background:#FFF; border:1px solid rgba(11,14,20,.06); border-radius:16px; padding:16px;">
+      <div style="font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:#6B7280; margin-bottom:10px;">Surfaces</div>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <div style="width:24px; height:24px; border-radius:6px; background:#FAFAF7; border:1px solid rgba(11,14,20,.06);"></div>
+        <div style="width:24px; height:24px; border-radius:6px; background:#FFF; border:1px solid rgba(11,14,20,.06);"></div>
+        <div style="width:24px; height:24px; border-radius:6px; background:#F5F5F0;"></div>
+        <div style="width:24px; height:24px; border-radius:6px; background:#0B0E14;"></div>
+      </div>
+    </div>
+    <div style="background:#FFF; border:1px solid rgba(11,14,20,.06); border-radius:16px; padding:16px;">
+      <div style="font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:#6B7280; margin-bottom:10px;">Accent</div>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <div style="width:24px; height:24px; border-radius:6px; background:#0D9F6E;"></div>
+        <div style="width:24px; height:24px; border-radius:6px; background:#047857;"></div>
+        <div style="width:24px; height:24px; border-radius:6px; background:rgba(13,159,110,.10);"></div>
+      </div>
+    </div>
+    <div style="background:#FFF; border:1px solid rgba(11,14,20,.06); border-radius:16px; padding:16px;">
+      <div style="font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:#6B7280; margin-bottom:10px;">Radii</div>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <div style="width:28px; height:28px; border-radius:10px; background:#F5F5F0;"></div>
+        <div style="width:28px; height:28px; border-radius:16px; background:#F5F5F0;"></div>
+        <div style="width:28px; height:28px; border-radius:999px; background:#F5F5F0;"></div>
+      </div>
+    </div>
+    <div style="background:#FFF; border:1px solid rgba(11,14,20,.06); border-radius:16px; padding:16px;">
+      <div style="font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:#6B7280; margin-bottom:10px;">Type</div>
+      <div style="font-size:18px; font-weight:700; letter-spacing:-.01em;">Display 32</div>
+      <div style="font-size:13px; font-weight:500; color:#6B7280; margin-top:2px; font-variant-numeric:tabular-nums;">Body 15 · num ₹42,180</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

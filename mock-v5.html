@@ -1,0 +1,1357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Wibey Pay — Mock v5 (Cardy aesthetic, full coverage)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   DESIGN TOKENS — v5  (Cardy palette locked, type hybrid)
+   ============================================================ */
+:root{
+  /* Surfaces — warm gray-beige family */
+  --bg:        #EFEDE8;
+  --bg-2:      #E8E6DF;
+  --card:      #E5E3DD;
+  --card-2:    #DDD9D0;
+  --card-3:    #D3CFC4;
+
+  /* Ink */
+  --ink:       #0A0A0A;
+  --ink-2:     #1A1A1A;
+  --muted:     #6B6862;
+  --muted-2:   #95918A;
+  --line:      rgba(10,10,10,0.08);
+  --line-2:    rgba(10,10,10,0.14);
+
+  /* Accent — single coral-red */
+  --accent:        #E63946;
+  --accent-deep:   #C42836;
+  --accent-soft:   #F4D7D9;
+  --accent-glow:   rgba(230,57,70,0.18);
+
+  /* Hero */
+  --black:     #0A0A0A;
+  --on-black:  #F5F5F0;
+  --on-black-2:#8E8E86;
+
+  /* Radii */
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 18px;
+  --r-lg: 24px;
+  --r-xl: 32px;
+  --r-pill: 999px;
+
+  /* Type stacks */
+  --f-display: 'Manrope', system-ui, sans-serif;
+  --f-body:    'Inter', system-ui, sans-serif;
+  --f-mono:    'JetBrains Mono', ui-monospace, monospace;
+
+  /* Motion */
+  --ease-out: cubic-bezier(.22,.61,.36,1);
+}
+
+/* ============================================================
+   PAGE  —  paper-grain texture (~2.5%) on warm-beige
+   ============================================================ */
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{background:var(--bg); color:var(--ink); font-family:var(--f-body);
+  -webkit-font-smoothing:antialiased; min-height:100%;}
+body{
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.025 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+    radial-gradient(ellipse 80% 60% at 20% 0%, #F4F1EB 0%, transparent 50%),
+    var(--bg);
+  background-attachment: fixed;
+  padding: 56px 40px 80px;
+}
+
+/* ============================================================
+   PAGE HEAD
+   ============================================================ */
+.page-head{ max-width:1640px; margin:0 auto 48px; }
+.page-head .eyebrow{
+  font-family:var(--f-mono); font-size:11px; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--muted); margin-bottom:14px;
+}
+.page-head h1{
+  font-family:var(--f-display); font-weight:700; font-size:44px;
+  letter-spacing:-0.025em; line-height:1.05;
+}
+.page-head h1 em{ font-style:italic; font-weight:500; color:var(--accent); }
+.page-head .sub{
+  margin-top:14px; color:var(--muted); font-size:15px; max-width:720px;
+}
+
+/* ============================================================
+   FRAME GRID  —  6 device frames in a responsive layout
+   ============================================================ */
+.frames{
+  max-width:1640px; margin:0 auto;
+  display:grid; grid-template-columns:repeat(3, 1fr);
+  gap:64px 56px;
+}
+@media (max-width:1300px){ .frames{grid-template-columns:repeat(2,1fr);} }
+@media (max-width:880px){ .frames{grid-template-columns:1fr;} }
+
+.frame{ display:flex; flex-direction:column; align-items:center; gap:18px; }
+.frame .meta{
+  font-family:var(--f-mono); font-size:11px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--muted); display:flex; gap:10px; align-items:center;
+}
+.frame .meta .num{ color:var(--ink); }
+.frame .meta .dot{ width:4px; height:4px; border-radius:50%; background:var(--accent); }
+
+/* ============================================================
+   DEVICE SHELL  —  iPhone-ish, 400×880, 40px radius, 8px ink border
+   ============================================================ */
+.device{
+  width:400px; height:880px;
+  background:var(--bg);
+  border:8px solid var(--ink);
+  border-radius:48px;
+  position:relative; overflow:hidden;
+  box-shadow:
+    0 30px 60px -20px rgba(10,10,10,0.25),
+    0 10px 30px -10px rgba(10,10,10,0.15);
+}
+.device::before{ /* notch */
+  content:""; position:absolute; top:0; left:50%; transform:translateX(-50%);
+  width:128px; height:28px; background:var(--ink);
+  border-bottom-left-radius:18px; border-bottom-right-radius:18px; z-index:50;
+}
+.device .status{
+  position:absolute; top:14px; left:0; right:0; padding:0 36px;
+  display:flex; justify-content:space-between; align-items:center;
+  font-family:var(--f-body); font-weight:600; font-size:13px; color:var(--ink);
+  z-index:40;
+}
+.device .status .right{display:flex; gap:6px; align-items:center;}
+.device .status svg{display:block;}
+
+.screen{ position:absolute; inset:0; padding-top:54px; padding-bottom:96px; overflow:hidden; }
+.screen-scroll{ height:100%; overflow:hidden; padding:0 22px; }
+
+/* ============================================================
+   APP BAR  —  greeting + avatar
+   ============================================================ */
+.appbar{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:10px 0 22px;
+}
+.appbar .hi{ font-family:var(--f-body); font-size:13px; color:var(--muted); }
+.appbar .name{
+  font-family:var(--f-display); font-weight:700; font-size:18px; letter-spacing:-0.01em;
+}
+.appbar .right{ display:flex; gap:10px; }
+.iconbtn{
+  width:38px; height:38px; border-radius:50%; background:var(--card);
+  display:flex; align-items:center; justify-content:center;
+  border:1px solid var(--line);
+}
+.iconbtn.dot::after{
+  content:""; position:absolute; width:7px; height:7px; border-radius:50%;
+  background:var(--accent); transform:translate(10px,-10px);
+  border:1.5px solid var(--card);
+}
+.iconbtn{ position:relative; }
+.avatar{
+  width:38px; height:38px; border-radius:50%;
+  background:linear-gradient(135deg, #D8D2C4, #B8B0A0);
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--f-display); font-weight:700; font-size:14px; color:var(--ink);
+  border:1px solid var(--line);
+}
+
+/* ============================================================
+   HEADLINE  —  balance line ("Total balance" + amount)
+   ============================================================ */
+.headline .label{
+  font-family:var(--f-body); font-size:12px; color:var(--muted);
+  letter-spacing:.04em; text-transform:uppercase;
+}
+.headline .amount{
+  font-family:var(--f-display); font-weight:700; font-size:42px;
+  letter-spacing:-0.035em; line-height:1.0; margin-top:4px;
+  display:flex; align-items:baseline; gap:8px;
+}
+.headline .sym{
+  font-family:var(--f-mono); font-weight:500; font-size:24px; color:var(--muted);
+  letter-spacing:-0.01em;
+}
+.headline .num{ font-variant-numeric: tabular-nums; }
+.headline .delta{
+  display:inline-flex; align-items:center; gap:6px; margin-top:10px;
+  font-family:var(--f-mono); font-size:12px; color:var(--muted);
+}
+.headline .delta .up{
+  color:#1F7A4F; display:inline-flex; gap:3px; align-items:center;
+}
+
+/* ============================================================
+   HERO CARD  —  black chart card with white wave + red callout
+   ============================================================ */
+.hero{
+  margin-top:18px; background:var(--black); color:var(--on-black);
+  border-radius:var(--r-lg); padding:18px 20px 16px; position:relative;
+  height:200px; overflow:hidden;
+}
+.hero .hrow{ display:flex; justify-content:space-between; align-items:flex-start; }
+.hero .tag{
+  font-family:var(--f-mono); font-size:10px; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--on-black-2);
+}
+.hero .h-amt{
+  font-family:var(--f-display); font-weight:700; font-size:24px; letter-spacing:-0.02em;
+  margin-top:4px;
+}
+.hero .h-amt .sym{ font-family:var(--f-mono); font-weight:500; font-size:16px; color:var(--on-black-2); margin-right:4px;}
+.hero .h-amt .num{ font-variant-numeric: tabular-nums; }
+.hero .pill-callout{
+  background:var(--accent); color:#fff; border-radius:var(--r-pill);
+  padding:6px 12px; font-family:var(--f-mono); font-size:11px; font-weight:600;
+  display:inline-flex; align-items:center; gap:6px;
+  position:absolute; top:50px; right:48px;
+}
+.hero .pill-callout::before{
+  content:""; width:6px; height:6px; border-radius:50%; background:#fff;
+}
+.hero svg.wave{ position:absolute; left:0; right:0; bottom:0; width:100%; height:120px; }
+.hero .x-axis{
+  position:absolute; bottom:8px; left:20px; right:20px;
+  display:flex; justify-content:space-between;
+  font-family:var(--f-mono); font-size:9px; color:var(--on-black-2);
+  letter-spacing:.08em;
+}
+
+/* ============================================================
+   RECIPIENTS / QUICK-SEND ROW
+   ============================================================ */
+.section-head{
+  display:flex; justify-content:space-between; align-items:center;
+  margin:22px 0 12px;
+}
+.section-head .title{
+  font-family:var(--f-display); font-weight:600; font-size:14px; letter-spacing:-0.005em;
+}
+.section-head .more{
+  font-family:var(--f-mono); font-size:10px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--muted);
+}
+.recipients{ display:flex; gap:10px; align-items:center; }
+.recipients .rc{
+  width:46px; height:46px; border-radius:50%; flex:none;
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--f-display); font-weight:700; font-size:14px;
+  border:1px solid var(--line);
+}
+.rc.r1{ background:#D8C9A8; color:#5C4A1E; }
+.rc.r2{ background:#C5D5C0; color:#3A5436; }
+.rc.r3{ background:#E8C5C0; color:#7A2E2A; }
+.rc.r4{ background:var(--card); color:var(--ink); font-family:var(--f-mono); font-weight:600; font-size:12px; }
+.rc.add{ background:transparent; border:1.5px dashed var(--line-2); color:var(--muted); }
+
+/* ============================================================
+   TX CARD  —  tone-on-tone transaction row
+   ============================================================ */
+.tx{
+  background:var(--card); border-radius:var(--r-md);
+  padding:14px 16px; display:flex; align-items:center; gap:12px;
+  margin-bottom:8px;
+}
+.tx .icn{
+  width:40px; height:40px; border-radius:12px; background:var(--card-2);
+  display:flex; align-items:center; justify-content:center; flex:none;
+}
+.tx.dark .icn{ background:rgba(255,255,255,0.08); }
+.tx .body{ flex:1; min-width:0; }
+.tx .title{
+  font-family:var(--f-body); font-weight:600; font-size:14px; letter-spacing:-0.005em;
+}
+.tx .sub{
+  font-family:var(--f-mono); font-size:10px; color:var(--muted);
+  letter-spacing:.04em; margin-top:2px;
+}
+.tx .amt{
+  font-family:var(--f-display); font-weight:600; font-size:14px; letter-spacing:-0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.tx .amt .sym{ font-family:var(--f-mono); font-weight:500; color:var(--muted); margin-right:3px; font-size:12px; }
+.tx .amt.pos{ color:#1F7A4F; }
+.tx .amt.neg{ color:var(--ink); }
+.tx.dark{ background:var(--black); color:var(--on-black); }
+.tx.dark .sub{ color:var(--on-black-2); }
+.tx.dark .amt.neg{ color:var(--on-black); }
+.tx.accent{ background:var(--accent-soft); }
+.tx.accent .icn{ background:rgba(230,57,70,0.12); }
+
+/* ============================================================
+   BOTTOM NAV  —  pill bar + round FAB w/ red dot
+   ============================================================ */
+.nav{
+  position:absolute; bottom:18px; left:22px; right:22px; height:64px;
+  display:flex; align-items:center; justify-content:space-between;
+  z-index:30;
+}
+.nav .pill{
+  background:var(--card); border-radius:var(--r-pill);
+  height:60px; padding:0 18px; display:flex; align-items:center; gap:24px;
+  border:1px solid var(--line);
+  flex:1; margin-right:14px;
+}
+.nav .pill .n{
+  display:flex; align-items:center; justify-content:center;
+  width:36px; height:36px; color:var(--muted);
+}
+.nav .pill .n.active{ color:var(--ink); }
+.nav .fab{
+  width:60px; height:60px; border-radius:50%; background:var(--black);
+  display:flex; align-items:center; justify-content:center; color:#fff;
+  position:relative; flex:none;
+}
+.nav .fab::after{
+  content:""; position:absolute; top:6px; right:6px;
+  width:10px; height:10px; border-radius:50%; background:var(--accent);
+  border:2px solid var(--card);
+}
+
+/* ============================================================
+   FRAME 2 — LOANS OVERVIEW  (loan cards)
+   ============================================================ */
+.tab-row{
+  display:flex; gap:8px; margin:6px 0 18px; overflow:hidden;
+}
+.tab-row .tab{
+  padding:8px 14px; border-radius:var(--r-pill);
+  background:var(--card); color:var(--muted);
+  font-family:var(--f-mono); font-size:11px; font-weight:500;
+  letter-spacing:.06em; text-transform:uppercase;
+  border:1px solid var(--line);
+}
+.tab-row .tab.active{ background:var(--accent); color:#fff; border-color:transparent;}
+
+.loan-card{
+  background:var(--card); border-radius:var(--r-lg);
+  padding:18px; margin-bottom:12px; position:relative;
+}
+.loan-card.black{ background:var(--black); color:var(--on-black); }
+.loan-card.red{ background:var(--accent); color:#fff; }
+.loan-card .lc-head{ display:flex; justify-content:space-between; align-items:flex-start; }
+.loan-card .bank{
+  font-family:var(--f-mono); font-size:10px; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--muted);
+}
+.loan-card.black .bank{ color:var(--on-black-2); }
+.loan-card.red .bank{ color:rgba(255,255,255,0.75); }
+.loan-card .lname{
+  font-family:var(--f-display); font-weight:700; font-size:18px;
+  letter-spacing:-0.015em; margin-top:4px;
+}
+.loan-card .due{
+  font-family:var(--f-mono); font-size:10px; padding:4px 8px;
+  background:rgba(10,10,10,0.06); border-radius:var(--r-pill); color:var(--muted);
+  letter-spacing:.08em;
+}
+.loan-card.black .due{ background:rgba(255,255,255,0.10); color:var(--on-black-2); }
+.loan-card.red .due{ background:rgba(255,255,255,0.18); color:#fff; }
+.loan-card .lc-meta{
+  display:flex; gap:24px; margin-top:14px;
+}
+.loan-card .lm{
+  font-family:var(--f-body); font-size:11px; color:var(--muted);
+}
+.loan-card.black .lm{ color:var(--on-black-2); }
+.loan-card.red .lm{ color:rgba(255,255,255,0.78); }
+.loan-card .lm .v{
+  display:block; font-family:var(--f-display); font-weight:600; font-size:16px;
+  letter-spacing:-0.01em; color:var(--ink); margin-top:3px;
+  font-variant-numeric: tabular-nums;
+}
+.loan-card.black .lm .v{ color:var(--on-black); }
+.loan-card.red .lm .v{ color:#fff; }
+.loan-card .lm .v .sym{ font-family:var(--f-mono); font-weight:500; font-size:12px; color:var(--muted); margin-right:2px;}
+.loan-card.black .lm .v .sym{ color:var(--on-black-2); }
+.loan-card.red .lm .v .sym{ color:rgba(255,255,255,0.7); }
+
+.loan-card .progress{
+  margin-top:14px; height:6px; background:rgba(10,10,10,0.06);
+  border-radius:var(--r-pill); overflow:hidden; position:relative;
+}
+.loan-card.black .progress{ background:rgba(255,255,255,0.12); }
+.loan-card.red .progress{ background:rgba(255,255,255,0.22); }
+.loan-card .progress .fill{
+  height:100%; background:var(--accent); border-radius:var(--r-pill);
+}
+.loan-card.red .progress .fill{ background:#fff; }
+.loan-card .progress-row{
+  display:flex; justify-content:space-between; margin-top:8px;
+  font-family:var(--f-mono); font-size:10px; color:var(--muted);
+  letter-spacing:.06em;
+}
+.loan-card.black .progress-row{ color:var(--on-black-2); }
+.loan-card.red .progress-row{ color:rgba(255,255,255,0.8); }
+
+/* ============================================================
+   FRAME 3 — CLOSURE BENTO  (ring + red cards)
+   ============================================================ */
+.kpi-row{ display:flex; gap:10px; margin-bottom:14px; }
+.kpi-pill{
+  flex:1; background:var(--card); border-radius:var(--r-lg);
+  padding:14px 16px;
+}
+.kpi-pill .l{
+  font-family:var(--f-mono); font-size:10px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--muted);
+}
+.kpi-pill .v{
+  margin-top:4px; font-family:var(--f-display); font-weight:700;
+  font-size:20px; letter-spacing:-0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.kpi-pill .v .sym{ font-family:var(--f-mono); font-weight:500; color:var(--muted); font-size:14px; margin-right:2px;}
+.kpi-pill .d{
+  margin-top:4px; font-family:var(--f-mono); font-size:10px; color:#1F7A4F;
+}
+
+.bento{
+  display:grid; grid-template-columns:1.2fr 1fr;
+  grid-template-rows:auto auto;
+  gap:10px; margin-bottom:12px;
+}
+.bento .b1{ grid-row:1 / 3; }
+.b-card{ background:var(--card); border-radius:var(--r-lg); padding:16px; }
+.b-card.black{ background:var(--black); color:var(--on-black); }
+.b-card.red{ background:var(--accent); color:#fff; }
+.b-card .l{
+  font-family:var(--f-mono); font-size:10px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--muted);
+}
+.b-card.black .l{ color:var(--on-black-2); }
+.b-card.red .l{ color:rgba(255,255,255,0.78); }
+.b-card .v{
+  margin-top:8px; font-family:var(--f-display); font-weight:700;
+  font-size:22px; letter-spacing:-0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.b-card .v .sym{ font-family:var(--f-mono); font-weight:500; color:var(--muted); font-size:14px; margin-right:2px;}
+.b-card.red .v .sym{ color:rgba(255,255,255,0.7); }
+.b-card .sub{ margin-top:4px; font-family:var(--f-body); font-size:11px; color:var(--muted); }
+.b-card.black .sub{ color:var(--on-black-2); }
+.b-card.red .sub{ color:rgba(255,255,255,0.8); }
+
+.ring-wrap{ display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; padding:8px 0; }
+.ring-wrap .ring-pct{
+  font-family:var(--f-display); font-weight:700; font-size:32px; letter-spacing:-0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.ring-wrap .ring-l{
+  font-family:var(--f-mono); font-size:10px; color:var(--on-black-2);
+  letter-spacing:.16em; text-transform:uppercase; margin-top:2px;
+}
+.ring-wrap .eta{
+  margin-top:10px; padding:5px 10px; background:rgba(255,255,255,0.10);
+  border-radius:var(--r-pill); font-family:var(--f-mono); font-size:10px;
+  letter-spacing:.08em;
+}
+
+/* ============================================================
+   FRAME 4 — ADD EXPENSE  bottom-sheet
+   ============================================================ */
+.dim{
+  position:absolute; inset:0; background:rgba(10,10,10,0.32);
+  backdrop-filter: blur(2px);
+}
+.sheet{
+  position:absolute; bottom:0; left:0; right:0;
+  background:var(--bg); border-top-left-radius:32px; border-top-right-radius:32px;
+  padding:18px 22px 24px;
+  box-shadow:0 -20px 40px -10px rgba(10,10,10,0.25);
+  z-index:60;
+}
+.sheet .grab{
+  width:42px; height:5px; background:var(--line-2); border-radius:var(--r-pill);
+  margin:0 auto 16px;
+}
+.sheet .s-head{
+  display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;
+}
+.sheet .s-title{
+  font-family:var(--f-display); font-weight:700; font-size:20px; letter-spacing:-0.02em;
+}
+.sheet .close{
+  width:32px; height:32px; border-radius:50%; background:var(--card);
+  display:flex; align-items:center; justify-content:center;
+}
+
+.amount-input{
+  background:var(--card); border-radius:var(--r-lg);
+  padding:20px; text-align:center; margin-bottom:14px;
+  position:relative;
+}
+.amount-input .l{
+  font-family:var(--f-mono); font-size:10px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--muted);
+}
+.amount-input .v{
+  margin-top:8px; font-family:var(--f-display); font-weight:700;
+  font-size:40px; letter-spacing:-0.03em; line-height:1;
+  font-variant-numeric: tabular-nums;
+}
+.amount-input .v .sym{ font-family:var(--f-mono); font-weight:500; font-size:24px; color:var(--muted); margin-right:6px; }
+.amount-input .v .cursor{
+  display:inline-block; width:2px; height:36px;
+  background:var(--accent); vertical-align:middle; margin-left:2px;
+  animation:blink 1s infinite;
+}
+@keyframes blink{50%{opacity:0;}}
+
+.field{
+  background:var(--card); border-radius:var(--r-md);
+  padding:12px 16px; display:flex; align-items:center; gap:12px;
+  margin-bottom:8px;
+}
+.field .ic{ width:34px; height:34px; border-radius:10px; background:var(--card-2); display:flex; align-items:center; justify-content:center; }
+.field .lbl{
+  font-family:var(--f-mono); font-size:10px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--muted);
+}
+.field .val{
+  font-family:var(--f-body); font-weight:500; font-size:14px;
+  letter-spacing:-0.005em; margin-top:2px;
+}
+.field .chev{ color:var(--muted); }
+
+.cat-chips{ display:flex; flex-wrap:wrap; gap:6px; margin:14px 0; }
+.cat-chips .chip{
+  padding:6px 12px; border-radius:var(--r-pill);
+  background:var(--card); border:1px solid var(--line);
+  font-family:var(--f-mono); font-size:11px; color:var(--muted);
+  letter-spacing:.06em;
+}
+.cat-chips .chip.active{ background:var(--ink); color:#fff; border-color:transparent;}
+
+.sheet .save{
+  background:var(--accent); color:#fff;
+  height:54px; border-radius:var(--r-pill);
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  font-family:var(--f-display); font-weight:700; font-size:15px;
+  letter-spacing:-0.005em; margin-top:8px;
+}
+
+/* ============================================================
+   FRAME 5 — TREND & INSIGHTS
+   ============================================================ */
+.insight-card{
+  background:var(--card); border-radius:var(--r-lg); padding:16px;
+  margin-bottom:10px;
+}
+.insight-card.black{ background:var(--black); color:var(--on-black); }
+.insight-card .ih{
+  display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;
+}
+.insight-card .l{
+  font-family:var(--f-mono); font-size:10px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--muted);
+}
+.insight-card.black .l{ color:var(--on-black-2); }
+.insight-card .v{
+  font-family:var(--f-display); font-weight:700; font-size:22px;
+  letter-spacing:-0.02em; font-variant-numeric: tabular-nums;
+}
+.insight-card .v .sym{ font-family:var(--f-mono); font-weight:500; font-size:14px; color:var(--muted); margin-right:2px;}
+.insight-card.black .v .sym{ color:var(--on-black-2);}
+.insight-card .v .delta{
+  font-family:var(--f-mono); font-size:11px; color:#1F7A4F; margin-left:8px;
+}
+
+.cat-list .ci{
+  display:flex; align-items:center; gap:12px;
+  padding:10px 0; border-bottom:1px solid var(--line);
+}
+.cat-list .ci:last-child{ border-bottom:0; }
+.cat-list .ci .dot{ width:10px; height:10px; border-radius:50%; }
+.cat-list .ci .nm{ flex:1; font-family:var(--f-body); font-size:13px; font-weight:500;}
+.cat-list .ci .amt{ font-family:var(--f-mono); font-size:13px; font-variant-numeric: tabular-nums; }
+.cat-list .ci .pc{ font-family:var(--f-mono); font-size:10px; color:var(--muted); margin-left:8px; width:36px; text-align:right;}
+
+/* ============================================================
+   FRAME 6 — EMPTY STATE
+   ============================================================ */
+.empty-wrap{
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  height:calc(100% - 100px); padding:0 8px; text-align:center;
+}
+.empty-illu{
+  width:160px; height:160px; border-radius:50%;
+  background:radial-gradient(circle at 30% 30%, var(--card), var(--card-2));
+  display:flex; align-items:center; justify-content:center;
+  position:relative; margin-bottom:22px;
+}
+.empty-illu::after{
+  content:""; position:absolute; inset:-10px; border-radius:50%;
+  border:1.5px dashed var(--line-2);
+}
+.empty-illu .red{
+  width:36px; height:36px; border-radius:50%; background:var(--accent);
+  position:absolute; bottom:8px; right:14px;
+  border:4px solid var(--bg);
+  display:flex; align-items:center; justify-content:center; color:#fff;
+}
+.empty-wrap h3{
+  font-family:var(--f-display); font-weight:700; font-size:22px;
+  letter-spacing:-0.02em; margin-bottom:8px;
+}
+.empty-wrap p{
+  font-family:var(--f-body); font-size:13px; color:var(--muted);
+  max-width:260px; line-height:1.5; margin-bottom:20px;
+}
+.empty-cta{
+  background:var(--ink); color:#fff; border-radius:var(--r-pill);
+  padding:14px 22px; display:inline-flex; align-items:center; gap:8px;
+  font-family:var(--f-display); font-weight:600; font-size:13px;
+}
+.empty-cta .dot{ width:8px; height:8px; border-radius:50%; background:var(--accent); }
+.empty-skel{
+  margin-top:28px; width:100%;
+  display:flex; flex-direction:column; gap:8px; opacity:.45;
+}
+.empty-skel .row{
+  height:50px; background:var(--card); border-radius:var(--r-md);
+}
+
+/* ============================================================
+   DESIGN SYSTEM FOOTER
+   ============================================================ */
+.ds{
+  max-width:1640px; margin:120px auto 0;
+  padding-top:48px; border-top:1px dashed var(--line-2);
+}
+.ds .eyebrow{
+  font-family:var(--f-mono); font-size:11px; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--muted); margin-bottom:10px;
+}
+.ds h2{
+  font-family:var(--f-display); font-weight:700; font-size:32px;
+  letter-spacing:-0.025em; margin-bottom:36px;
+}
+.ds h2 em{ font-style:italic; font-weight:500; color:var(--accent); }
+.ds-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:32px; }
+@media (max-width:1100px){ .ds-grid{ grid-template-columns:repeat(2,1fr); } }
+
+.ds-block .t{
+  font-family:var(--f-mono); font-size:11px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--muted); margin-bottom:14px;
+}
+.swatches{ display:flex; flex-direction:column; gap:8px; }
+.sw{
+  display:flex; align-items:center; gap:12px; padding:10px;
+  background:var(--card); border-radius:var(--r-sm); border:1px solid var(--line);
+}
+.sw .chip{ width:32px; height:32px; border-radius:8px; flex:none; border:1px solid var(--line);}
+.sw .name{ font-family:var(--f-body); font-weight:600; font-size:12px;}
+.sw .hex{ font-family:var(--f-mono); font-size:10px; color:var(--muted); margin-top:2px;}
+
+.type-spec{ background:var(--card); border-radius:var(--r-md); padding:18px; margin-bottom:10px;}
+.type-spec .label{
+  font-family:var(--f-mono); font-size:10px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--muted); margin-bottom:6px;
+}
+.type-spec .demo.display{ font-family:var(--f-display); font-weight:700; font-size:24px; letter-spacing:-0.02em;}
+.type-spec .demo.body{ font-family:var(--f-body); font-size:14px; line-height:1.5; }
+.type-spec .demo.mono{ font-family:var(--f-mono); font-size:14px; letter-spacing:.02em; }
+
+.tokens-list{ background:var(--card); border-radius:var(--r-md); padding:16px; }
+.tokens-list .tk{
+  display:flex; justify-content:space-between; padding:6px 0;
+  border-bottom:1px solid var(--line); font-family:var(--f-mono); font-size:11px;
+}
+.tokens-list .tk:last-child{border-bottom:0;}
+.tokens-list .tk .k{ color:var(--muted); }
+.tokens-list .tk .v{ color:var(--ink); }
+
+.signature-moves{ background:var(--card); border-radius:var(--r-md); padding:18px; }
+.signature-moves .mv{
+  display:flex; gap:10px; padding:8px 0;
+  border-bottom:1px solid var(--line);
+}
+.signature-moves .mv:last-child{ border-bottom:0; }
+.signature-moves .mv .n{
+  font-family:var(--f-mono); font-size:11px; color:var(--accent); flex:none; width:22px;
+}
+.signature-moves .mv .txt{ font-family:var(--f-body); font-size:12px; line-height:1.5; }
+.signature-moves .mv .txt b{ font-weight:600; }
+
+/* footer note */
+.foot-note{
+  text-align:center; margin-top:80px; padding-top:32px;
+  border-top:1px solid var(--line);
+  font-family:var(--f-mono); font-size:11px; color:var(--muted);
+  letter-spacing:.06em;
+}
+</style>
+</head>
+
+<body>
+
+<!-- ============================================================
+     PAGE HEAD
+     ============================================================ -->
+<div class="page-head">
+  <div class="eyebrow">Wibey Pay  ·  Mock v5  ·  Cardy aesthetic  ·  full coverage</div>
+  <h1>The expensive money app. <em>Done right this time.</em></h1>
+  <p class="sub">Six frames. Single coral accent. Tone-on-tone surfaces with paper grain. Manrope for display, Inter for body, JetBrains Mono on numerals. Black hero card. Pill nav with red-dotted FAB. Empty &amp; loading states included.</p>
+</div>
+
+<!-- ============================================================
+     FRAMES
+     ============================================================ -->
+<div class="frames">
+
+  <!-- ===========================
+       FRAME 01  —  DASHBOARD
+       =========================== -->
+  <div class="frame">
+    <div class="meta"><span class="num">01</span><span class="dot"></span><span>dashboard · home</span></div>
+    <div class="device">
+      <div class="status">
+        <span>9:41</span>
+        <div class="right">
+          <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M1 9h12M1 6.5h12M1 4h12M1 1.5h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M.5 5a7 7 0 0113 0" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M3 6.5a4 4 0 018 0" stroke="currentColor" stroke-width="1.3" fill="none"/></svg>
+          <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x=".5" y=".5" width="19" height="10" rx="2.5" stroke="currentColor"/><rect x="2" y="2" width="14" height="7" rx="1.2" fill="currentColor"/><rect x="20" y="3.5" width="1.5" height="4" rx=".5" fill="currentColor"/></svg>
+        </div>
+      </div>
+
+      <div class="screen">
+        <div class="screen-scroll">
+
+          <!-- App bar -->
+          <div class="appbar">
+            <div>
+              <div class="hi">Welcome back,</div>
+              <div class="name">Pranav</div>
+            </div>
+            <div class="right">
+              <div class="iconbtn dot">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+              </div>
+              <div class="avatar">P</div>
+            </div>
+          </div>
+
+          <!-- Headline balance -->
+          <div class="headline">
+            <div class="label">Total balance</div>
+            <div class="amount"><span class="sym">₹</span><span class="num">4,28,940</span></div>
+            <div class="delta"><span class="up">↑ 4.2%</span> · vs last month</div>
+          </div>
+
+          <!-- HERO chart card -->
+          <div class="hero">
+            <div class="hrow">
+              <div>
+                <div class="tag">Spent · last 7 days</div>
+                <div class="h-amt"><span class="sym">₹</span><span class="num">12,840</span></div>
+              </div>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-opacity="0.7"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+            </div>
+
+            <div class="pill-callout">₹3,240 · Wed</div>
+
+            <svg class="wave" viewBox="0 0 360 120" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="wgrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#fff" stop-opacity="0.18"/>
+                  <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <path d="M0,70 C30,60 60,80 90,72 C120,64 150,40 180,42 C210,44 240,75 270,68 C300,60 330,30 360,38 L360,120 L0,120 Z"
+                    fill="url(#wgrad)"/>
+              <path d="M0,70 C30,60 60,80 90,72 C120,64 150,40 180,42 C210,44 240,75 270,68 C300,60 330,30 360,38"
+                    stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+              <circle cx="180" cy="42" r="3.5" fill="#E63946" stroke="#fff" stroke-width="1.5"/>
+            </svg>
+
+            <div class="x-axis">
+              <span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span><span>SUN</span>
+            </div>
+          </div>
+
+          <!-- Recipients -->
+          <div class="section-head">
+            <div class="title">Quick send</div>
+            <div class="more">See all</div>
+          </div>
+          <div class="recipients">
+            <div class="rc r1">RK</div>
+            <div class="rc r2">SP</div>
+            <div class="rc r3">AM</div>
+            <div class="rc r4">3+</div>
+            <div class="rc add">＋</div>
+          </div>
+
+          <!-- Transactions -->
+          <div class="section-head">
+            <div class="title">Recent activity</div>
+            <div class="more">May</div>
+          </div>
+
+          <div class="tx">
+            <div class="icn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></svg></div>
+            <div class="body"><div class="title">Zomato · dinner</div><div class="sub">12 May  ·  food</div></div>
+            <div class="amt neg"><span class="sym">−₹</span>684</div>
+          </div>
+
+          <div class="tx dark">
+            <div class="icn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F5F5F0" stroke-width="1.6"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+            <div class="body"><div class="title">Salary · May</div><div class="sub">01 May  ·  income</div></div>
+            <div class="amt pos"><span class="sym" style="color:#8E8E86">+₹</span>1,84,200</div>
+          </div>
+
+          <div class="tx accent">
+            <div class="icn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C42836" stroke-width="1.7"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
+            <div class="body"><div class="title">CreditFair EMI #12</div><div class="sub">due 18 may  ·  3 of 24 left</div></div>
+            <div class="amt neg" style="color:#C42836"><span class="sym" style="color:#C42836">−₹</span>7,289</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Bottom nav -->
+      <div class="nav">
+        <div class="pill">
+          <div class="n active"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l9 7v11h-6v-7H9v7H3V10z"/></svg></div>
+          <div class="n"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12l3-7h12l3 7M3 12v8h18v-8M3 12h18"/></svg></div>
+          <div class="n"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 3v18h18M7 14l4-4 4 4 5-5"/></svg></div>
+          <div class="n"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
+        </div>
+        <div class="fab">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===========================
+       FRAME 02  —  LOANS OVERVIEW
+       =========================== -->
+  <div class="frame">
+    <div class="meta"><span class="num">02</span><span class="dot"></span><span>loans · overview</span></div>
+    <div class="device">
+      <div class="status">
+        <span>9:41</span>
+        <div class="right">
+          <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M1 9h12M1 6.5h12M1 4h12M1 1.5h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M.5 5a7 7 0 0113 0" stroke="currentColor" stroke-width="1.3" fill="none"/></svg>
+          <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x=".5" y=".5" width="19" height="10" rx="2.5" stroke="currentColor"/><rect x="2" y="2" width="14" height="7" rx="1.2" fill="currentColor"/></svg>
+        </div>
+      </div>
+
+      <div class="screen">
+        <div class="screen-scroll">
+
+          <div class="appbar">
+            <div>
+              <div class="hi">All active</div>
+              <div class="name">Loans</div>
+            </div>
+            <div class="right">
+              <div class="iconbtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></div>
+              <div class="iconbtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 6h18M6 12h12M10 18h4"/></svg></div>
+            </div>
+          </div>
+
+          <!-- Total owed headline -->
+          <div class="headline" style="margin-bottom:14px;">
+            <div class="label">Outstanding · all banks</div>
+            <div class="amount"><span class="sym">₹</span><span class="num">2,18,540</span></div>
+            <div class="delta">3 loans  ·  31% closed</div>
+          </div>
+
+          <!-- Tabs -->
+          <div class="tab-row">
+            <div class="tab active">Active</div>
+            <div class="tab">Closed</div>
+            <div class="tab">Foreclose</div>
+          </div>
+
+          <!-- Loan cards -->
+          <div class="loan-card black">
+            <div class="lc-head">
+              <div>
+                <div class="bank">CreditFair · personal</div>
+                <div class="lname">EMI · #12 of 24</div>
+              </div>
+              <div class="due">Due 18 may</div>
+            </div>
+            <div class="lc-meta">
+              <div class="lm">Outstanding<span class="v"><span class="sym">₹</span>87,468</span></div>
+              <div class="lm">EMI<span class="v"><span class="sym">₹</span>7,289</span></div>
+              <div class="lm">Rate<span class="v">14.2%</span></div>
+            </div>
+            <div class="progress"><div class="fill" style="width:50%; background:#fff;"></div></div>
+            <div class="progress-row"><span>50% paid</span><span>12 left</span></div>
+          </div>
+
+          <div class="loan-card">
+            <div class="lc-head">
+              <div>
+                <div class="bank">IndusInd · vehicle</div>
+                <div class="lname">EMI · #28 of 60</div>
+              </div>
+              <div class="due">Due 5 jun</div>
+            </div>
+            <div class="lc-meta">
+              <div class="lm">Outstanding<span class="v"><span class="sym">₹</span>1,08,420</span></div>
+              <div class="lm">EMI<span class="v"><span class="sym">₹</span>4,128</span></div>
+              <div class="lm">Rate<span class="v">11.5%</span></div>
+            </div>
+            <div class="progress"><div class="fill" style="width:47%;"></div></div>
+            <div class="progress-row"><span>47% paid</span><span>32 left</span></div>
+          </div>
+
+          <div class="loan-card red">
+            <div class="lc-head">
+              <div>
+                <div class="bank">Kotak · auto</div>
+                <div class="lname">EMI · #5 of 36</div>
+              </div>
+              <div class="due">Due 22 may</div>
+            </div>
+            <div class="lc-meta">
+              <div class="lm">Outstanding<span class="v"><span class="sym">₹</span>22,652</span></div>
+              <div class="lm">EMI<span class="v"><span class="sym">₹</span>1,890</span></div>
+              <div class="lm">Rate<span class="v">9.8%</span></div>
+            </div>
+            <div class="progress"><div class="fill" style="width:14%;"></div></div>
+            <div class="progress-row"><span>14% paid</span><span>31 left</span></div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="nav">
+        <div class="pill">
+          <div class="n"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l9 7v11h-6v-7H9v7H3V10z"/></svg></div>
+          <div class="n active"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M3 12l3-7h12l3 7M3 12v8h18v-8z"/></svg></div>
+          <div class="n"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 3v18h18M7 14l4-4 4 4 5-5"/></svg></div>
+          <div class="n"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
+        </div>
+        <div class="fab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===========================
+       FRAME 03  —  CLOSURE / BENTO
+       =========================== -->
+  <div class="frame">
+    <div class="meta"><span class="num">03</span><span class="dot"></span><span>closure · debt-free</span></div>
+    <div class="device">
+      <div class="status">
+        <span>9:41</span>
+        <div class="right">
+          <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M1 9h12M1 6.5h12M1 4h12M1 1.5h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M.5 5a7 7 0 0113 0" stroke="currentColor" stroke-width="1.3" fill="none"/></svg>
+          <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x=".5" y=".5" width="19" height="10" rx="2.5" stroke="currentColor"/><rect x="2" y="2" width="14" height="7" rx="1.2" fill="currentColor"/></svg>
+        </div>
+      </div>
+
+      <div class="screen">
+        <div class="screen-scroll">
+
+          <div class="appbar">
+            <div>
+              <div class="hi">Closure plan</div>
+              <div class="name">Debt-free in 28mo</div>
+            </div>
+            <div class="right">
+              <div class="iconbtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></div>
+            </div>
+          </div>
+
+          <!-- KPI pills -->
+          <div class="kpi-row">
+            <div class="kpi-pill">
+              <div class="l">Position</div>
+              <div class="v"><span class="sym">₹</span>11.67L</div>
+              <div class="d">+ ₹42K mtd</div>
+            </div>
+            <div class="kpi-pill">
+              <div class="l">Cash buffer</div>
+              <div class="v"><span class="sym">₹</span>2.4L</div>
+              <div class="d">6.2 mo runway</div>
+            </div>
+          </div>
+
+          <!-- BENTO grid -->
+          <div class="bento">
+            <div class="b-card black b1">
+              <div class="l">progress</div>
+              <div class="ring-wrap">
+                <svg width="160" height="160" viewBox="0 0 160 160">
+                  <circle cx="80" cy="80" r="64" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="10"/>
+                  <circle cx="80" cy="80" r="64" fill="none" stroke="#E63946" stroke-width="10"
+                          stroke-linecap="round" stroke-dasharray="402"
+                          stroke-dashoffset="277" transform="rotate(-90 80 80)"/>
+                </svg>
+                <div class="ring-pct" style="margin-top:-100px;">31<span style="font-size:18px; color:var(--on-black-2)">%</span></div>
+                <div class="ring-l" style="margin-top:6px;">debt-free</div>
+                <div class="eta" style="margin-top:60px;">ETA · 28 months</div>
+              </div>
+            </div>
+
+            <div class="b-card red">
+              <div class="l">Next EMI</div>
+              <div class="v"><span class="sym">₹</span>7,289</div>
+              <div class="sub">CreditFair · 18 may</div>
+            </div>
+
+            <div class="b-card">
+              <div class="l">Interest saved</div>
+              <div class="v"><span class="sym">₹</span>1,84,000</div>
+              <div class="sub">via prepayments ytd</div>
+            </div>
+          </div>
+
+          <div class="tx">
+            <div class="icn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+            <div class="body"><div class="title">Suggest · pay extra ₹5,000</div><div class="sub">save ₹38k · close 4mo earlier</div></div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 18l6-6-6-6"/></svg>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="nav">
+        <div class="pill">
+          <div class="n"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l9 7v11h-6v-7H9v7H3V10z"/></svg></div>
+          <div class="n"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12l3-7h12l3 7M3 12v8h18v-8M3 12h18"/></svg></div>
+          <div class="n active"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M3 21V3h2v15h16v3z"/><path d="M7 14l4-4 4 4 5-5" stroke="currentColor" stroke-width="2" fill="none"/></svg></div>
+          <div class="n"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
+        </div>
+        <div class="fab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===========================
+       FRAME 04  —  ADD EXPENSE  (bottom sheet)
+       =========================== -->
+  <div class="frame">
+    <div class="meta"><span class="num">04</span><span class="dot"></span><span>add expense · sheet</span></div>
+    <div class="device">
+      <div class="status">
+        <span>9:41</span>
+        <div class="right">
+          <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M1 9h12M1 6.5h12M1 4h12M1 1.5h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M.5 5a7 7 0 0113 0" stroke="currentColor" stroke-width="1.3" fill="none"/></svg>
+          <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x=".5" y=".5" width="19" height="10" rx="2.5" stroke="currentColor"/><rect x="2" y="2" width="14" height="7" rx="1.2" fill="currentColor"/></svg>
+        </div>
+      </div>
+
+      <!-- Faded dashboard underlay -->
+      <div class="screen" style="opacity:.85;">
+        <div class="screen-scroll">
+          <div class="appbar">
+            <div><div class="hi">Welcome back,</div><div class="name">Pranav</div></div>
+            <div class="right"><div class="avatar">P</div></div>
+          </div>
+          <div class="headline">
+            <div class="label">Total balance</div>
+            <div class="amount"><span class="sym">₹</span><span class="num">4,28,940</span></div>
+          </div>
+          <div class="hero" style="height:160px;">
+            <div class="tag">Spent · last 7 days</div>
+            <div class="h-amt"><span class="sym">₹</span><span class="num">12,840</span></div>
+            <svg class="wave" viewBox="0 0 360 100" preserveAspectRatio="none">
+              <path d="M0,55 C30,45 60,65 90,57 C120,49 150,30 180,32 C210,34 240,60 270,53 C300,46 330,20 360,28" stroke="#fff" stroke-width="1.6" fill="none"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="dim"></div>
+
+      <!-- The sheet -->
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="s-head">
+          <div class="s-title">New expense</div>
+          <div class="close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
+        </div>
+
+        <div class="amount-input">
+          <div class="l">amount</div>
+          <div class="v"><span class="sym">₹</span><span class="num">3,240</span><span class="cursor"></span></div>
+        </div>
+
+        <div class="cat-chips">
+          <div class="chip active">Food</div>
+          <div class="chip">Travel</div>
+          <div class="chip">Bills</div>
+          <div class="chip">EMI</div>
+          <div class="chip">Health</div>
+          <div class="chip">+</div>
+        </div>
+
+        <div class="field">
+          <div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+          <div style="flex:1"><div class="lbl">Date</div><div class="val">Wed, 15 May 2026</div></div>
+          <div class="chev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18l6-6-6-6"/></svg></div>
+        </div>
+
+        <div class="field">
+          <div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div>
+          <div style="flex:1"><div class="lbl">Note</div><div class="val">Zomato — pasta &amp; coke</div></div>
+        </div>
+
+        <div class="save">
+          Save expense
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===========================
+       FRAME 05  —  TREND & INSIGHTS
+       =========================== -->
+  <div class="frame">
+    <div class="meta"><span class="num">05</span><span class="dot"></span><span>insights · trend</span></div>
+    <div class="device">
+      <div class="status">
+        <span>9:41</span>
+        <div class="right">
+          <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M1 9h12M1 6.5h12M1 4h12M1 1.5h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M.5 5a7 7 0 0113 0" stroke="currentColor" stroke-width="1.3" fill="none"/></svg>
+          <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x=".5" y=".5" width="19" height="10" rx="2.5" stroke="currentColor"/><rect x="2" y="2" width="14" height="7" rx="1.2" fill="currentColor"/></svg>
+        </div>
+      </div>
+
+      <div class="screen">
+        <div class="screen-scroll">
+
+          <div class="appbar">
+            <div>
+              <div class="hi">Last 6 months</div>
+              <div class="name">Insights</div>
+            </div>
+            <div class="right">
+              <div class="iconbtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 6h18M6 12h12M10 18h4"/></svg></div>
+            </div>
+          </div>
+
+          <div class="tab-row">
+            <div class="tab">Week</div>
+            <div class="tab">Month</div>
+            <div class="tab active">6 mo</div>
+            <div class="tab">Year</div>
+          </div>
+
+          <!-- Black trend hero -->
+          <div class="insight-card black" style="padding:18px 18px 8px;">
+            <div class="ih">
+              <div class="l">Net cashflow</div>
+              <span class="l" style="color:var(--accent);">+ ₹62k</span>
+            </div>
+            <div class="v"><span class="sym">₹</span>2,84,120<span class="delta">↑ 18%</span></div>
+            <svg viewBox="0 0 340 110" width="100%" height="110" style="margin-top:8px;">
+              <defs>
+                <linearGradient id="ig" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#E63946" stop-opacity="0.32"/>
+                  <stop offset="1" stop-color="#E63946" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <path d="M0,80 C30,72 50,90 80,78 C110,66 130,42 170,38 C210,34 240,55 270,45 C300,35 320,18 340,22 L340,110 L0,110 Z" fill="url(#ig)"/>
+              <path d="M0,80 C30,72 50,90 80,78 C110,66 130,42 170,38 C210,34 240,55 270,45 C300,35 320,18 340,22"
+                    stroke="#E63946" stroke-width="1.8" fill="none"/>
+              <path d="M0,90 C30,88 70,86 110,82 C170,76 210,80 250,72 C290,64 320,60 340,58"
+                    stroke="#fff" stroke-width="1.4" stroke-opacity="0.4" stroke-dasharray="2 3" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- Category breakdown -->
+          <div class="insight-card">
+            <div class="l" style="margin-bottom:12px;">by category</div>
+            <div class="cat-list">
+              <div class="ci"><span class="dot" style="background:var(--accent);"></span><span class="nm">EMIs</span><span class="amt"><span style="color:var(--muted)">₹</span>87,420</span><span class="pc">38%</span></div>
+              <div class="ci"><span class="dot" style="background:#1F7A4F;"></span><span class="nm">Food &amp; dining</span><span class="amt"><span style="color:var(--muted)">₹</span>42,180</span><span class="pc">18%</span></div>
+              <div class="ci"><span class="dot" style="background:#D4A044;"></span><span class="nm">Travel</span><span class="amt"><span style="color:var(--muted)">₹</span>34,900</span><span class="pc">15%</span></div>
+              <div class="ci"><span class="dot" style="background:#5A6E8C;"></span><span class="nm">Bills</span><span class="amt"><span style="color:var(--muted)">₹</span>28,640</span><span class="pc">12%</span></div>
+              <div class="ci"><span class="dot" style="background:var(--card-3);"></span><span class="nm">Other</span><span class="amt"><span style="color:var(--muted)">₹</span>38,200</span><span class="pc">17%</span></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="nav">
+        <div class="pill">
+          <div class="n"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l9 7v11h-6v-7H9v7H3V10z"/></svg></div>
+          <div class="n"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12l3-7h12l3 7M3 12v8h18v-8z"/></svg></div>
+          <div class="n active"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M3 21V3h2v15h16v3z"/></svg></div>
+          <div class="n"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
+        </div>
+        <div class="fab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===========================
+       FRAME 06  —  EMPTY STATE
+       =========================== -->
+  <div class="frame">
+    <div class="meta"><span class="num">06</span><span class="dot"></span><span>empty · first run</span></div>
+    <div class="device">
+      <div class="status">
+        <span>9:41</span>
+        <div class="right">
+          <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M1 9h12M1 6.5h12M1 4h12M1 1.5h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M.5 5a7 7 0 0113 0" stroke="currentColor" stroke-width="1.3" fill="none"/></svg>
+          <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x=".5" y=".5" width="19" height="10" rx="2.5" stroke="currentColor"/><rect x="2" y="2" width="14" height="7" rx="1.2" fill="currentColor"/></svg>
+        </div>
+      </div>
+
+      <div class="screen">
+        <div class="screen-scroll">
+          <div class="appbar">
+            <div>
+              <div class="hi">No loans yet</div>
+              <div class="name">Get started</div>
+            </div>
+          </div>
+
+          <div class="empty-wrap">
+            <div class="empty-illu">
+              <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <path d="M14 2v6h6"/>
+                <path d="M9 13h6M9 17h4"/>
+              </svg>
+              <div class="red">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              </div>
+            </div>
+            <h3>Upload your first PDF schedule</h3>
+            <p>Drop a CreditFair, IndusInd or Kotak schedule — we'll parse EMIs, due dates and outstanding balance automatically.</p>
+            <div class="empty-cta">
+              <span class="dot"></span>
+              Choose PDF
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+            </div>
+
+            <!-- skeleton hint -->
+            <div class="empty-skel">
+              <div class="row"></div>
+              <div class="row" style="width:80%; margin:0 auto;"></div>
+              <div class="row" style="width:60%; margin:0 auto;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="nav">
+        <div class="pill">
+          <div class="n active"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l9 7v11h-6v-7H9v7H3V10z"/></svg></div>
+          <div class="n"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12l3-7h12l3 7M3 12v8h18v-8z"/></svg></div>
+          <div class="n"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 21V3h2v15h16v3z"/></svg></div>
+          <div class="n"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
+        </div>
+        <div class="fab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================================================
+     DESIGN SYSTEM FOOTER
+     ============================================================ -->
+<section class="ds">
+  <div class="eyebrow">Design system · v5</div>
+  <h2>The pieces. <em>One coral, no more.</em></h2>
+
+  <div class="ds-grid">
+
+    <!-- Surfaces -->
+    <div class="ds-block">
+      <div class="t">Surfaces</div>
+      <div class="swatches">
+        <div class="sw"><span class="chip" style="background:#EFEDE8"></span><div><div class="name">Page</div><div class="hex">#EFEDE8 · warm gray-beige + grain</div></div></div>
+        <div class="sw"><span class="chip" style="background:#E5E3DD"></span><div><div class="name">Card</div><div class="hex">#E5E3DD · tone-on-tone</div></div></div>
+        <div class="sw"><span class="chip" style="background:#DDD9D0"></span><div><div class="name">Card · inset</div><div class="hex">#DDD9D0 · icon wells</div></div></div>
+        <div class="sw"><span class="chip" style="background:#0A0A0A"></span><div><div class="name">Hero · black</div><div class="hex">#0A0A0A · ink</div></div></div>
+      </div>
+    </div>
+
+    <!-- Accent -->
+    <div class="ds-block">
+      <div class="t">Accent — single coral, used sparingly</div>
+      <div class="swatches">
+        <div class="sw"><span class="chip" style="background:#E63946"></span><div><div class="name">Coral</div><div class="hex">#E63946 · callouts, FAB dot, active tab</div></div></div>
+        <div class="sw"><span class="chip" style="background:#C42836"></span><div><div class="name">Coral · deep</div><div class="hex">#C42836 · text on accent-soft</div></div></div>
+        <div class="sw"><span class="chip" style="background:#F4D7D9"></span><div><div class="name">Coral · soft</div><div class="hex">#F4D7D9 · highlighted tx rows</div></div></div>
+        <div class="sw"><span class="chip" style="background:#1F7A4F"></span><div><div class="name">Positive · green</div><div class="hex">#1F7A4F · income deltas only</div></div></div>
+      </div>
+    </div>
+
+    <!-- Type -->
+    <div class="ds-block">
+      <div class="t">Typography — hybrid</div>
+      <div class="type-spec">
+        <div class="label">Display · Manrope</div>
+        <div class="demo display">Debt-free in 28&nbsp;months</div>
+      </div>
+      <div class="type-spec">
+        <div class="label">Body · Inter</div>
+        <div class="demo body">CreditFair EMI · due 18 may · 12 of 24 left</div>
+      </div>
+      <div class="type-spec">
+        <div class="label">Numerals · JetBrains Mono</div>
+        <div class="demo mono">₹ 4,28,940 &nbsp; · &nbsp; 12 / 24 &nbsp; · &nbsp; 14.2%</div>
+      </div>
+    </div>
+
+    <!-- Tokens -->
+    <div class="ds-block">
+      <div class="t">Radii, motion &amp; rules</div>
+      <div class="tokens-list">
+        <div class="tk"><span class="k">--r-md / lg / xl</span><span class="v">18 / 24 / 32</span></div>
+        <div class="tk"><span class="k">--r-pill</span><span class="v">999</span></div>
+        <div class="tk"><span class="k">device border</span><span class="v">8px ink · 48px radius</span></div>
+        <div class="tk"><span class="k">card border</span><span class="v">1px rgba(10,10,10,.08)</span></div>
+        <div class="tk"><span class="k">ease-out</span><span class="v">cubic-bezier(.22,.61,.36,1)</span></div>
+        <div class="tk"><span class="k">paper grain</span><span class="v">SVG fractal · 2.5% opacity</span></div>
+        <div class="tk"><span class="k">currency pattern</span><span class="v">₹ · space · NN,NN,NNN</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Signature moves -->
+  <div class="ds-grid" style="margin-top:36px;">
+    <div class="ds-block" style="grid-column:1 / -1;">
+      <div class="t">Signature moves — repeat religiously</div>
+      <div class="signature-moves">
+        <div class="mv"><div class="n">01</div><div class="txt"><b>Currency-spaced numerals.</b> Mono ₹ symbol, half-space gap, then tabular-figured numbers. Never glue them.</div></div>
+        <div class="mv"><div class="n">02</div><div class="txt"><b>One black hero per screen.</b> Charts always live on the black card. Card surfaces never carry chart strokes.</div></div>
+        <div class="mv"><div class="n">03</div><div class="txt"><b>Coral is the rare ingredient.</b> Max 2 coral elements visible per frame (callout pill + FAB dot, or active tab + one accent card).</div></div>
+        <div class="mv"><div class="n">04</div><div class="txt"><b>Pill nav + round FAB.</b> Nav is a card-toned pill. FAB is matte black with a coral dot, bordered in card-tone for "lifted" feel.</div></div>
+        <div class="mv"><div class="n">05</div><div class="txt"><b>Tone-on-tone tx rows.</b> Cards sit on page bg with only a 1px ink-08 border. No shadows except on the device shell.</div></div>
+        <div class="mv"><div class="n">06</div><div class="txt"><b>Paper grain, not gradient.</b> The warm beige has tooth via SVG noise; we never paint smooth gradients on surfaces.</div></div>
+        <div class="mv"><div class="n">07</div><div class="txt"><b>Italic + coral for emphasis.</b> Headings can swap one phrase to italic Manrope in coral — once per page, never twice.</div></div>
+        <div class="mv"><div class="n">08</div><div class="txt"><b>Mono labels, sans values.</b> Every label is mono-uppercase-tracked. Every value is display sans. The contrast is the rhythm.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot-note">Wibey Pay  ·  mock v5  ·  ready for sweep into style.css + index.html on approval</div>
+</section>
+
+</body>
+</html>

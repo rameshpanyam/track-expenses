@@ -1,0 +1,1113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Ledger — three directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,900&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+
+/* ════════════════════════════════════════════════════════════════
+   PAGE FRAME (shared across all three columns)
+   ════════════════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #1a1a1a;
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.01em;
+}
+.num { font-variant-numeric: tabular-nums; }
+
+.page {
+  max-width: 1680px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+}
+.page-head {
+  text-align: center;
+  margin-bottom: 56px;
+}
+.page-head h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 52px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  margin: 0 0 12px;
+  line-height: 1;
+}
+.page-head h1 em {
+  font-style: italic;
+  color: #BAFF39;
+  font-weight: 400;
+}
+.page-head p {
+  font-size: 16px;
+  color: #888;
+  max-width: 580px;
+  margin: 0 auto;
+}
+.page-head .pick-instruct {
+  display: inline-flex;
+  align-items: center; gap: 8px;
+  margin-top: 24px;
+  padding: 8px 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 999px;
+  font-size: 13px;
+  color: #ccc;
+}
+.page-head .pick-instruct strong { color: #BAFF39; font-weight: 600; }
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+@media (max-width: 1200px) { .columns { grid-template-columns: 1fr; } }
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  position: relative;
+}
+.col-head {
+  padding: 18px 22px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.col-head .kicker {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #BAFF39;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.col-head h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+}
+.col-head p {
+  font-size: 13px;
+  color: #999;
+  margin: 0;
+  line-height: 1.5;
+}
+.col-head .tags {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  margin-top: 10px;
+}
+.col-head .tags span {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 3px 7px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 4px;
+  color: #ccc;
+  letter-spacing: 0.04em;
+}
+
+.device {
+  border-radius: 28px;
+  overflow: hidden;
+  position: relative;
+  aspect-ratio: 9/19;
+  box-shadow: 0 30px 80px -20px rgba(0,0,0,0.6);
+  border: 6px solid #0a0a0a;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ░░░  DIRECTION A — EDITORIAL / NOIR
+   Black canvas, cream serif headers, single sharp accent, magazine feel
+   ═══════════════════════════════════════════════════════════════════ */
+
+.A-device { background: #0A0A0A; color: #F5F0E5; padding: 18px 18px 30px; font-family: 'Inter', sans-serif; }
+.A-device .status { display:flex; justify-content:space-between; font-size:11px; opacity:0.6; padding:4px 4px 16px; }
+.A-bar { display:flex; justify-content:space-between; align-items:flex-end; padding-bottom: 24px; border-bottom: 1px solid rgba(245,240,229,0.1); }
+.A-bar .left .date { font-family:'JetBrains Mono', monospace; font-size:10px; letter-spacing:0.2em; opacity:0.5; text-transform:uppercase; }
+.A-bar h2 { font-family:'Fraunces', serif; font-size:24px; font-weight:400; font-style: italic; margin: 4px 0 0; letter-spacing:-0.02em; }
+.A-bar h2 strong { font-weight: 700; font-style: normal; }
+.A-bar .avatar {
+  width: 40px; height: 40px; border-radius:50%;
+  background: #F5F0E5; color: #0A0A0A;
+  display:grid; place-items:center;
+  font-family: 'Fraunces', serif; font-weight: 700; font-size: 16px;
+}
+
+.A-balance { padding: 32px 0 28px; border-bottom: 1px solid rgba(245,240,229,0.1); }
+.A-balance .label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.2em;
+  opacity: 0.5; text-transform: uppercase;
+}
+.A-balance .amt {
+  font-family: 'Fraunces', serif;
+  font-size: 56px;
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin: 8px 0 8px;
+}
+.A-balance .amt em { font-style: italic; font-weight: 300; opacity: 0.5; font-size: 36px; }
+.A-balance .delta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; opacity: 0.7;
+}
+.A-balance .delta strong { color: #D4FF00; font-weight: 500; }
+
+.A-chart { padding: 24px 0; border-bottom: 1px solid rgba(245,240,229,0.1); }
+.A-chart svg { width: 100%; height: 80px; }
+
+.A-section-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 18px 0 12px;
+}
+.A-section-head h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  font-weight: 600;
+  font-style: italic;
+  margin: 0;
+}
+.A-section-head a {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #D4FF00;
+  text-decoration: none;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.A-tx { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(245,240,229,0.06); }
+.A-tx:last-child { border-bottom: none; }
+.A-tx .name { font-size: 13px; font-weight: 500; }
+.A-tx .meta { font-family:'JetBrains Mono', monospace; font-size:10px; opacity:0.5; }
+.A-tx .amt {
+  font-family: 'Fraunces', serif;
+  font-size: 16px;
+  letter-spacing: -0.02em;
+  text-align: right;
+}
+.A-tx .amt.in { color: #D4FF00; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   ░░░  DIRECTION B — ELECTRIC / BRUTALIST
+   White-on-near-black, electric lime accent, sharp corners, mono nums
+   ═══════════════════════════════════════════════════════════════════ */
+
+.B-device {
+  background: #0F0F0F; color: #fff;
+  font-family: 'Space Grotesk', sans-serif;
+  padding: 16px 14px 24px;
+  position: relative;
+}
+.B-device::before {
+  content:'';
+  position:absolute;
+  inset:0;
+  background-image:
+    linear-gradient(rgba(186,255,57,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(186,255,57,0.03) 1px, transparent 1px);
+  background-size: 12px 12px;
+  pointer-events: none;
+}
+.B-status { display:flex; justify-content:space-between; font-family:'JetBrains Mono', monospace; font-size:10px; opacity:0.8; padding:4px 2px 14px; position:relative; }
+.B-status .pulse {
+  display: inline-flex; align-items: center; gap: 5px;
+  color: #BAFF39;
+}
+.B-status .pulse .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #BAFF39;
+  box-shadow: 0 0 8px #BAFF39;
+}
+
+.B-hero {
+  background: #BAFF39;
+  color: #0F0F0F;
+  padding: 18px 16px 22px;
+  position: relative;
+  margin-bottom: 12px;
+}
+.B-hero::after {
+  content: '';
+  position: absolute;
+  bottom: -8px; left: 0; right: 0; height: 8px;
+  background:
+    repeating-linear-gradient(45deg, #BAFF39 0, #BAFF39 6px, #0F0F0F 6px, #0F0F0F 8px);
+}
+.B-hero .row { display:flex; justify-content:space-between; align-items:flex-start; }
+.B-hero .label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.B-hero .badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 3px 6px;
+  background: #0F0F0F;
+  color: #BAFF39;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+.B-hero .amt {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 44px;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin: 12px 0 6px;
+}
+.B-hero .meta {
+  display: flex; gap: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; font-weight: 600;
+}
+.B-hero .meta .up::before { content: '▲ '; }
+.B-hero .meta .delta { background: #0F0F0F; color: #BAFF39; padding: 2px 6px; }
+
+.B-cells {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1px;
+  background: rgba(255,255,255,0.1);
+  margin-bottom: 12px;
+}
+.B-cell {
+  background: #0F0F0F;
+  padding: 10px 8px 8px;
+  position: relative;
+}
+.B-cell .label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+.B-cell .val {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+  margin: 4px 0 2px;
+}
+.B-cell .delta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+}
+.B-cell .delta.up { color: #BAFF39; }
+.B-cell .delta.dn { color: #FF4D6D; }
+
+.B-card {
+  background: #1A1A1A;
+  border: 1px solid rgba(255,255,255,0.08);
+  padding: 14px;
+  position: relative;
+}
+.B-card .crn { position:absolute; width:8px; height:8px; border: 1px solid #BAFF39; }
+.B-card .crn.tl { top:-1px; left:-1px; border-right:none; border-bottom:none; }
+.B-card .crn.tr { top:-1px; right:-1px; border-left:none; border-bottom:none; }
+.B-card .crn.bl { bottom:-1px; left:-1px; border-right:none; border-top:none; }
+.B-card .crn.br { bottom:-1px; right:-1px; border-left:none; border-top:none; }
+
+.B-card .ttl {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  margin-bottom: 8px;
+}
+.B-card .ttl::before { content: '▣  '; color: #BAFF39; }
+
+.B-bars { display: flex; align-items: flex-end; gap: 4px; height: 60px; margin: 8px 0; }
+.B-bars .bar { flex:1; background: #BAFF39; min-height: 4px; position:relative; }
+.B-bars .bar.dim { background: rgba(186,255,57,0.25); }
+.B-bars .bar.active::after {
+  content: '';
+  position: absolute;
+  bottom: -8px; left: 50%; transform: translateX(-50%);
+  width: 4px; height: 4px; background: #BAFF39;
+}
+
+.B-list { margin-top: 12px; }
+.B-row {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px dashed rgba(255,255,255,0.08);
+  font-size: 12px;
+}
+.B-row:last-child { border-bottom: none; }
+.B-row .ic {
+  width:22px;height:22px;
+  display:grid; place-items:center;
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #BAFF39;
+}
+.B-row .ic svg { width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2;}
+.B-row .name { font-weight: 500; }
+.B-row .meta { font-family:'JetBrains Mono', monospace; font-size:9px; opacity:0.5; }
+.B-row .amt { font-family:'Space Grotesk',sans-serif; font-weight: 700; font-size: 13px; }
+.B-row .amt.in { color: #BAFF39; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   ░░░  DIRECTION C — SOFT PREMIUM / GLASS
+   Pastel gradients, glassmorphism, generous whitespace, rounded everything
+   ═══════════════════════════════════════════════════════════════════ */
+
+.C-device {
+  background:
+    radial-gradient(800px 600px at 20% 0%, #FDE2E4 0%, transparent 50%),
+    radial-gradient(700px 500px at 100% 30%, #BEE1E6 0%, transparent 50%),
+    radial-gradient(600px 600px at 30% 100%, #E2D7F0 0%, transparent 60%),
+    linear-gradient(135deg, #FFF5F7 0%, #F0E6FF 100%);
+  font-family: 'Inter', sans-serif;
+  color: #1a1825;
+  padding: 16px 16px 24px;
+  position: relative;
+  overflow: hidden;
+}
+.C-device::before {
+  content:'';
+  position: absolute; inset: 0;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+.C-status { display:flex; justify-content:space-between; font-size:11px; padding:4px 4px 12px; font-weight:600; position:relative; }
+
+.C-bar { display:flex; justify-content:space-between; align-items:center; padding: 4px 4px 18px; position:relative; }
+.C-bar .greet { font-size:12px; color:#6B5E80; font-weight:500; }
+.C-bar h2 { font-family:'Instrument Serif', serif; font-size:30px; margin:2px 0 0; letter-spacing:-0.02em; font-weight:400; }
+.C-bar .avatar {
+  width: 42px; height: 42px; border-radius: 50%;
+  background: linear-gradient(135deg, #FF7A95, #C173E0);
+  display:grid; place-items:center;
+  color: #fff; font-weight: 700; font-size: 15px;
+  box-shadow: 0 8px 20px -8px rgba(193,115,224,0.5);
+}
+
+.C-glass {
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.8);
+  border-radius: 24px;
+  padding: 20px;
+  box-shadow:
+    0 20px 50px -20px rgba(193,115,224,0.25),
+    inset 0 1px 0 rgba(255,255,255,0.9);
+  position: relative;
+}
+
+.C-hero { margin-bottom: 12px; }
+.C-hero .label { font-size:11px; color:#6B5E80; font-weight:600; letter-spacing:0.05em; text-transform:uppercase; }
+.C-hero .amt {
+  font-family: 'Instrument Serif', serif;
+  font-size: 48px;
+  letter-spacing: -0.03em;
+  margin: 4px 0 8px;
+  line-height: 1;
+  font-weight: 400;
+}
+.C-hero .amt span { font-style: italic; opacity: 0.5; font-size: 28px; }
+.C-hero .delta { display:flex; gap:8px; align-items:center; font-size:12px; }
+.C-hero .delta .pill {
+  background: linear-gradient(135deg, #C8F7C5, #A5E6BA);
+  color: #1F5C3A;
+  padding: 3px 10px; border-radius: 999px;
+  font-weight: 700;
+}
+.C-hero .delta .sub { color: #6B5E80; }
+
+.C-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.C-mini {
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.8);
+  border-radius: 18px;
+  padding: 14px;
+  position: relative;
+}
+.C-mini .ic {
+  width: 32px; height: 32px;
+  border-radius: 12px;
+  display:grid; place-items:center;
+  margin-bottom: 10px;
+  color: #fff;
+}
+.C-mini.pink .ic { background: linear-gradient(135deg,#FF7A95,#FFBAC0); }
+.C-mini.violet .ic { background: linear-gradient(135deg,#C173E0,#9F7AEA); }
+.C-mini.mint .ic { background: linear-gradient(135deg,#5EC8A0,#A5E6BA); }
+.C-mini.sky .ic { background: linear-gradient(135deg,#7AC7E0,#A8DADC); }
+.C-mini .ic svg { width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;}
+.C-mini .label { font-size:10.5px; color:#6B5E80; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; }
+.C-mini .val {
+  font-family: 'Instrument Serif', serif;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  margin-top: 2px;
+}
+
+.C-section-head { display:flex; justify-content:space-between; align-items:center; padding: 16px 4px 8px; }
+.C-section-head h3 { font-family:'Instrument Serif', serif; font-size: 18px; font-weight: 400; font-style: italic; margin:0; }
+.C-section-head a { font-size: 11px; color: #C173E0; text-decoration:none; font-weight:600; }
+
+.C-tx {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 12px; align-items: center;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 16px;
+  margin-bottom: 6px;
+  border: 1px solid rgba(255,255,255,0.6);
+}
+.C-tx .ic {
+  width:36px; height:36px;
+  border-radius: 12px;
+  display:grid; place-items:center;
+  color: #fff;
+}
+.C-tx .ic svg { width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;}
+.C-tx .name { font-size: 13px; font-weight: 600; }
+.C-tx .meta { font-size:10.5px; color: #6B5E80; }
+.C-tx .amt {
+  font-family: 'Instrument Serif', serif;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+.C-tx .amt.in { color: #2E8B57; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   SHARED iconography
+   ═══════════════════════════════════════════════════════════════════ */
+.svg-stroke { stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Pick footer */
+.pick-footer {
+  margin-top: 64px;
+  padding: 32px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  text-align: center;
+}
+.pick-footer h3 {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  margin: 0 0 8px;
+  letter-spacing: -0.02em;
+}
+.pick-footer p {
+  color: #999;
+  font-size: 14px;
+  max-width: 580px;
+  margin: 0 auto 20px;
+  line-height: 1.5;
+}
+.pick-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  max-width: 920px;
+  margin: 0 auto;
+}
+.pick-card {
+  padding: 18px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  text-align: left;
+}
+.pick-card .num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #BAFF39;
+  letter-spacing: 0.15em;
+  margin-bottom: 6px;
+}
+.pick-card .name {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+.pick-card .vibe { font-size: 12px; color: #aaa; line-height: 1.5; }
+.pick-card .say {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #888;
+}
+.pick-card .say strong { color: #BAFF39; }
+
+@media (max-width: 1200px) {
+  .pick-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="page-head">
+    <h1>Pick a <em>vibe</em>.</h1>
+    <p>Three deliberately different aesthetic directions, same product, same screens. Below each column is a one-line summary so you can tell them apart at a glance — then tell me <strong>A</strong>, <strong>B</strong>, or <strong>C</strong>.</p>
+    <span class="pick-instruct">
+      <svg width="14" height="14" viewBox="0 0 24 24" class="svg-stroke"><path d="M5 12l5 5L20 7"/></svg>
+      Reply with <strong>A</strong>, <strong>B</strong>, or <strong>C</strong> and I'll sweep the real app to match.
+    </span>
+  </div>
+
+  <div class="columns">
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         COLUMN A — EDITORIAL / NOIR
+         ═══════════════════════════════════════════════════════════════ -->
+    <div class="col">
+      <div class="col-head">
+        <div class="kicker">Direction A</div>
+        <h2>Editorial · Noir</h2>
+        <p>Charcoal canvas, cream type, italic serif headers. A finance product that reads like a magazine, not a dashboard. Quiet, confident, no chart-junk.</p>
+        <div class="tags">
+          <span>Fraunces italic</span><span>black + cream</span><span>volt accent</span><span>borderless</span><span>generous whitespace</span>
+        </div>
+      </div>
+
+      <!-- A1: Dashboard -->
+      <div class="device A-device">
+        <div class="status"><span>9:41</span><span>● ● ●</span></div>
+
+        <div class="A-bar">
+          <div class="left">
+            <div class="date">Thursday · 15 May</div>
+            <h2>Good evening, <strong>Pradeep</strong></h2>
+          </div>
+          <div class="avatar">P</div>
+        </div>
+
+        <div class="A-balance">
+          <div class="label">Net Worth</div>
+          <div class="amt num">₹4,28,940<em>.50</em></div>
+          <div class="delta">↑ <strong>₹12,840</strong> — up 3.1% this month</div>
+        </div>
+
+        <div class="A-chart">
+          <svg viewBox="0 0 320 80" preserveAspectRatio="none">
+            <path d="M0,55 C30,53 60,45 90,48 C120,51 150,60 180,52 C210,44 240,30 270,28 C290,26 310,18 320,15"
+                  fill="none" stroke="#D4FF00" stroke-width="1.5"/>
+            <line x1="0" y1="79" x2="320" y2="79" stroke="#F5F0E5" opacity="0.1"/>
+            <line x1="0" y1="40" x2="320" y2="40" stroke="#F5F0E5" opacity="0.05" stroke-dasharray="2 4"/>
+            <circle cx="270" cy="28" r="3" fill="#D4FF00"/>
+          </svg>
+        </div>
+
+        <div class="A-section-head">
+          <h3>Today's notes</h3>
+          <a>All →</a>
+        </div>
+
+        <div class="A-tx">
+          <div>
+            <div class="name">Salary credit</div>
+            <div class="meta">WIBEY INC · 09:00</div>
+          </div>
+          <div class="amt in num">+ ₹1,15,000</div>
+        </div>
+        <div class="A-tx">
+          <div>
+            <div class="name">Swiggy</div>
+            <div class="meta">SAI KRISHNA · 21:24</div>
+          </div>
+          <div class="amt num">− ₹482</div>
+        </div>
+        <div class="A-tx">
+          <div>
+            <div class="name">CreditFair EMI #18</div>
+            <div class="meta">AUTO-DEBIT · 14:00</div>
+          </div>
+          <div class="amt num">− ₹7,289</div>
+        </div>
+        <div class="A-tx">
+          <div>
+            <div class="name">Apollo Pharmacy</div>
+            <div class="meta">UPI · 11:08</div>
+          </div>
+          <div class="amt num">− ₹1,240</div>
+        </div>
+      </div>
+
+      <!-- A2: Closure -->
+      <div class="device A-device">
+        <div class="status"><span>9:41</span><span>● ● ●</span></div>
+
+        <div class="A-bar">
+          <div class="left">
+            <div class="date">Closure plan</div>
+            <h2><strong>Debt-free</strong> by <em>Aug '29</em></h2>
+          </div>
+        </div>
+
+        <div class="A-balance" style="border-bottom:none;padding-bottom:14px">
+          <div class="label">Outstanding</div>
+          <div class="amt num" style="font-size:44px">₹11,67,394</div>
+          <div class="delta">3 loans · snowball ordered ↓</div>
+        </div>
+
+        <div style="border-top: 1px solid rgba(245,240,229,0.1); padding-top: 18px;">
+          <div style="display:flex; gap:14px; margin-bottom:18px">
+            <div style="flex:1">
+              <div style="font-family:'JetBrains Mono',monospace; font-size:9px; opacity:0.5; letter-spacing:0.15em; text-transform:uppercase">Pool</div>
+              <div style="font-family:'Fraunces',serif; font-size:20px" class="num">₹1,40,000</div>
+            </div>
+            <div style="flex:1">
+              <div style="font-family:'JetBrains Mono',monospace; font-size:9px; opacity:0.5; letter-spacing:0.15em; text-transform:uppercase">Monthly</div>
+              <div style="font-family:'Fraunces',serif; font-size:20px" class="num">+₹25,000</div>
+            </div>
+          </div>
+
+          <div style="border-left: 1px solid rgba(245,240,229,0.15); padding-left: 18px; margin-left: 4px;">
+            <div style="padding-bottom: 18px; position:relative">
+              <div style="position:absolute; left:-22px; top:4px; width:8px; height:8px; background:#D4FF00; border-radius:50%"></div>
+              <div style="font-family:'Fraunces',serif; font-style:italic; font-size:16px">CreditFair Personal</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:10px; opacity:0.5; margin-top:2px">PAY TODAY · SAVES ₹14,580</div>
+              <div style="font-family:'Fraunces',serif;font-size:18px;margin-top:4px" class="num">₹85,400</div>
+              <span style="display:inline-block; margin-top:8px; padding: 3px 8px; background:#D4FF00; color:#0A0A0A; font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:700; letter-spacing:0.1em">PAY NOW ↗</span>
+            </div>
+            <div style="padding-bottom: 18px; position:relative; opacity:0.7">
+              <div style="position:absolute; left:-21px; top:6px; width:6px; height:6px; border:1px solid #F5F0E5; border-radius:50%"></div>
+              <div style="font-family:'Fraunces',serif; font-style:italic; font-size:16px">IndusInd Personal</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:10px; opacity:0.5; margin-top:2px">OCT 2027</div>
+              <div style="font-family:'Fraunces',serif;font-size:18px;margin-top:4px" class="num">₹2,53,170</div>
+            </div>
+            <div style="position:relative; opacity:0.5">
+              <div style="position:absolute; left:-21px; top:6px; width:6px; height:6px; border:1px solid #F5F0E5; border-radius:50%"></div>
+              <div style="font-family:'Fraunces',serif; font-style:italic; font-size:16px">Kotak Auto</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:10px; opacity:0.5; margin-top:2px">AUG 2029</div>
+              <div style="font-family:'Fraunces',serif;font-size:18px;margin-top:4px" class="num">₹4,12,460</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         COLUMN B — ELECTRIC / BRUTALIST
+         ═══════════════════════════════════════════════════════════════ -->
+    <div class="col">
+      <div class="col-head">
+        <div class="kicker">Direction B</div>
+        <h2>Electric · Brutalist</h2>
+        <p>High-contrast, terminal-feel grid, electric lime block that screams. Monospace numerals everywhere. Looks like a trading terminal designed by a brutalist architect.</p>
+        <div class="tags">
+          <span>Space Grotesk</span><span>mono nums</span><span>sharp corners</span><span>grid bg</span><span>lime block</span>
+        </div>
+      </div>
+
+      <!-- B1: Dashboard -->
+      <div class="device B-device">
+        <div class="B-status">
+          <span>09:41 · MAY 15</span>
+          <span class="pulse"><span class="dot"></span>LIVE</span>
+        </div>
+
+        <div class="B-hero">
+          <div class="row">
+            <span class="label">NET WORTH</span>
+            <span class="badge">↗ +3.1%</span>
+          </div>
+          <div class="amt num">₹4,28,940</div>
+          <div class="meta">
+            <span class="delta">+ ₹12,840 MoM</span>
+            <span style="opacity:0.7">vs ₹4,16,100</span>
+          </div>
+        </div>
+
+        <div class="B-cells">
+          <div class="B-cell">
+            <div class="label">SPEND</div>
+            <div class="val num">38,210</div>
+            <div class="delta dn">▼ 12%</div>
+          </div>
+          <div class="B-cell">
+            <div class="label">INCOME</div>
+            <div class="val num">1,15,000</div>
+            <div class="delta up">▲ 4%</div>
+          </div>
+          <div class="B-cell">
+            <div class="label">SAVED</div>
+            <div class="val num">76,790</div>
+            <div class="delta up">67% GOAL</div>
+          </div>
+        </div>
+
+        <div class="B-card">
+          <span class="crn tl"></span><span class="crn tr"></span><span class="crn bl"></span><span class="crn br"></span>
+          <div class="ttl">DAILY SPEND · 14D</div>
+          <div class="B-bars">
+            <div class="bar dim" style="height:30%"></div>
+            <div class="bar dim" style="height:45%"></div>
+            <div class="bar dim" style="height:25%"></div>
+            <div class="bar dim" style="height:60%"></div>
+            <div class="bar dim" style="height:40%"></div>
+            <div class="bar dim" style="height:75%"></div>
+            <div class="bar dim" style="height:35%"></div>
+            <div class="bar dim" style="height:50%"></div>
+            <div class="bar dim" style="height:65%"></div>
+            <div class="bar dim" style="height:45%"></div>
+            <div class="bar dim" style="height:55%"></div>
+            <div class="bar dim" style="height:30%"></div>
+            <div class="bar dim" style="height:70%"></div>
+            <div class="bar active" style="height:90%"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-family:'JetBrains Mono', monospace; font-size:9px; opacity:0.5">
+            <span>02 MAY</span>
+            <span>TODAY</span>
+          </div>
+        </div>
+
+        <div class="B-card" style="margin-top:12px">
+          <span class="crn tl"></span><span class="crn tr"></span><span class="crn bl"></span><span class="crn br"></span>
+          <div class="ttl">RECENT</div>
+          <div class="B-list">
+            <div class="B-row">
+              <div class="ic"><svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg></div>
+              <div>
+                <div class="name">SALARY</div>
+                <div class="meta">WIBEY · 09:00</div>
+              </div>
+              <div class="amt in num">+1,15,000</div>
+            </div>
+            <div class="B-row">
+              <div class="ic"><svg viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg></div>
+              <div>
+                <div class="name">SWIGGY</div>
+                <div class="meta">FOOD · 21:24</div>
+              </div>
+              <div class="amt num">−482</div>
+            </div>
+            <div class="B-row">
+              <div class="ic"><svg viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg></div>
+              <div>
+                <div class="name">CREDITFAIR EMI</div>
+                <div class="meta">LOAN · 14:00</div>
+              </div>
+              <div class="amt num">−7,289</div>
+            </div>
+            <div class="B-row">
+              <div class="ic"><svg viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg></div>
+              <div>
+                <div class="name">APOLLO PHARMACY</div>
+                <div class="meta">HEALTH · 11:08</div>
+              </div>
+              <div class="amt num">−1,240</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- B2: Closure -->
+      <div class="device B-device">
+        <div class="B-status">
+          <span>CLOSURE_PLAN.EXE</span>
+          <span class="pulse"><span class="dot"></span>ACTIVE</span>
+        </div>
+
+        <div class="B-hero" style="background:#0F0F0F;color:#BAFF39;border:1px solid #BAFF39">
+          <div class="row">
+            <span class="label">DEBT-FREE BY</span>
+            <span class="badge" style="background:#BAFF39;color:#0F0F0F">28 MO</span>
+          </div>
+          <div class="amt num" style="color:#BAFF39">AUG 2029</div>
+          <div class="meta">
+            <span style="opacity:0.7">SAVES ₹1,84,000 · 3 LOANS</span>
+          </div>
+        </div>
+
+        <div class="B-cells">
+          <div class="B-cell">
+            <div class="label">POOL</div>
+            <div class="val num">1.4L</div>
+            <div class="delta up">+25K/MO</div>
+          </div>
+          <div class="B-cell">
+            <div class="label">RESERVE</div>
+            <div class="val num">1.0L</div>
+            <div class="delta">HELD</div>
+          </div>
+          <div class="B-cell">
+            <div class="label">DEBT</div>
+            <div class="val num">11.67L</div>
+            <div class="delta dn">↓</div>
+          </div>
+        </div>
+
+        <div class="B-card">
+          <span class="crn tl"></span><span class="crn tr"></span><span class="crn bl"></span><span class="crn br"></span>
+          <div class="ttl">SNOWBALL</div>
+
+          <div style="border-left: 2px solid #BAFF39; padding-left: 14px; position:relative;">
+            <div style="margin-bottom: 14px; position:relative">
+              <div style="position:absolute; left:-21px; top:2px; width:10px; height:10px; background:#BAFF39"></div>
+              <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px">[01] CREDITFAIR</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;opacity:0.6;margin-top:2px">M+0 · TODAY · 0% CHARGE</div>
+              <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:6px">
+                <span style="font-family:'JetBrains Mono',monospace;font-size:9px;background:#BAFF39;color:#0F0F0F;padding:3px 6px;font-weight:700">▶ EXECUTE</span>
+                <span style="font-family:'Space Grotesk';font-weight:700;font-size:16px" class="num">₹85,400</span>
+              </div>
+            </div>
+
+            <div style="margin-bottom: 14px; position:relative">
+              <div style="position:absolute; left:-19px; top:4px; width:6px; height:6px; border:2px solid #BAFF39"></div>
+              <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px">[02] INDUSIND</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;opacity:0.6;margin-top:2px">M+17 · OCT 2027 · 3%</div>
+              <div style="font-family:'Space Grotesk';font-weight:700;font-size:16px;margin-top:6px;text-align:right" class="num">₹2,53,170</div>
+            </div>
+
+            <div style="position:relative">
+              <div style="position:absolute; left:-19px; top:4px; width:6px; height:6px; border:2px solid rgba(186,255,57,0.3)"></div>
+              <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;opacity:0.6">[03] KOTAK AUTO</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:10px;opacity:0.4;margin-top:2px">M+39 · AUG 2029 · 4%</div>
+              <div style="font-family:'Space Grotesk';font-weight:700;font-size:16px;margin-top:6px;text-align:right;opacity:0.6" class="num">₹4,12,460</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         COLUMN C — SOFT PREMIUM / GLASS
+         ═══════════════════════════════════════════════════════════════ -->
+    <div class="col">
+      <div class="col-head">
+        <div class="kicker">Direction C</div>
+        <h2>Soft · Glass</h2>
+        <p>Pastel ambient gradients, frosted glass cards, Instrument Serif headers. Feels expensive and tactile — like Linear, Things 3, and Apple's Wallet had a kid.</p>
+        <div class="tags">
+          <span>Instrument Serif</span><span>glassmorphism</span><span>pastel grads</span><span>20px radii</span><span>backdrop-blur</span>
+        </div>
+      </div>
+
+      <!-- C1: Dashboard -->
+      <div class="device C-device">
+        <div class="C-status"><span>9:41</span><span>● ● ●</span></div>
+
+        <div class="C-bar">
+          <div>
+            <div class="greet">Thursday morning</div>
+            <h2>Hello, Pradeep</h2>
+          </div>
+          <div class="avatar">P</div>
+        </div>
+
+        <div class="C-glass C-hero">
+          <div class="label">Net Worth</div>
+          <div class="amt num">₹4,28,940 <span>.50</span></div>
+          <div class="delta">
+            <span class="pill">↑ +3.1%</span>
+            <span class="sub">₹12,840 vs Apr</span>
+          </div>
+        </div>
+
+        <div class="C-row">
+          <div class="C-mini pink">
+            <div class="ic">
+              <svg class="svg-stroke" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12l7 7 7-7"/></svg>
+            </div>
+            <div class="label">Spend</div>
+            <div class="val num">₹38,210</div>
+          </div>
+          <div class="C-mini mint">
+            <div class="ic">
+              <svg class="svg-stroke" viewBox="0 0 24 24"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
+            </div>
+            <div class="label">Income</div>
+            <div class="val num">₹1,15K</div>
+          </div>
+          <div class="C-mini violet">
+            <div class="ic">
+              <svg class="svg-stroke" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            </div>
+            <div class="label">Saved</div>
+            <div class="val num">₹76,790</div>
+          </div>
+          <div class="C-mini sky">
+            <div class="ic">
+              <svg class="svg-stroke" viewBox="0 0 24 24"><path d="M3 7h18v13H3z"/><path d="M3 7l9-4 9 4"/></svg>
+            </div>
+            <div class="label">Loans</div>
+            <div class="val num">−₹11.6L</div>
+          </div>
+        </div>
+
+        <div class="C-section-head">
+          <h3>Today</h3>
+          <a>See all</a>
+        </div>
+
+        <div class="C-tx">
+          <div class="ic" style="background:linear-gradient(135deg,#5EC8A0,#A5E6BA)">
+            <svg class="svg-stroke" viewBox="0 0 24 24"><path d="M3 7h18v13H3z"/><path d="M3 7l9-4 9 4"/><path d="M8 13h8"/></svg>
+          </div>
+          <div>
+            <div class="name">Salary</div>
+            <div class="meta">Wibey Inc · 9:00 AM</div>
+          </div>
+          <div class="amt in num">+₹1,15,000</div>
+        </div>
+        <div class="C-tx">
+          <div class="ic" style="background:linear-gradient(135deg,#FF7A95,#FFBAC0)">
+            <svg class="svg-stroke" viewBox="0 0 24 24"><path d="M5 6h14l-2 13H7L5 6z"/><path d="M9 6V4a3 3 0 0 1 6 0v2"/></svg>
+          </div>
+          <div>
+            <div class="name">Swiggy</div>
+            <div class="meta">Sai Krishna · yesterday</div>
+          </div>
+          <div class="amt num">−₹482</div>
+        </div>
+        <div class="C-tx">
+          <div class="ic" style="background:linear-gradient(135deg,#C173E0,#9F7AEA)">
+            <svg class="svg-stroke" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>
+          </div>
+          <div>
+            <div class="name">CreditFair EMI</div>
+            <div class="meta">Auto · 12 May</div>
+          </div>
+          <div class="amt num">−₹7,289</div>
+        </div>
+      </div>
+
+      <!-- C2: Closure -->
+      <div class="device C-device">
+        <div class="C-status"><span>9:41</span><span>● ● ●</span></div>
+
+        <div class="C-bar">
+          <div>
+            <div class="greet">Snowball plan</div>
+            <h2>Freedom in 28 mo</h2>
+          </div>
+        </div>
+
+        <div class="C-glass C-hero" style="background:linear-gradient(135deg,rgba(193,115,224,0.4),rgba(94,200,160,0.3));">
+          <div class="label">Debt-free by</div>
+          <div class="amt num">August <em style="font-style:italic">'29</em></div>
+          <div class="delta">
+            <span class="pill" style="background:linear-gradient(135deg,#FFD3E0,#FFBAC0);color:#9B2C5C">−₹1.84L saved</span>
+            <span class="sub">vs. paying minimum</span>
+          </div>
+        </div>
+
+        <div class="C-row" style="grid-template-columns:1fr 1fr 1fr;">
+          <div class="C-mini">
+            <div class="label">Current</div>
+            <div class="val num">₹2.4L</div>
+          </div>
+          <div class="C-mini">
+            <div class="label">Monthly</div>
+            <div class="val num">₹25K</div>
+          </div>
+          <div class="C-mini">
+            <div class="label">Reserve</div>
+            <div class="val num">₹1L</div>
+          </div>
+        </div>
+
+        <div class="C-section-head">
+          <h3>The snowball</h3>
+          <a>Edit order</a>
+        </div>
+
+        <div class="C-glass" style="padding: 14px 18px; margin-bottom: 8px; background:linear-gradient(135deg,rgba(255,212,0,0.15),rgba(255,255,255,0.55));border:1px solid rgba(255,212,0,0.3);">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start">
+            <div>
+              <div style="font-family:'Instrument Serif',serif; font-size:18px; font-style:italic">CreditFair Personal</div>
+              <div style="font-size:11px; color:#6B5E80; margin-top:2px">Pay today · saves ₹14,580 interest</div>
+              <span style="display:inline-block; margin-top:8px; padding:4px 10px; background:#FFD400; color:#5C4500; border-radius:999px; font-size:10.5px; font-weight:700; letter-spacing:0.04em;">⚡ Pay now</span>
+            </div>
+            <div style="font-family:'Instrument Serif',serif; font-size:20px; text-align:right" class="num">₹85,400</div>
+          </div>
+        </div>
+
+        <div class="C-glass" style="padding: 14px 18px; margin-bottom: 8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center">
+            <div>
+              <div style="font-family:'Instrument Serif',serif; font-size:18px; font-style:italic">IndusInd Personal</div>
+              <div style="font-size:11px; color:#6B5E80; margin-top:2px">Oct 2027 · month 17</div>
+            </div>
+            <div style="font-family:'Instrument Serif',serif; font-size:20px; text-align:right" class="num">₹2,53,170</div>
+          </div>
+        </div>
+
+        <div class="C-glass" style="padding: 14px 18px;">
+          <div style="display:flex; justify-content:space-between; align-items:center">
+            <div>
+              <div style="font-family:'Instrument Serif',serif; font-size:18px; font-style:italic">Kotak Auto</div>
+              <div style="font-size:11px; color:#6B5E80; margin-top:2px">Aug 2029 · month 39</div>
+            </div>
+            <div style="font-family:'Instrument Serif',serif; font-size:20px; text-align:right" class="num">₹4,12,460</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /columns -->
+
+  <!-- Pick footer -->
+  <div class="pick-footer">
+    <h3>Which one excites you?</h3>
+    <p>Each direction commits to a different feeling. Pick the column whose vibe makes you want to open the app — I'll sweep the whole product to match.</p>
+    <div class="pick-grid">
+      <div class="pick-card">
+        <div class="num">A · NOIR</div>
+        <div class="name">Editorial · Magazine</div>
+        <div class="vibe">If you want it to feel <em>calm and confident</em> — like reading a well-typeset book about your money.</div>
+        <div class="say">Reply <strong>A</strong></div>
+      </div>
+      <div class="pick-card">
+        <div class="num">B · ELECTRIC</div>
+        <div class="name">Brutalist · Terminal</div>
+        <div class="vibe">If you want it to feel <em>fast and serious</em> — like Bloomberg meets a Berghain flyer.</div>
+        <div class="say">Reply <strong>B</strong></div>
+      </div>
+      <div class="pick-card">
+        <div class="num">C · GLASS</div>
+        <div class="name">Soft · Premium</div>
+        <div class="vibe">If you want it to feel <em>warm and expensive</em> — like Things 3 holding hands with Apple Wallet.</div>
+        <div class="say">Reply <strong>C</strong></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
