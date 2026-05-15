@@ -18,7 +18,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
   <title>Expense Tracker</title>
-  <link rel="stylesheet" href="style.css?v=25.4" />
+  <link rel="stylesheet" href="style.css?v=26" />
 
   <!-- Chart.js for the Dashboard -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
@@ -382,7 +382,41 @@
     <div style="height:16px;"></div>
   </div>
 
-  <!-- Bottom nav (3 tabs) -->
+  <!-- ── Loans View (v26) ── -->
+  <div id="view-loans" class="view">
+    <!-- Hero: total outstanding + debt-free countdown -->
+    <div class="loan-hero" id="loan-hero"></div>
+
+    <!-- Sub-tabs -->
+    <div class="loan-subtabs">
+      <button class="loan-subtab-btn active" data-subtab="overview"   onclick="setLoanSubtab('overview')">📋 Overview</button>
+      <button class="loan-subtab-btn"        data-subtab="projection" onclick="setLoanSubtab('projection')">📈 Projection</button>
+      <button class="loan-subtab-btn"        data-subtab="closure"    onclick="setLoanSubtab('closure')">🎯 Closure</button>
+      <button class="loan-subtab-btn"        data-subtab="simulator"  onclick="setLoanSubtab('simulator')">🧮 Simulator</button>
+    </div>
+
+    <!-- Sub-panels -->
+    <div class="loan-subpanel active" id="loan-sub-overview">
+      <div id="loan-cards-list"></div>
+      <button class="loan-add-btn" onclick="openLoanAddModal()">+ Add Loan</button>
+    </div>
+
+    <div class="loan-subpanel" id="loan-sub-projection">
+      <p class="loan-section-label">Outstanding by month · next 12 months</p>
+      <div id="loan-projection-table"></div>
+      <p class="loan-section-hint">💡 Tap projection cells to see balance, EMIs paid, and interest paid up to that month.</p>
+    </div>
+
+    <div class="loan-subpanel" id="loan-sub-closure">
+      <div id="loan-closure-content"></div>
+    </div>
+
+    <div class="loan-subpanel" id="loan-sub-simulator">
+      <div id="loan-simulator-content"></div>
+    </div>
+  </div>
+
+  <!-- Bottom nav (4 tabs as of v26) -->
   <nav class="bottom-nav">
     <button id="nav-add" class="nav-btn active" onclick="switchView('add')">
       <span class="nav-icon">➕</span><span>Add</span>
@@ -392,6 +426,9 @@
     </button>
     <button id="nav-insights" class="nav-btn" onclick="switchView('insights')">
       <span class="nav-icon">🦉</span><span>Insights</span>
+    </button>
+    <button id="nav-loans" class="nav-btn" onclick="switchView('loans')">
+      <span class="nav-icon">💳</span><span>Loans</span>
     </button>
   </nav>
 
@@ -771,7 +808,77 @@
 
 <!-- jsPDF library for PDF export (loaded lazily — only when user opens Export) -->
 
-<script src="app.js?v=25.4"></script>
-<script src="features.js?v=25.4"></script>
+<!-- ═══════════════════════════════════════════════════════════════
+     LOAN FORM MODAL (v26 — add/edit loan)
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="loan-form-modal" class="confirm-modal" style="display:none;">
+  <div class="confirm-box loan-form-box">
+    <p class="confirm-msg" id="loan-modal-title">Add Loan</p>
+    <p class="confirm-sub">Enter principal, rate, tenure — EMI auto-calculates. We'll project outstanding for you.</p>
+
+    <div class="loan-form-grid">
+      <label class="loan-form-lbl">
+        Bank / Lender name
+        <input id="loan-form-name" type="text" class="bydate-date-input" placeholder="Kotak Mahindra" maxlength="40" />
+      </label>
+
+      <label class="loan-form-lbl">
+        Loan type
+        <select id="loan-form-type" class="bydate-date-input">
+          <option value="personal">💼 Personal</option>
+          <option value="home">🏠 Home</option>
+          <option value="auto">🚗 Auto</option>
+          <option value="credit-card">💳 Credit Card</option>
+          <option value="education">🎓 Education</option>
+          <option value="business">🏢 Business</option>
+          <option value="other">📦 Other</option>
+        </select>
+      </label>
+
+      <div class="loan-form-row">
+        <label class="loan-form-lbl">
+          Principal (₹)
+          <input id="loan-form-principal" type="number" inputmode="numeric" class="bydate-date-input" placeholder="500000" oninput="recalcEmiHint()" />
+        </label>
+        <label class="loan-form-lbl">
+          Interest rate (% per year)
+          <input id="loan-form-rate" type="number" inputmode="decimal" step="0.1" class="bydate-date-input" placeholder="12.5" oninput="recalcEmiHint()" />
+        </label>
+      </div>
+
+      <div class="loan-form-row">
+        <label class="loan-form-lbl">
+          Tenure (months)
+          <input id="loan-form-tenure" type="number" inputmode="numeric" class="bydate-date-input" placeholder="36" oninput="recalcEmiHint()" />
+        </label>
+        <label class="loan-form-lbl">
+          Start date
+          <input id="loan-form-startdate" type="date" class="bydate-date-input" />
+        </label>
+      </div>
+
+      <label class="loan-form-lbl">
+        EMI (₹/month)
+        <input id="loan-form-emi" type="number" inputmode="numeric" class="bydate-date-input" placeholder="auto-calculated" />
+        <span class="loan-form-emi-hint" id="loan-form-emi-hint"></span>
+      </label>
+
+      <div class="loan-form-lbl">
+        Color
+        <div id="loan-form-colors" class="loan-form-color-grid"></div>
+      </div>
+    </div>
+
+    <div class="confirm-actions loan-form-actions">
+      <button class="confirm-cancel" onclick="closeLoanFormModal()">Cancel</button>
+      <button class="confirm-ok cat-del-force-btn" id="loan-form-delete" onclick="deleteLoanForm()" style="display:none;">Delete</button>
+      <button class="confirm-ok" onclick="saveLoanForm()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js?v=26"></script>
+<script src="features.js?v=26"></script>
+<script src="loans.js?v=26"></script>
 </body>
 </html>

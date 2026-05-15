@@ -1984,6 +1984,7 @@ function switchView(view) {
   if (view === 'add')       renderTodayTotal();
   if (view === 'dashboard') renderDashboard();
   if (view === 'insights')  renderInsights();
+  if (view === 'loans')     window.renderLoans && window.renderLoans();
 }
 
 function updateHeaderMonth() {
@@ -1993,6 +1994,10 @@ function updateHeaderMonth() {
 
   if (currentView === 'add') {
     el.textContent          = 'Today';
+    prev.style.visibility   = 'hidden';
+    next.style.visibility   = 'hidden';
+  } else if (currentView === 'loans') {
+    el.textContent          = '💳 Loans';
     prev.style.visibility   = 'hidden';
     next.style.visibility   = 'hidden';
   } else if (currentView === 'insights') {
