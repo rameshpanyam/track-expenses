@@ -886,14 +886,194 @@ function refreshAddBtn() {
 }
 
 function renderTodayTotal() {
+  /* Original "today so far" line stays in place for backwards compat — but the
+     real home dashboard (today card + quick chips + recent 3) is rendered below. */
   const today = todayStr();
   const list  = allExpenses.filter(e => e.date === today);
   const total = list.reduce((s, e) => s + e.amount, 0);
   const el    = document.getElementById('today-total');
-  if (!el) return;
-  el.textContent  = total > 0 ? `Today so far: ${fmt(total)} · ${list.length} entr${list.length === 1 ? 'y' : 'ies'}` : '';
-  el.style.display = total > 0 ? 'block' : 'none';
+  if (el) {
+    el.textContent   = '';  // empty — replaced by richer home-today-card
+    el.style.display = 'none';
+  }
+  renderHomeDashboard();   // v28.2 — drives today card, quick chips, recent 3
 }
+
+/* ═══════════════════════════════════════════════════════════
+   v28.2 — HOME DASHBOARD RENDERING
+   3 cards on top of the Add view to make Home feel alive:
+     1. Today card    — spend total + entries today + budget chip
+     2. Quick chips   — 1-tap repeat for top-5 most-recent expense templates
+     3. Recent strip  — last 3 entries with tap-to-prefill
+   ═══════════════════════════════════════════════════════════ */
+function renderHomeDashboard() {
+  renderHomeTodayCard();
+  renderHomeQuickChips();
+  renderHomeRecent();
+}
+
+function renderHomeTodayCard() {
+  const card    = document.getElementById('home-today-card');
+  const amtEl   = document.getElementById('home-today-amount');
+  const subEl   = document.getElementById('home-today-sub');
+  const badgeEl = document.getElementById('home-today-badge');
+  if (!card || !amtEl || !subEl) return;
+
+  const today  = todayStr();
+  const todayList = allExpenses.filter(e => e.date === today);
+  const total  = todayList.reduce((s, e) => s + e.amount, 0);
+
+  card.style.display = 'flex';
+  amtEl.textContent  = fmt(total);
+  subEl.textContent  = todayList.length === 0
+    ? 'No entries yet — tap the mic or +Add below'
+    : `${todayList.length} entr${todayList.length === 1 ? 'y' : 'ies'} today`;
+
+  /* Budget chip — % of monthly budget used so far (if budget exists) */
+  if (!badgeEl) return;
+  try {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = d.getMonth() + 1;
+    const budget = (allBudgets || []).find(b => b.year === y && b.month === m);
+    if (budget && budget.budget > 0) {
+      const monthTotal = allExpenses
+        .filter(e => e.date.startsWith(`${y}-${String(m).padStart(2, '0')}`))
+        .reduce((s, e) => s + e.amount, 0);
+      const pct = Math.round((monthTotal / budget.budget) * 100);
+      badgeEl.textContent      = `${pct}% of budget`;
+      badgeEl.style.display    = 'inline-block';
+      badgeEl.classList.toggle('accent', pct >= 80);
+    } else {
+      badgeEl.style.display = 'none';
+    }
+  } catch (e) {
+    badgeEl.style.display = 'none';
+  }
+}
+
+function renderHomeQuickChips() {
+  const wrap  = document.getElementById('home-quick-chips');
+  const label = document.getElementById('home-quick-label');
+  if (!wrap || !label) return;
+
+  /* Build "templates" = unique (category, mode-amount) pairs from last 30 days,
+     ranked by frequency. Each chip is a 1-tap add. */
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+  const recent = allExpenses.filter(e => {
+    const d = new Date(e.date);
+    return !isNaN(d) && d >= cutoff;
+  });
+
+  if (recent.length < 2) {
+    wrap.style.display  = 'none';
+    label.style.display = 'none';
+    return;
+  }
+
+  /* Bucket by category — collect amounts to find mode (most-common amount) */
+  const byCat = {};
+  for (const e of recent) {
+    if (!byCat[e.category]) byCat[e.category] = { count: 0, amounts: {} };
+    byCat[e.category].count++;
+    byCat[e.category].amounts[e.amount] = (byCat[e.category].amounts[e.amount] || 0) + 1;
+  }
+  const templates = Object.entries(byCat)
+    .map(([cat, info]) => {
+      // Pick the most-used amount for this category as the template
+      let bestAmt = 0, bestCnt = 0;
+      for (const [amt, cnt] of Object.entries(info.amounts)) {
+        if (cnt > bestCnt) { bestCnt = cnt; bestAmt = Number(amt); }
+      }
+      return { cat, count: info.count, amount: bestAmt };
+    })
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  if (templates.length === 0) {
+    wrap.style.display  = 'none';
+    label.style.display = 'none';
+    return;
+  }
+
+  wrap.style.display  = 'flex';
+  label.style.display = 'block';
+
+  let html = '';
+  for (const t of templates) {
+    const c = CAT_MAP[t.cat];
+    if (!c) continue;
+    html += `
+      <button class="home-quick-chip" onclick="quickAddFromChip('${t.cat}', ${t.amount})">
+        <span class="home-quick-chip-icon">${c.icon}</span>
+        <span>${c.label}</span>
+        <span class="home-quick-chip-amt">${fmt(t.amount)}</span>
+      </button>
+    `;
+  }
+  wrap.innerHTML = html;
+}
+
+function quickAddFromChip(catKey, amount) {
+  /* Prefill the manual form instead of saving silently — gives the user a
+     chance to tweak the amount before committing. */
+  const amtEl = document.getElementById('amount-input');
+  if (amtEl) amtEl.value = amount;
+  selectedCat = catKey;
+  document.querySelectorAll('.cat-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.cat === catKey);
+  });
+  refreshAddBtn();
+  // Scroll the add button into view so user sees the next step clearly
+  const btn = document.getElementById('add-btn');
+  if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (typeof showToast === 'function') showToast(`Prefilled ${CAT_MAP[catKey] ? CAT_MAP[catKey].label : catKey} · ${fmt(amount)}`);
+}
+
+function renderHomeRecent() {
+  const wrap = document.getElementById('home-recent');
+  const list = document.getElementById('home-recent-list');
+  if (!wrap || !list) return;
+
+  if (!allExpenses.length) {
+    wrap.style.display = 'none';
+    return;
+  }
+
+  const sorted = allExpenses.slice().sort((a, b) => {
+    if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+    return (a.createdAt || '') < (b.createdAt || '') ? 1 : -1;
+  });
+  const top3 = sorted.slice(0, 3);
+
+  let html = '';
+  for (const e of top3) {
+    const c = CAT_MAP[e.category] || { icon: '📦', label: e.category };
+    const note = e.note ? `· ${escapeHtmlSimple(e.note)}` : '';
+    html += `
+      <div class="home-recent-row">
+        <div class="home-recent-left">
+          <span class="home-recent-icon">${c.icon}</span>
+          <div class="home-recent-meta">
+            <div class="home-recent-cat">${c.label}</div>
+            <div class="home-recent-note">${e.date} ${note}</div>
+          </div>
+        </div>
+        <div class="home-recent-amt">${fmt(e.amount)}</div>
+      </div>
+    `;
+  }
+  wrap.style.display = 'block';
+  list.innerHTML     = html;
+}
+
+function escapeHtmlSimple(s) {
+  return String(s).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+window.quickAddFromChip = quickAddFromChip;
 
 async function saveExpense() {
   const amountEl = document.getElementById('amount-input');
@@ -1985,6 +2165,7 @@ function switchView(view) {
   if (view === 'dashboard') renderDashboard();
   if (view === 'insights')  renderInsights();
   if (view === 'loans')     window.renderLoans && window.renderLoans();
+  if (view === 'savings')   window.renderSavings && window.renderSavings();
 }
 
 function updateHeaderMonth() {
@@ -2003,6 +2184,10 @@ function updateHeaderMonth() {
   } else if (currentView === 'insights') {
     /* Reflect the active By-Date range in the header for constant feedback */
     el.textContent          = formatHeaderRangeLabel(bydateFrom, bydateTo);
+    prev.style.visibility   = 'hidden';
+    next.style.visibility   = 'hidden';
+  } else if (currentView === 'savings') {
+    el.textContent          = '💰 Savings';
     prev.style.visibility   = 'hidden';
     next.style.visibility   = 'hidden';
   } else {

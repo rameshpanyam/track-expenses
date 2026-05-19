@@ -18,7 +18,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 
   <title>Expense Tracker</title>
-  <link rel="stylesheet" href="style.css?v=28.1" />
+  <link rel="stylesheet" href="style.css?v=28.2" />
 
   <!-- Chart.js for the Dashboard -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
@@ -122,8 +122,18 @@
     </div>
   </header>
 
-  <!-- ── Add View ── -->
+  <!-- ── Add View (Home, v28.2) ── -->
   <div id="view-add" class="view active">
+
+    <!-- v28.2 — Home: today's spend hero card -->
+    <div id="home-today-card" class="home-today-card" style="display:none;">
+      <div class="home-today-left">
+        <div class="home-today-label">TODAY'S SPEND</div>
+        <div class="home-today-amount" id="home-today-amount">₹0</div>
+        <div class="home-today-sub" id="home-today-sub">No entries today</div>
+      </div>
+      <div class="home-today-badge" id="home-today-badge" style="display:none;"></div>
+    </div>
 
     <!-- Voice section -->
     <div class="voice-section">
@@ -144,6 +154,10 @@
         <button class="voice-stop-btn" onclick="stopVoice()">■ Stop</button>
       </div>
     </div>
+
+    <!-- v28.2 — Quick-add chips: 1-tap repeat for most-used recent expenses -->
+    <p class="home-quick-label" id="home-quick-label" style="display:none;">Quick add</p>
+    <div class="home-quick-chips" id="home-quick-chips" style="display:none;"></div>
 
     <div class="voice-divider"><span>or add manually</span></div>
 
@@ -176,6 +190,12 @@
 
     <button id="add-btn" class="add-btn" onclick="saveExpense()" disabled>+ Add Expense</button>
     <div id="today-total"></div>
+
+    <!-- v28.2 — Recent 3 entries strip -->
+    <div class="home-recent" id="home-recent" style="display:none;">
+      <p class="home-quick-label">Recent activity</p>
+      <div id="home-recent-list"></div>
+    </div>
   </div>
 
   <!-- ── Dashboard View ── -->
@@ -421,10 +441,27 @@
     </div>
   </div>
 
-  <!-- Bottom nav (4 tabs as of v26) -->
+  <!-- ── Savings View (v28.2) ── -->
+  <div id="view-savings" class="view">
+    <!-- Hero: current balance -->
+    <div class="savings-hero" id="savings-hero"></div>
+
+    <!-- Add button -->
+    <div class="savings-actions">
+      <button class="savings-add-btn" onclick="openSavingsAddModal()">+ Add Entry</button>
+    </div>
+
+    <!-- Entries list -->
+    <p class="savings-section-label">Recent activity</p>
+    <div id="savings-list"></div>
+
+    <p class="savings-section-hint">💡 Tap any entry to edit or delete. Savings is independent — no other module touches this data.</p>
+  </div>
+
+  <!-- Bottom nav (5 tabs as of v28.2) -->
   <nav class="bottom-nav">
     <button id="nav-add" class="nav-btn active" onclick="switchView('add')">
-      <span class="nav-icon">➕</span><span>Add</span>
+      <span class="nav-icon">🏠</span><span>Home</span>
     </button>
     <button id="nav-dashboard" class="nav-btn" onclick="switchView('dashboard')">
       <span class="nav-icon">📊</span><span>Dashboard</span>
@@ -434,6 +471,9 @@
     </button>
     <button id="nav-loans" class="nav-btn" onclick="switchView('loans')">
       <span class="nav-icon">💳</span><span>Loans</span>
+    </button>
+    <button id="nav-savings" class="nav-btn" onclick="switchView('savings')">
+      <span class="nav-icon">💰</span><span>Savings</span>
     </button>
   </nav>
 
@@ -921,8 +961,50 @@
   </div>
 </div>
 
-<script src="app.js?v=28.1"></script>
-<script src="features.js?v=28.1"></script>
-<script src="loans.js?v=28.1"></script>
+<!-- Savings form modal (v28.2) -->
+<div id="savings-form-modal" class="confirm-modal" style="display:none;">
+  <div class="confirm-box savings-form-box">
+    <p class="confirm-msg" id="savings-form-title">Add Savings Entry</p>
+
+    <div class="savings-form-fields">
+      <!-- Type toggle: Credit / Debit -->
+      <div class="savings-type-toggle">
+        <button type="button" id="savings-type-credit" class="savings-type-btn active" onclick="setSavingsFormType('credit')">
+          <span class="savings-type-icon">↗</span>
+          <span class="savings-type-label">Credit</span>
+          <span class="savings-type-sub">money in</span>
+        </button>
+        <button type="button" id="savings-type-debit" class="savings-type-btn" onclick="setSavingsFormType('debit')">
+          <span class="savings-type-icon">↙</span>
+          <span class="savings-type-label">Debit</span>
+          <span class="savings-type-sub">money out</span>
+        </button>
+      </div>
+
+      <label class="savings-form-label">Amount</label>
+      <div class="savings-form-amount-wrap">
+        <span class="savings-form-currency">₹</span>
+        <input id="savings-form-amount" class="savings-form-amount" type="number" inputmode="decimal" placeholder="0" autocomplete="off" />
+      </div>
+
+      <label class="savings-form-label">Date</label>
+      <input id="savings-form-date" class="savings-form-date" type="date" />
+
+      <label class="savings-form-label">Note (optional)</label>
+      <input id="savings-form-note" class="savings-form-note" type="text" placeholder="e.g. Salary, Lent to Rahul, Gift…" autocomplete="off" />
+    </div>
+
+    <div class="confirm-actions savings-form-actions">
+      <button class="confirm-cancel" onclick="closeSavingsFormModal()">Cancel</button>
+      <button class="confirm-ok cat-del-force-btn" id="savings-form-delete" onclick="deleteSavingsForm()" style="display:none;">Delete</button>
+      <button class="confirm-ok" onclick="saveSavingsForm()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js?v=28.2"></script>
+<script src="features.js?v=28.2"></script>
+<script src="loans.js?v=28.2"></script>
+<script src="savings.js?v=28.2"></script>
 </body>
 </html>

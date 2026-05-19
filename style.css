@@ -4297,8 +4297,11 @@ body::before {
    ═══════════════════════════════════════════════════════════ */
 
 /* — App layer should sit ABOVE the body::before grain — */
-#app, #login-screen, #sheet-chooser, #loading-overlay, .toast,
-.confirm-modal, .voice-result-card { position: relative; z-index: 1; }
+/* v28.2: removed .confirm-modal and .voice-result-card from this list — they need
+   their original position:fixed overlay behavior to render above the bottom-nav.
+   Setting them to position:relative dropped them into document flow which pushed
+   the voice card's action buttons BELOW the bottom-nav (UX bug). */
+#app, #login-screen, #sheet-chooser, #loading-overlay, .toast { position: relative; z-index: 1; }
 
 /* Money-bg fades into the texture — keep but softer */
 .money-bg__icon { filter: saturate(.3); }
@@ -4941,43 +4944,10 @@ body::before {
   padding: 6px 10px !important;
 }
 
-/* — FAB: lift + Add nav-btn into a floating round black button — */
-.bottom-nav { padding-top: 18px !important; }
-#nav-add.nav-btn {
-  position: relative !important;
-  width: 56px !important;
-  height: 56px !important;
-  flex: 0 0 56px !important;
-  margin-top: -22px !important;        /* lift above the pill bar */
-  background: var(--text) !important;
-  border-radius: 50% !important;
-  color: #fff !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
-  box-shadow: 0 12px 28px -8px rgba(5,5,5,.45) !important;
-  font-size: 0 !important;             /* hide "Add" text label */
-  padding: 0 !important;
-}
-#nav-add.nav-btn .nav-icon {
-  font-size: 1.5rem !important;
-  filter: invert(1) brightness(2);     /* make emoji read white-ish */
-  line-height: 1 !important;
-}
-/* Coral dot on FAB (the brand pop) */
-#nav-add.nav-btn::before {
-  content: '';
-  position: absolute;
-  top: 4px; right: 4px;
-  width: 10px; height: 10px;
-  border-radius: 50%;
-  background: var(--accent);
-  border: 2px solid var(--text);
-  z-index: 2;
-}
-/* Kill the active underline-dot under FAB (it has its own coral dot) */
-#nav-add.nav-btn.active::after { display: none !important; }
+/* v28.2 — FAB removed. #nav-add is now just "Home" — a normal pill-nav tab.
+   The old FAB lift (margin-top:-22px) caused click-overlap issues and made the
+   +Add label redundant (the Add view IS the home). Now there are 5 equal tabs:
+   Home · Dashboard · Insights · Loans · Savings. */
 
 /* — Inline Schedule badge: pin it as a small chip beside name, no wrap — */
 .loan-card-name {
@@ -5014,3 +4984,487 @@ body::before {
 
 /* ─── End v27 cardy overlay ─── */
 /* ─── End v28.1 accent-discipline patch ─── */
+
+/* ═══════════════════════════════════════════════════════════
+   v28.2 · SAVINGS MODULE STYLES
+   Simple ledger UI matching the cardy design language —
+   black hero card for current balance, tone-on-tone entries,
+   single-coral discipline preserved.
+   ═══════════════════════════════════════════════════════════ */
+
+#view-savings { padding: 18px 18px calc(var(--safe-bot) + 100px); }
+
+/* ── Hero: current balance on the black card ── */
+.savings-hero {
+  background: var(--dark-card);
+  color: var(--on-dark);
+  border-radius: var(--radius);
+  padding: 26px 22px 22px;
+  box-shadow: 0 24px 48px -16px rgba(5,5,5,.22);
+  margin-bottom: 18px;
+}
+.savings-hero-label {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: .18em;
+  color: var(--on-dark-2);
+  margin-bottom: 10px;
+}
+.savings-hero-amount {
+  font-family: var(--f-display);
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  color: var(--on-dark);
+  line-height: 1.05;
+}
+.savings-hero-amount.neg { color: var(--accent); }
+.savings-hero-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.savings-hero-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.10);
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--on-dark-2);
+}
+.savings-hero-chip .savings-hero-chip-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--on-dark-2);
+}
+.savings-hero-chip.credit .savings-hero-chip-dot { background: #66BB6A; }
+.savings-hero-chip.debit  .savings-hero-chip-dot { background: var(--accent); }
+
+/* ── Add Entry button (full-width, like loan-add-btn) ── */
+.savings-actions {
+  margin-bottom: 22px;
+}
+.savings-add-btn {
+  width: 100%;
+  background: var(--text);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -.005em;
+  cursor: pointer;
+  transition: transform .12s, box-shadow .12s;
+  box-shadow: 0 10px 22px -10px rgba(5,5,5,.4);
+  -webkit-tap-highlight-color: transparent;
+}
+.savings-add-btn:active { transform: scale(.98); }
+
+/* ── Section label / hint ── */
+.savings-section-label {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 4px 4px 10px;
+}
+.savings-section-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 14px;
+  padding: 0 4px;
+  line-height: 1.5;
+}
+
+/* ── Entries list ── */
+.savings-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.savings-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: transform .12s, box-shadow .12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.savings-entry:active { transform: scale(.99); }
+.savings-entry-side {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+.savings-entry-icon {
+  display: grid;
+  place-items: center;
+  width: 36px; height: 36px;
+  border-radius: 12px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.savings-entry.credit .savings-entry-icon {
+  background: rgba(102,187,106,.14);
+  color: #2E7D32;
+}
+.savings-entry.debit .savings-entry-icon {
+  background: rgba(230,57,70,.10);
+  color: var(--accent);
+}
+.savings-entry-meta { min-width: 0; flex: 1; }
+.savings-entry-row1 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.savings-entry-type {
+  font-family: var(--f-mono);
+  font-size: 9px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 500;
+}
+.savings-entry-date {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  color: var(--muted-2);
+}
+.savings-entry-note {
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.savings-entry-empty-note { color: var(--muted-2); font-style: italic; }
+.savings-entry-amount {
+  font-family: var(--f-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.savings-entry.credit .savings-entry-amount { color: #2E7D32; }
+.savings-entry.debit  .savings-entry-amount { color: var(--accent); }
+
+/* ── Empty state ── */
+.savings-empty {
+  text-align: center;
+  padding: 40px 20px;
+  background: var(--bg2);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+.savings-empty-icon {
+  font-size: 2.2rem;
+  margin-bottom: 10px;
+  filter: grayscale(.3);
+}
+.savings-empty-title {
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.savings-empty-sub {
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SAVINGS FORM MODAL
+   ═══════════════════════════════════════════════════════════ */
+.savings-form-box { padding: 22px 22px calc(var(--safe-bot) + 22px); }
+.savings-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 14px 0 18px;
+}
+
+/* Type toggle: Credit | Debit */
+.savings-type-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.savings-type-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  background: var(--bg3);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all .15s;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+.savings-type-btn .savings-type-icon {
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.savings-type-btn .savings-type-label {
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+}
+.savings-type-btn .savings-type-sub {
+  font-family: var(--f-mono);
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.savings-type-btn.active {
+  background: var(--bg2);
+  border-color: var(--text);
+  box-shadow: 0 4px 12px -6px rgba(5,5,5,.2);
+}
+#savings-type-credit.active .savings-type-icon { color: #2E7D32; }
+#savings-type-debit.active  .savings-type-icon { color: var(--accent); }
+
+.savings-form-label {
+  font-family: var(--f-mono);
+  font-size: 9px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 8px 0 4px;
+  font-weight: 500;
+}
+.savings-form-amount-wrap {
+  display: flex;
+  align-items: center;
+  background: var(--bg3);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0 14px;
+  transition: border-color .15s;
+}
+.savings-form-amount-wrap:focus-within { border-color: var(--text); }
+.savings-form-currency {
+  font-family: var(--f-display);
+  font-weight: 600;
+  font-size: 1.4rem;
+  color: var(--muted);
+  margin-right: 8px;
+}
+.savings-form-amount {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: 1.4rem;
+  color: var(--text);
+  padding: 14px 0;
+  letter-spacing: -.01em;
+}
+.savings-form-date,
+.savings-form-note {
+  background: var(--bg3);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  font-size: 14px;
+  color: var(--text);
+  outline: none;
+  transition: border-color .15s;
+  font-family: var(--f-body);
+}
+.savings-form-date:focus,
+.savings-form-note:focus { border-color: var(--text); }
+.savings-form-actions { gap: 10px; }
+
+/* ═══════════════════════════════════════════════════════════
+   v28.2 · HOME PAGE REVAMP
+   Today's spend chip + quick-add chips + recent 3 entries
+   ═══════════════════════════════════════════════════════════ */
+.home-today-card {
+  background: var(--dark-card);
+  color: var(--on-dark);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 18px 36px -16px rgba(5,5,5,.22);
+}
+.home-today-left { min-width: 0; flex: 1; }
+.home-today-label {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--on-dark-2);
+  margin-bottom: 4px;
+}
+.home-today-amount {
+  font-family: var(--f-display);
+  font-weight: 800;
+  font-size: 1.7rem;
+  letter-spacing: -.02em;
+  line-height: 1.05;
+}
+.home-today-sub {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  color: var(--on-dark-2);
+  margin-top: 6px;
+}
+.home-today-badge {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  background: rgba(255,255,255,.10);
+  color: var(--on-dark);
+  padding: 6px 10px;
+  border-radius: var(--radius-pill);
+  flex-shrink: 0;
+}
+.home-today-badge.accent { background: var(--accent); }
+
+/* Quick-add chips */
+.home-quick-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 22px;
+}
+.home-quick-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: transform .12s, background .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.home-quick-chip:active {
+  transform: scale(.96);
+  background: var(--accent-lt);
+}
+.home-quick-chip-icon { font-size: .95rem; }
+.home-quick-chip-amt {
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: .04em;
+  color: var(--muted);
+  margin-left: 2px;
+}
+.home-quick-label {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 4px 8px;
+}
+
+/* Recent 3 entries */
+.home-recent {
+  margin-top: 22px;
+}
+.home-recent-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 4px;
+  border-bottom: 1px dashed var(--border);
+}
+.home-recent-row:last-child { border-bottom: none; }
+.home-recent-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+.home-recent-icon {
+  font-size: 1rem;
+  width: 28px; height: 28px;
+  display: grid;
+  place-items: center;
+  background: var(--bg3);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.home-recent-meta {
+  min-width: 0;
+  flex: 1;
+}
+.home-recent-cat {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.home-recent-note {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: .04em;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.home-recent-amt {
+  font-family: var(--f-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+.home-recent-empty {
+  font-size: 12.5px;
+  color: var(--muted);
+  font-style: italic;
+  padding: 14px 4px;
+  text-align: center;
+}
+
+/* ─── End v28.2 savings + home revamp ─── */
