@@ -672,6 +672,15 @@ async function enterMainApp() {
     await loadCustomCategories();      /* Re-hydrate custom cats from Sheet */
     await reconcileOrphanCategories(); /* Recover orphan keys from old data */
     await loadBudgets();
+    /* v28.3 — Pull savings from the Sheet's "Savings" tab. Non-blocking on
+       failure: if the call errors we fall back to whatever localStorage has. */
+    try {
+      if (typeof window.loadSavingsFromSheet === 'function') {
+        await window.loadSavingsFromSheet();
+      }
+    } catch (e) {
+      console.warn('Savings sheet load failed (using local cache):', e.message);
+    }
     clearLoading();
     buildAddView();
     switchView('add');

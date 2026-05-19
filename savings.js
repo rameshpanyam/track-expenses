@@ -19,10 +19,15 @@
 
 const SAVINGS_STORAGE_KEY = 'expense-tracker.savings.v1';
 
+/* ─── Sheet sync constants (v28.3) ───────────────────────────────── */
+const SAVINGS_TAB_NAME = 'Savings';
+const SAVINGS_HEADERS  = ['ID', 'Date', 'Type', 'Amount', 'Note', 'CreatedAt', 'UpdatedAt'];
+
 /* ─── State ──────────────────────────────────────────────────────── */
 var savingsState   = null;
 var savingsEditingId = null;
 var savingsEntryType = 'credit';  // form-side selection
+var savingsGid       = Number(localStorage.getItem('savingsSheetGid') ?? -1);
 
 /* ═══════════════════════════════════════════════════════════════════
    STORAGE
@@ -44,6 +49,121 @@ function saveSavingsState() {
   } catch (e) {
     console.warn('saveSavingsState error', e);
   }
+  // Fire-and-forget sheet sync (non-blocking — UI stays instant)
+  syncSavingsToSheet().catch(e => console.warn('Savings sheet sync failed:', e.message));
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   GOOGLE SHEETS SYNC (v28.3)
+   - Tab name: "Savings" inside the same expense spreadsheet.
+   - Columns: ID | Date | Type | Amount | Note | CreatedAt | UpdatedAt
+   - Strategy: localStorage is the working copy; every save overwrites
+     the full Savings tab range (idempotent). On sign-in, we pull from
+     the sheet to refresh local state (sheet wins on conflict).
+   ═══════════════════════════════════════════════════════════════════ */
+async function ensureSavingsTab() {
+  if (!window.spreadsheetId || !window.accessToken) return false;
+  if (typeof window.sheetsRequest !== 'function') return false;
+
+  const meta = await window.sheetsRequest('GET',
+    `/${window.spreadsheetId}?fields=sheets.properties`);
+  const tab  = meta.sheets.find(s => s.properties.title === SAVINGS_TAB_NAME);
+
+  if (tab) {
+    savingsGid = tab.properties.sheetId;
+    localStorage.setItem('savingsSheetGid', savingsGid);
+    // Ensure headers row exists
+    const hdr = await window.sheetsRequest('GET',
+      `/${window.spreadsheetId}/values/${SAVINGS_TAB_NAME}!A1:G1`);
+    if (!hdr.values || !hdr.values.length) {
+      await window.sheetsRequest('POST',
+        `/${window.spreadsheetId}/values/${SAVINGS_TAB_NAME}!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+        { values: [SAVINGS_HEADERS] });
+    }
+  } else {
+    // Create the tab + write headers
+    const res = await window.sheetsRequest('POST',
+      `/${window.spreadsheetId}:batchUpdate`,
+      { requests: [{ addSheet: { properties: { title: SAVINGS_TAB_NAME } } }] });
+    savingsGid = res.replies[0].addSheet.properties.sheetId;
+    localStorage.setItem('savingsSheetGid', savingsGid);
+    await window.sheetsRequest('POST',
+      `/${window.spreadsheetId}/values/${SAVINGS_TAB_NAME}!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+      { values: [SAVINGS_HEADERS] });
+  }
+  return true;
+}
+
+async function syncSavingsToSheet() {
+  if (!window.spreadsheetId || !window.accessToken) return;
+  if (typeof window.sheetsRequest !== 'function') return;
+  if (!savingsState) loadSavingsState();
+
+  await ensureSavingsTab();
+
+  const now = new Date().toISOString();
+  const rows = savingsState.entries.map(e => [
+    e.id,
+    e.date,
+    e.type,
+    e.amount,
+    e.note || '',
+    e.createdAt || now,
+    now,  // UpdatedAt is bumped on every full sync
+  ]);
+
+  if (rows.length > 0) {
+    // Overwrite the data range (row 2 onwards)
+    await window.sheetsRequest('PUT',
+      `/${window.spreadsheetId}/values/${SAVINGS_TAB_NAME}!A2:G${rows.length + 1}?valueInputOption=RAW`,
+      { values: rows });
+    // Clear any leftover rows below (in case entries were deleted)
+    const clearStart = rows.length + 2;
+    await window.sheetsRequest('POST',
+      `/${window.spreadsheetId}/values/${SAVINGS_TAB_NAME}!A${clearStart}:G${clearStart + 200}:clear`,
+      null);
+  } else {
+    // No entries: clear the body wholesale so a deleted-only state syncs cleanly.
+    await window.sheetsRequest('POST',
+      `/${window.spreadsheetId}/values/${SAVINGS_TAB_NAME}!A2:G500:clear`, null);
+  }
+}
+
+/** Pull all savings rows from the sheet into local state.
+ *  Called on sign-in (after loadExpenses) and on manual refresh.
+ *  Sheet wins on conflict — local data is overwritten by remote. */
+async function loadSavingsFromSheet() {
+  if (!window.spreadsheetId || !window.accessToken) return false;
+  if (typeof window.sheetsRequest !== 'function') return false;
+
+  // Ensure tab + headers exist before reading
+  await ensureSavingsTab();
+
+  const data = await window.sheetsRequest('GET',
+    `/${window.spreadsheetId}/values/${SAVINGS_TAB_NAME}!A:G`);
+  const rows = data.values || [];
+  if (rows.length < 2) {
+    // Nothing in the sheet — keep whatever localStorage has (may be empty too).
+    if (!savingsState) loadSavingsState();
+    return true;
+  }
+
+  const entries = rows.slice(1)
+    .map(r => ({
+      id:        r[0] || ('s_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)),
+      date:      r[1] || todaysISODate(),
+      type:      (r[2] === 'debit') ? 'debit' : 'credit',
+      amount:    parseFloat(r[3]) || 0,
+      note:      r[4] || '',
+      createdAt: r[5] || '',
+    }))
+    .filter(e => e.amount > 0);
+
+  savingsState = { entries };
+  try {
+    localStorage.setItem(SAVINGS_STORAGE_KEY, JSON.stringify(savingsState));
+  } catch (e) { /* no-op */ }
+  return true;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -282,15 +402,17 @@ function deleteSavingsForm() {
 /* ═══════════════════════════════════════════════════════════════════
    PUBLIC API (read-only access for other modules — never write)
    ═══════════════════════════════════════════════════════════════════ */
-window.loadSavingsState     = loadSavingsState;
-window.renderSavings        = renderSavings;
-window.savingsBalance       = savingsBalance;        // read-only: loans closure can use this
-window.openSavingsAddModal  = openSavingsAddModal;
-window.openSavingsEditModal = openSavingsEditModal;
+window.loadSavingsState      = loadSavingsState;
+window.loadSavingsFromSheet  = loadSavingsFromSheet;   // v28.3 sheet pull
+window.syncSavingsToSheet    = syncSavingsToSheet;     // v28.3 sheet push
+window.renderSavings         = renderSavings;
+window.savingsBalance        = savingsBalance;         // read-only: loans closure can use this
+window.openSavingsAddModal   = openSavingsAddModal;
+window.openSavingsEditModal  = openSavingsEditModal;
 window.closeSavingsFormModal = closeSavingsFormModal;
-window.saveSavingsForm      = saveSavingsForm;
-window.deleteSavingsForm    = deleteSavingsForm;
-window.setSavingsFormType   = setSavingsFormType;
+window.saveSavingsForm       = saveSavingsForm;
+window.deleteSavingsForm     = deleteSavingsForm;
+window.setSavingsFormType    = setSavingsFormType;
 
 /* Auto-bootstrap (same pattern as loans.js) */
 loadSavingsState();
