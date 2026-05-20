@@ -123,7 +123,12 @@ function getLoanSchedule(loanId) {
    ═══════════════════════════════════════════════════════════════════ */
 async function ensureLoansTab() {
   if (!window.spreadsheetId || !window.accessToken) return false;
-  const meta = await window.sheetsRequest('GET', `/${spreadsheetId}?fields=sheets.properties`);
+  // v28.7 — Use shared metadata cache to skip redundant `sheets.properties`
+  // GETs during the sign-in flow. Falls back to a direct GET if app.js
+  // hasn't exposed the helper yet.
+  const meta = typeof window.getCachedSheetMeta === 'function'
+    ? await window.getCachedSheetMeta()
+    : await window.sheetsRequest('GET', `/${spreadsheetId}?fields=sheets.properties`);
   const tab  = meta.sheets.find(s => s.properties.title === LOANS_TAB_NAME);
   if (tab) {
     loansGid = tab.properties.sheetId;
@@ -143,13 +148,16 @@ async function ensureLoansTab() {
     await window.sheetsRequest('POST',
       `/${spreadsheetId}/values/${LOANS_TAB_NAME}!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
       { values: [LOANS_HEADERS] });
+    window.invalidateSheetMetaCache?.();  // we just changed the workbook shape
   }
   return true;
 }
 
 async function ensureSchTab() {
   if (!window.spreadsheetId || !window.accessToken) return false;
-  const meta = await window.sheetsRequest('GET', `/${spreadsheetId}?fields=sheets.properties`);
+  const meta = typeof window.getCachedSheetMeta === 'function'
+    ? await window.getCachedSheetMeta()
+    : await window.sheetsRequest('GET', `/${spreadsheetId}?fields=sheets.properties`);
   const tab  = meta.sheets.find(s => s.properties.title === SCH_TAB_NAME);
   if (tab) {
     schGid = tab.properties.sheetId;
@@ -169,6 +177,7 @@ async function ensureSchTab() {
     await window.sheetsRequest('POST',
       `/${spreadsheetId}/values/${SCH_TAB_NAME}!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
       { values: [SCH_HEADERS] });
+    window.invalidateSheetMetaCache?.();
   }
   return true;
 }
@@ -207,7 +216,9 @@ async function syncLoansToSheet() {
  *  Tab format: { Key, Value, UpdatedAt } — one row per setting. */
 async function syncLoanMetaToSheet() {
   if (!window.spreadsheetId || !window.accessToken) return;
-  const meta = await window.sheetsRequest('GET', `/${spreadsheetId}?fields=sheets.properties`);
+  const meta = typeof window.getCachedSheetMeta === 'function'
+    ? await window.getCachedSheetMeta()
+    : await window.sheetsRequest('GET', `/${spreadsheetId}?fields=sheets.properties`);
   const tab  = meta.sheets.find(s => s.properties.title === META_TAB_NAME);
   if (!tab) {
     await window.sheetsRequest('POST', `/${spreadsheetId}:batchUpdate`,
@@ -215,6 +226,7 @@ async function syncLoanMetaToSheet() {
     await window.sheetsRequest('POST',
       `/${spreadsheetId}/values/${META_TAB_NAME}!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
       { values: [META_HEADERS] });
+    window.invalidateSheetMetaCache?.();
   }
   const now = new Date().toISOString();
   const rows = [
@@ -374,8 +386,10 @@ async function loadLoanMetaFromSheet() {
   loanState.emergencyReserve = 0;
 
   // Check if Loans_Meta tab exists — don't create it on read.
-  const meta = await window.sheetsRequest('GET',
-    `/${window.spreadsheetId}?fields=sheets.properties`);
+  // v28.7 — Re-use shared metadata cache from app.js.
+  const meta = typeof window.getCachedSheetMeta === 'function'
+    ? await window.getCachedSheetMeta()
+    : await window.sheetsRequest('GET', `/${window.spreadsheetId}?fields=sheets.properties`);
   const tab  = meta.sheets.find(s => s.properties.title === META_TAB_NAME);
   if (tab) {
     const data = await window.sheetsRequest('GET',

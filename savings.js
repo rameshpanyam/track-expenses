@@ -65,8 +65,12 @@ async function ensureSavingsTab() {
   if (!window.spreadsheetId || !window.accessToken) return false;
   if (typeof window.sheetsRequest !== 'function') return false;
 
-  const meta = await window.sheetsRequest('GET',
-    `/${window.spreadsheetId}?fields=sheets.properties`);
+  // v28.7 — Re-use shared metadata cache (set up in app.js) to skip
+  // redundant `sheets.properties` GETs during the sign-in flow.
+  const meta = typeof window.getCachedSheetMeta === 'function'
+    ? await window.getCachedSheetMeta()
+    : await window.sheetsRequest('GET',
+        `/${window.spreadsheetId}?fields=sheets.properties`);
   const tab  = meta.sheets.find(s => s.properties.title === SAVINGS_TAB_NAME);
 
   if (tab) {
@@ -90,6 +94,7 @@ async function ensureSavingsTab() {
     await window.sheetsRequest('POST',
       `/${window.spreadsheetId}/values/${SAVINGS_TAB_NAME}!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
       { values: [SAVINGS_HEADERS] });
+    window.invalidateSheetMetaCache?.();
   }
   return true;
 }

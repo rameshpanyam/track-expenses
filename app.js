@@ -212,6 +212,49 @@ async function sheetsRequest(method, path, body) {
   return r.json();
 }
 
+/* ════════════════════════════════════════════════════════════════════
+   v28.7 — Sheet-metadata cache + in-flight de-dup
+   Pre-v28.7 the sign-in flow made 3-4 separate `sheets.properties`
+   GETs (one inside each ensureLoansTab / ensureSchTab / ensureSavingsTab
+   plus loadLoanMetaFromSheet). They all return the same payload.
+   We now:
+     • cache the response for 30s, AND
+     • de-duplicate concurrent requests via a shared in-flight promise,
+   so parallel callers share one HTTP round-trip even when they all
+   fire at once during sign-in. Invalidate after any addSheet write.
+   ════════════════════════════════════════════════════════════════════ */
+let _sheetMetaCache = null;          // { data, expires }
+let _sheetMetaInflight = null;       // Promise during a live fetch
+
+async function getCachedSheetMeta(force) {
+  if (!spreadsheetId) return null;
+  if (!force && _sheetMetaCache && Date.now() < _sheetMetaCache.expires) {
+    return _sheetMetaCache.data;
+  }
+  if (_sheetMetaInflight) return _sheetMetaInflight;
+  _sheetMetaInflight = (async () => {
+    try {
+      const data = await sheetsRequest('GET', `/${spreadsheetId}?fields=sheets.properties`);
+      _sheetMetaCache = { data, expires: Date.now() + 30_000 };
+      return data;
+    } finally {
+      _sheetMetaInflight = null;
+    }
+  })();
+  return _sheetMetaInflight;
+}
+
+function invalidateSheetMetaCache() {
+  _sheetMetaCache    = null;
+  _sheetMetaInflight = null;
+}
+
+// Expose to loans.js / savings.js (they're loaded as separate <script>s
+// and a top-level `let` does not attach to window — see the accessToken
+// comment above for the full rationale).
+window.getCachedSheetMeta       = getCachedSheetMeta;
+window.invalidateSheetMetaCache = invalidateSheetMetaCache;
+
 /* ── Verify a stored spreadsheet ID is still valid ─────────── */
 async function verifyStoredSheet() {
   if (!spreadsheetId) return false;
@@ -676,36 +719,49 @@ async function enterMainApp() {
 
   setLoading('Loading your expenses…');
   try {
+    /* v28.7 — Performance refactor:
+       Previously these 7 loaders ran strictly sequentially, with each
+       loan/savings loader doing its OWN `sheets.properties` GET inside
+       ensureXxxTab. On a sheet with many expenses that meant 8-12
+       sequential HTTP round-trips on every sign-in / sheet switch.
+
+       New flow:
+         1. Prime the shared sheet-meta cache (one GET) — also
+            invalidates any stale value from a previous sheet.
+         2. Load Expenses + Categories sequentially (categories must
+            finish before we render the add-view, expenses are the
+            critical-path table view).
+         3. Fire the remaining loaders in PARALLEL via Promise.allSettled
+            so total wall-time = max(individual) instead of sum. They
+            all share the cached meta, so no redundant metadata GETs. */
+    invalidateSheetMetaCache();              // fresh book → fresh meta
+    await getCachedSheetMeta().catch(() => null);  // prime cache (1 GET)
+
     await loadExpenses();
     await loadCustomCategories();      /* Re-hydrate custom cats from Sheet */
     await reconcileOrphanCategories(); /* Recover orphan keys from old data */
-    await loadBudgets();
-    /* v28.4 — Pull loans from the Sheet's "Loans", "Loan_Schedule", and
-       "Loans_Meta" tabs. Non-blocking on failure: if any call errors we
-       fall back to whatever localStorage has (which on a fresh device
-       is the pre-populated demo loans, or empty). Sheet wins on conflict. */
-    try {
-      if (typeof window.loadLoansFromSheet === 'function') {
-        await window.loadLoansFromSheet();
+
+    /* Parallel batch — none of these depend on each other. allSettled so
+       one failure does not cancel the others; we log + use local cache. */
+    const results = await Promise.allSettled([
+      loadBudgets(),
+      typeof window.loadLoansFromSheet === 'function'
+        ? window.loadLoansFromSheet()         : null,
+      typeof window.loadLoanScheduleFromSheet === 'function'
+        ? window.loadLoanScheduleFromSheet()  : null,
+      typeof window.loadLoanMetaFromSheet === 'function'
+        ? window.loadLoanMetaFromSheet()      : null,
+      typeof window.loadSavingsFromSheet === 'function'
+        ? window.loadSavingsFromSheet()       : null,
+    ]);
+    results.forEach((r, i) => {
+      if (r.status === 'rejected') {
+        const names = ['loadBudgets', 'loadLoansFromSheet',
+                       'loadLoanScheduleFromSheet', 'loadLoanMetaFromSheet',
+                       'loadSavingsFromSheet'];
+        console.warn(`${names[i]} failed (using local cache):`, r.reason?.message || r.reason);
       }
-      if (typeof window.loadLoanScheduleFromSheet === 'function') {
-        await window.loadLoanScheduleFromSheet();
-      }
-      if (typeof window.loadLoanMetaFromSheet === 'function') {
-        await window.loadLoanMetaFromSheet();
-      }
-    } catch (e) {
-      console.warn('Loans sheet load failed (using local cache):', e.message);
-    }
-    /* v28.3 — Pull savings from the Sheet's "Savings" tab. Non-blocking on
-       failure: if the call errors we fall back to whatever localStorage has. */
-    try {
-      if (typeof window.loadSavingsFromSheet === 'function') {
-        await window.loadSavingsFromSheet();
-      }
-    } catch (e) {
-      console.warn('Savings sheet load failed (using local cache):', e.message);
-    }
+    });
     clearLoading();
     buildAddView();
     switchView('add');
