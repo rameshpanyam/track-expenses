@@ -2559,6 +2559,125 @@ body::before {
   text-align: center;
 }
 
+/* ── v28.8: Heatmap day popover — small floating card anchored to a
+   tapped calendar cell. Listing of expenses for that day. ─────── */
+.heatmap-cell { cursor: pointer; }
+.heatmap-cell.empty { cursor: default; }
+.heatmap-cell.hdp-anchor {
+  outline: 2px solid var(--accent, #e23744);
+  outline-offset: 1px;
+  z-index: 2;
+}
+
+.heatmap-day-popover {
+  position: fixed;
+  z-index: 1000;
+  width: min(280px, calc(100vw - 24px));
+  max-height: 60vh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, .18),
+    0 2px 6px rgba(0, 0, 0, .08);
+  padding: 14px 14px 12px;
+  font-size: .85rem;
+  color: #1d1d1f;
+  animation: hdp-pop-in .14s ease-out;
+  -webkit-overflow-scrolling: touch;
+}
+@keyframes hdp-pop-in {
+  from { opacity: 0; transform: translateY(-4px) scale(.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+.heatmap-day-popover .hdp-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: #86868b;
+  cursor: pointer;
+}
+.heatmap-day-popover .hdp-close:hover {
+  background: rgba(0, 0, 0, .06);
+  color: #1d1d1f;
+}
+
+.heatmap-day-popover .hdp-date {
+  font-size: .7rem;
+  font-weight: 600;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  color: #86868b;
+  margin: 0 26px 2px 0;
+}
+.heatmap-day-popover .hdp-total {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  margin-bottom: 10px;
+  color: #1d1d1f;
+}
+
+.heatmap-day-popover .hdp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.heatmap-day-popover .hdp-item {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid rgba(0, 0, 0, .06);
+}
+.heatmap-day-popover .hdp-item:first-child {
+  border-top: none;
+}
+.heatmap-day-popover .hdp-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .95rem;
+  color: #fff;
+  flex-shrink: 0;
+}
+.heatmap-day-popover .hdp-label {
+  font-size: .82rem;
+  color: #1d1d1f;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.heatmap-day-popover .hdp-amt {
+  font-size: .82rem;
+  font-weight: 600;
+  color: #1d1d1f;
+  white-space: nowrap;
+}
+
+/* On small screens widen the popover; positioning is still computed in JS
+   (with a viewport clamp) so it sits next to the tapped cell. */
+@media (max-width: 480px) {
+  .heatmap-day-popover {
+    width: calc(100vw - 24px);
+  }
+}
+
 /* ── F2: Recurring modal extras ────────────────────────────── */
 .recurring-box, .goals-box, .whatif-box, .yearwrap-box, .export-box, .tools-menu-box {
   max-width: 420px;

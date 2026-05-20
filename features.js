@@ -681,7 +681,110 @@
     if (!wrap) return;
     if (heatmapMode === 'year') renderHeatmapYear(wrap);
     else renderHeatmapMonth(wrap);
+    /* v28.8 — attach the click->popover delegate once per wrap. The flag
+       survives across innerHTML re-renders since we set it on the wrap
+       element itself (not inside the replaced HTML). */
+    if (!wrap._dayPopoverWired) {
+      wrap.addEventListener('click', onHeatmapCellClick);
+      wrap._dayPopoverWired = true;
+    }
   }
+
+  /* v28.8 — Calendar day popover.
+     Click a heatmap cell ⇒ small floating card lists that day's expenses
+     (category icon, note, amount) anchored to the cell. No new page,
+     no modal. Click outside or hit × to dismiss. */
+  function onHeatmapCellClick(ev) {
+    const cell = ev.target.closest('.heatmap-cell');
+    if (!cell || cell.classList.contains('empty')) return;
+    const iso = cell.dataset.date;
+    if (!iso) return;
+    showHeatmapDayPopover(cell, iso);
+  }
+
+  function showHeatmapDayPopover(cell, iso) {
+    /* Replace any existing popover (also clears prior cell selection) */
+    closeHeatmapDayPopover();
+
+    const day = (window.allExpenses || []).filter(e => e.date === iso)
+                                          .sort((a, b) => b.amount - a.amount);
+    const total = day.reduce((s, e) => s + e.amount, 0);
+    const d = ymdToD(iso) || new Date(iso);
+    const headingDate = d
+      ? d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
+      : iso;
+
+    const pop = document.createElement('div');
+    pop.className = 'heatmap-day-popover';
+    pop.setAttribute('role', 'dialog');
+    pop.setAttribute('aria-label', `Spends on ${headingDate}`);
+    pop.innerHTML = `
+      <button class="hdp-close" aria-label="Close">×</button>
+      <div class="hdp-date">${safe(headingDate)}</div>
+      <div class="hdp-total">${day.length === 0 ? 'No spends' : inrFmt(total)}</div>
+      ${day.length === 0 ? '' : `
+        <ul class="hdp-list">
+          ${day.map(e => {
+            const c = (CAT_MAP || {})[e.category] || { icon:'📦', label:e.category, color:'#78909C' };
+            const label = (e.note && e.note.trim()) ? e.note : c.label;
+            return `<li class="hdp-item">
+              <span class="hdp-icon" style="background:${c.color}">${c.icon}</span>
+              <span class="hdp-label">${safe(label)}</span>
+              <span class="hdp-amt">${inrFmt(e.amount)}</span>
+            </li>`;
+          }).join('')}
+        </ul>`}
+    `;
+    document.body.appendChild(pop);
+
+    /* Position next to the clicked cell. Prefer below; flip above if it
+       would clip the viewport bottom. Clamp horizontally with a margin. */
+    const M = 8;
+    const r = cell.getBoundingClientRect();
+    const pw = pop.offsetWidth;
+    const ph = pop.offsetHeight;
+    let left = r.left + r.width / 2 - pw / 2;
+    let top  = r.bottom + 8;
+    if (left < M) left = M;
+    if (left + pw > window.innerWidth - M) left = window.innerWidth - M - pw;
+    if (top + ph > window.innerHeight - M) {
+      const above = r.top - ph - 8;
+      top = above >= M ? above : Math.max(M, window.innerHeight - M - ph);
+    }
+    pop.style.left = left + 'px';
+    pop.style.top  = top  + 'px';
+
+    cell.classList.add('hdp-anchor');
+    pop._anchor = cell;
+
+    pop.querySelector('.hdp-close').addEventListener('click', closeHeatmapDayPopover);
+    /* Defer outside-click so the click that opened us doesn't immediately close us */
+    setTimeout(() => {
+      document.addEventListener('click', onOutsideHeatmapPopover, true);
+      document.addEventListener('keydown', onEscHeatmapPopover);
+    }, 0);
+  }
+
+  function onOutsideHeatmapPopover(ev) {
+    const pop = document.querySelector('.heatmap-day-popover');
+    if (!pop) return;
+    if (pop.contains(ev.target)) return;
+    if (ev.target.closest('.heatmap-cell')) return;  // let cell handler reposition
+    closeHeatmapDayPopover();
+  }
+  function onEscHeatmapPopover(ev) {
+    if (ev.key === 'Escape') closeHeatmapDayPopover();
+  }
+  function closeHeatmapDayPopover() {
+    const pop = document.querySelector('.heatmap-day-popover');
+    if (pop) {
+      pop._anchor?.classList.remove('hdp-anchor');
+      pop.remove();
+    }
+    document.removeEventListener('click',   onOutsideHeatmapPopover, true);
+    document.removeEventListener('keydown', onEscHeatmapPopover);
+  }
+
   function renderHeatmapMonth(wrap) {
     const vm = window.viewMonth || new Date();
     const y = vm.getFullYear(), m = vm.getMonth();
@@ -706,7 +809,8 @@
     for (let d = 1; d <= daysInMonth; d++) {
       const v = totals[d];
       const level = v === 0 ? 0 : Math.min(4, Math.ceil((v / max) * 4));
-      html += `<div class="heatmap-cell level-${level}" title="${d} ${vm.toLocaleDateString('en-IN',{month:'short'})}: ${inrFmt(v)}">
+      const iso = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      html += `<div class="heatmap-cell level-${level}" data-date="${iso}" title="${d} ${vm.toLocaleDateString('en-IN',{month:'short'})}: ${inrFmt(v)}">
         <span class="heatmap-day">${d}</span>
         ${v > 0 ? `<span class="heatmap-amt">${v >= 1000 ? '₹'+(v/1000).toFixed(0)+'k' : '₹'+Math.round(v)}</span>` : ''}
       </div>`;
@@ -749,7 +853,7 @@
           const ymd = dToYMD(cur);
           const v = map[ymd] || 0;
           const level = v === 0 ? 0 : Math.min(4, Math.ceil((v / max) * 4));
-          html += `<span class="heatmap-cell level-${level}" title="${ymd}: ${inrFmt(v)}"></span>`;
+          html += `<span class="heatmap-cell level-${level}" data-date="${ymd}" title="${ymd}: ${inrFmt(v)}"></span>`;
         }
       }
       html += '</div>';
