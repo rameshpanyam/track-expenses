@@ -672,6 +672,23 @@ async function enterMainApp() {
     await loadCustomCategories();      /* Re-hydrate custom cats from Sheet */
     await reconcileOrphanCategories(); /* Recover orphan keys from old data */
     await loadBudgets();
+    /* v28.4 — Pull loans from the Sheet's "Loans", "Loan_Schedule", and
+       "Loans_Meta" tabs. Non-blocking on failure: if any call errors we
+       fall back to whatever localStorage has (which on a fresh device
+       is the pre-populated demo loans, or empty). Sheet wins on conflict. */
+    try {
+      if (typeof window.loadLoansFromSheet === 'function') {
+        await window.loadLoansFromSheet();
+      }
+      if (typeof window.loadLoanScheduleFromSheet === 'function') {
+        await window.loadLoanScheduleFromSheet();
+      }
+      if (typeof window.loadLoanMetaFromSheet === 'function') {
+        await window.loadLoanMetaFromSheet();
+      }
+    } catch (e) {
+      console.warn('Loans sheet load failed (using local cache):', e.message);
+    }
     /* v28.3 — Pull savings from the Sheet's "Savings" tab. Non-blocking on
        failure: if the call errors we fall back to whatever localStorage has. */
     try {

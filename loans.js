@@ -249,6 +249,144 @@ async function syncScheduleToSheet(loanId, rows) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+   v28.4 — PULL-ON-SIGN-IN LOADERS
+   Called from app.js sign-in flow. Sheet wins on conflict so that
+   when a user signs in on a fresh device, their loans/schedules/
+   closure-planning inputs hydrate from the spreadsheet rather than
+   starting empty from localStorage.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/** Pull all loans from the "Loans" tab into loanState.loans.
+ *  No-op if the tab is empty (keeps whatever localStorage has, which
+ *  may include the pre-populated demo loans on a fresh install). */
+async function loadLoansFromSheet() {
+  if (!window.spreadsheetId || !window.accessToken) return false;
+  if (typeof window.sheetsRequest !== 'function') return false;
+
+  // Make sure local state object exists before we mutate it
+  if (!loanState) loadLoanState();
+
+  // Ensure the Loans tab + header row exist before reading
+  await ensureLoansTab();
+
+  const data = await window.sheetsRequest('GET',
+    `/${window.spreadsheetId}/values/${LOANS_TAB_NAME}!A:R`);
+  const rows = data.values || [];
+  if (rows.length < 2) {
+    // Sheet has only the header (or nothing) — keep local cache as-is.
+    return true;
+  }
+
+  const loans = rows.slice(1)
+    .filter(r => r[0]) // require an ID
+    .map(r => ({
+      id:                       r[0],
+      name:                     r[1] || '',
+      type:                     r[2] || 'other',
+      rateType:                 r[3] || 'reducing',
+      principal:                parseFloat(r[4])  || 0,
+      interestRate:             parseFloat(r[5])  || 0,
+      tenureMonths:             parseInt(r[6], 10) || 0,
+      startDate:                r[7] || '',
+      emiDueDay:                r[8] ? parseInt(r[8], 10) : null,
+      emi:                      parseFloat(r[9])  || 0,
+      foreclosureChargePercent: r[10] !== '' && r[10] != null
+                                  ? parseFloat(r[10])
+                                  : DEFAULT_FORECLOSURE_PERCENT,
+      status:                   r[11] || 'active',
+      closedDate:               r[12] || null,
+      closedAmount:             r[13] ? parseFloat(r[13]) : null,
+      color:                    r[14] || LOAN_COLORS[0],
+      hasSchedule:              (r[15] === 'YES' || r[15] === 'true'),
+      createdAt:                r[16] || '',
+      updatedAt:                r[17] || '',
+    }));
+
+  loanState.loans = loans;
+  try {
+    localStorage.setItem(LOAN_STORAGE_KEY, JSON.stringify(loanState));
+  } catch (e) { /* no-op */ }
+
+  // Hide the pre-populate prompt — sheet just told us what loans exist
+  window._loanNeedsPrePop = false;
+  // Re-publish the (now-fresh) array to window
+  window.loanState = loanState;
+  return true;
+}
+
+/** Pull all amortization rows from "Loan_Schedule" into loanSchedules.
+ *  Groups by LoanID into the {loanId: [rows]} map that the rest of the
+ *  module expects. */
+async function loadLoanScheduleFromSheet() {
+  if (!window.spreadsheetId || !window.accessToken) return false;
+  if (typeof window.sheetsRequest !== 'function') return false;
+
+  await ensureSchTab();
+
+  const data = await window.sheetsRequest('GET',
+    `/${window.spreadsheetId}/values/${SCH_TAB_NAME}!A:H`);
+  const rows = data.values || [];
+  if (rows.length < 2) return true; // header only — nothing to load
+
+  const grouped = {};
+  for (const r of rows.slice(1)) {
+    const loanId = r[0];
+    if (!loanId) continue;
+    if (!grouped[loanId]) grouped[loanId] = [];
+    grouped[loanId].push({
+      no:        parseInt(r[2], 10) || (grouped[loanId].length + 1),
+      date:      r[3] || '',
+      emi:       parseFloat(r[4]) || 0,
+      principal: parseFloat(r[5]) || 0,
+      interest:  parseFloat(r[6]) || 0,
+      balance:   parseFloat(r[7]) || 0,
+    });
+  }
+  // Sort each loan's schedule by installment number for safety
+  Object.values(grouped).forEach(arr => arr.sort((a, b) => a.no - b.no));
+
+  loanSchedules = grouped;
+  try {
+    localStorage.setItem(LOAN_SCH_STORAGE_KEY, JSON.stringify(loanSchedules));
+  } catch (e) { /* no-op */ }
+  window.loanSchedules = loanSchedules;
+  return true;
+}
+
+/** Pull closure-planning inputs (currentSavings, monthlySavings,
+ *  emergencyReserve) from the Loans_Meta tab. */
+async function loadLoanMetaFromSheet() {
+  if (!window.spreadsheetId || !window.accessToken) return false;
+  if (typeof window.sheetsRequest !== 'function') return false;
+  if (!loanState) loadLoanState();
+
+  // Check if Loans_Meta tab exists — don't create it on read
+  const meta = await window.sheetsRequest('GET',
+    `/${window.spreadsheetId}?fields=sheets.properties`);
+  const tab  = meta.sheets.find(s => s.properties.title === META_TAB_NAME);
+  if (!tab) return true; // tab not created yet — nothing to load
+
+  const data = await window.sheetsRequest('GET',
+    `/${window.spreadsheetId}/values/${META_TAB_NAME}!A:C`);
+  const rows = data.values || [];
+  if (rows.length < 2) return true;
+
+  for (const r of rows.slice(1)) {
+    const key = r[0];
+    const val = parseFloat(r[1]);
+    if (!key || isNaN(val)) continue;
+    if (key === 'currentSavings')   loanState.currentSavings   = val;
+    if (key === 'monthlySavings')   loanState.monthlySavings   = val;
+    if (key === 'emergencyReserve') loanState.emergencyReserve = val;
+  }
+  try {
+    localStorage.setItem(LOAN_STORAGE_KEY, JSON.stringify(loanState));
+  } catch (e) { /* no-op */ }
+  window.loanState = loanState;
+  return true;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    AMORTIZATION MATH
    ═══════════════════════════════════════════════════════════════════ */
 
@@ -1716,6 +1854,10 @@ window.loanState             = loanState;
 window.loanSchedules         = loanSchedules;
 window.loadLoanState         = loadLoanState;
 window.saveLoanState         = saveLoanState;
+// v28.4 — Sheet pull-on-sign-in loaders
+window.loadLoansFromSheet         = loadLoansFromSheet;
+window.loadLoanScheduleFromSheet  = loadLoanScheduleFromSheet;
+window.loadLoanMetaFromSheet      = loadLoanMetaFromSheet;
 window.renderLoans           = renderLoans;
 window.setLoanSubtab         = setLoanSubtab;
 window.openLoanAddModal      = openLoanAddModal;
