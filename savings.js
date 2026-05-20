@@ -131,7 +131,9 @@ async function syncSavingsToSheet() {
 
 /** Pull all savings rows from the sheet into local state.
  *  Called on sign-in (after loadExpenses) and on manual refresh.
- *  Sheet wins on conflict — local data is overwritten by remote. */
+ *  v28.6 — Sheet always wins, even when empty. Without this, switching
+ *  to a blank spreadsheet would leave ghost entries from the previous
+ *  sheet's localStorage. */
 async function loadSavingsFromSheet() {
   if (!window.spreadsheetId || !window.accessToken) return false;
   if (typeof window.sheetsRequest !== 'function') return false;
@@ -142,12 +144,9 @@ async function loadSavingsFromSheet() {
   const data = await window.sheetsRequest('GET',
     `/${window.spreadsheetId}/values/${SAVINGS_TAB_NAME}!A:G`);
   const rows = data.values || [];
-  if (rows.length < 2) {
-    // Nothing in the sheet — keep whatever localStorage has (may be empty too).
-    if (!savingsState) loadSavingsState();
-    return true;
-  }
 
+  // Sheet wins fully — slicing [1:] on a header-only or empty rows array
+  // yields [], which is exactly what we want for a blank sheet.
   const entries = rows.slice(1)
     .map(r => ({
       id:        r[0] || ('s_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)),

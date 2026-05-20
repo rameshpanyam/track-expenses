@@ -254,16 +254,19 @@ async function syncScheduleToSheet(loanId, rows) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   v28.4 — PULL-ON-SIGN-IN LOADERS
-   Called from app.js sign-in flow. Sheet wins on conflict so that
-   when a user signs in on a fresh device, their loans/schedules/
-   closure-planning inputs hydrate from the spreadsheet rather than
-   starting empty from localStorage.
+   v28.4 — PULL-ON-SIGN-IN LOADERS  (v28.6: sheet-always-wins semantics)
+   Called from app.js sign-in flow. Sheet is the source of truth — local
+   state is fully replaced by what the sheet has, INCLUDING when the
+   sheet is empty. This is critical for the "I just switched to a
+   different (blank) spreadsheet" flow: localStorage still has the old
+   data, but if we let it linger the user would see ghost loans from
+   their previous sheet.
    ═══════════════════════════════════════════════════════════════════ */
 
 /** Pull all loans from the "Loans" tab into loanState.loans.
- *  No-op if the tab is empty (keeps whatever localStorage has, which
- *  may include the pre-populated demo loans on a fresh install). */
+ *  Sheet wins fully — if the sheet is empty, loanState.loans becomes [].
+ *  Re-arms the pre-populate prompt only when both the sheet and the
+ *  resulting local cache are empty. */
 async function loadLoansFromSheet() {
   if (!window.spreadsheetId || !window.accessToken) return false;
   if (typeof window.sheetsRequest !== 'function') return false;
@@ -277,11 +280,9 @@ async function loadLoansFromSheet() {
   const data = await window.sheetsRequest('GET',
     `/${window.spreadsheetId}/values/${LOANS_TAB_NAME}!A:R`);
   const rows = data.values || [];
-  if (rows.length < 2) {
-    // Sheet has only the header (or nothing) — keep local cache as-is.
-    return true;
-  }
 
+  // Sheet wins — even when empty. Slicing [1:] on a header-only or empty
+  // rows array yields [] which is exactly what we want.
   const loans = rows.slice(1)
     .filter(r => r[0]) // require an ID
     .map(r => ({
@@ -312,8 +313,9 @@ async function loadLoansFromSheet() {
     localStorage.setItem(LOAN_STORAGE_KEY, JSON.stringify(loanState));
   } catch (e) { /* no-op */ }
 
-  // Hide the pre-populate prompt — sheet just told us what loans exist
-  window._loanNeedsPrePop = false;
+  // Re-arm or hide the pre-populate prompt based on the FRESHLY-pulled
+  // state. Empty sheet → user is on a fresh book → offer demos.
+  window._loanNeedsPrePop = (loans.length === 0);
   // Re-publish the (now-fresh) array to window
   window.loanState = loanState;
   return true;
@@ -321,7 +323,7 @@ async function loadLoansFromSheet() {
 
 /** Pull all amortization rows from "Loan_Schedule" into loanSchedules.
  *  Groups by LoanID into the {loanId: [rows]} map that the rest of the
- *  module expects. */
+ *  module expects. Sheet wins fully — empty sheet ⇒ empty map. */
 async function loadLoanScheduleFromSheet() {
   if (!window.spreadsheetId || !window.accessToken) return false;
   if (typeof window.sheetsRequest !== 'function') return false;
@@ -331,7 +333,6 @@ async function loadLoanScheduleFromSheet() {
   const data = await window.sheetsRequest('GET',
     `/${window.spreadsheetId}/values/${SCH_TAB_NAME}!A:H`);
   const rows = data.values || [];
-  if (rows.length < 2) return true; // header only — nothing to load
 
   const grouped = {};
   for (const r of rows.slice(1)) {
@@ -359,30 +360,35 @@ async function loadLoanScheduleFromSheet() {
 }
 
 /** Pull closure-planning inputs (currentSavings, monthlySavings,
- *  emergencyReserve) from the Loans_Meta tab. */
+ *  emergencyReserve) from the Loans_Meta tab. Sheet wins fully — if
+ *  the tab is missing or empty, reset all three inputs to 0 so the
+ *  user starts clean on the new spreadsheet. */
 async function loadLoanMetaFromSheet() {
   if (!window.spreadsheetId || !window.accessToken) return false;
   if (typeof window.sheetsRequest !== 'function') return false;
   if (!loanState) loadLoanState();
 
-  // Check if Loans_Meta tab exists — don't create it on read
+  // Default to a clean slate; any keys found in the sheet override below.
+  loanState.currentSavings   = 0;
+  loanState.monthlySavings   = 0;
+  loanState.emergencyReserve = 0;
+
+  // Check if Loans_Meta tab exists — don't create it on read.
   const meta = await window.sheetsRequest('GET',
     `/${window.spreadsheetId}?fields=sheets.properties`);
   const tab  = meta.sheets.find(s => s.properties.title === META_TAB_NAME);
-  if (!tab) return true; // tab not created yet — nothing to load
-
-  const data = await window.sheetsRequest('GET',
-    `/${window.spreadsheetId}/values/${META_TAB_NAME}!A:C`);
-  const rows = data.values || [];
-  if (rows.length < 2) return true;
-
-  for (const r of rows.slice(1)) {
-    const key = r[0];
-    const val = parseFloat(r[1]);
-    if (!key || isNaN(val)) continue;
-    if (key === 'currentSavings')   loanState.currentSavings   = val;
-    if (key === 'monthlySavings')   loanState.monthlySavings   = val;
-    if (key === 'emergencyReserve') loanState.emergencyReserve = val;
+  if (tab) {
+    const data = await window.sheetsRequest('GET',
+      `/${window.spreadsheetId}/values/${META_TAB_NAME}!A:C`);
+    const rows = data.values || [];
+    for (const r of rows.slice(1)) {
+      const key = r[0];
+      const val = parseFloat(r[1]);
+      if (!key || isNaN(val)) continue;
+      if (key === 'currentSavings')   loanState.currentSavings   = val;
+      if (key === 'monthlySavings')   loanState.monthlySavings   = val;
+      if (key === 'emergencyReserve') loanState.emergencyReserve = val;
+    }
   }
   try {
     localStorage.setItem(LOAN_STORAGE_KEY, JSON.stringify(loanState));
