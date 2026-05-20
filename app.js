@@ -67,6 +67,13 @@ let newCatColor = CAT_COLOR_PALETTE[0];
 let tokenClient   = null;
 let accessToken   = null;
 let tokenExpiry   = 0;
+/* v28.5 — Mirror accessToken to window.* because top-level `let` does NOT
+   attach to window in a classic <script>. loans.js / savings.js / features.js
+   read window.accessToken to gate their Sheet syncs; without this mirror,
+   those syncs silently no-op and tabs are never created.
+   IMPORTANT: every reassignment of `accessToken` below must also update
+   `window.accessToken` — see handleTokenResponse, signOut, ensureToken. */
+window.accessToken = null;
 var spreadsheetId = localStorage.getItem('expenseSheetId') || null;
 var sheetGid      = Number(localStorage.getItem('expenseSheetGid') ?? -1);
 var budgetGid     = Number(localStorage.getItem('budgetSheetGid') ?? -1);
@@ -635,6 +642,7 @@ function initGoogleAuth() {
 async function handleTokenResponse(resp) {
   if (resp.error) { showToast('Sign-in failed: ' + resp.error, true); clearLoading(); return; }
   accessToken = resp.access_token;
+  window.accessToken = accessToken;  /* v28.5 — keep window mirror in sync */
   tokenExpiry = Date.now() + resp.expires_in * 1000;
 
   document.getElementById('login-screen').style.display = 'none';
@@ -845,6 +853,7 @@ function signOut() {
      Just clear local state; the access token expires naturally in ~1 hour. */
   google.accounts.id.disableAutoSelect(); /* prevent silent re-sign-in */
   accessToken   = null;
+  window.accessToken = null;  /* v28.5 — keep window mirror in sync */
   spreadsheetId = null;
   sheetGid      = -1;
   allExpenses   = [];
@@ -860,7 +869,11 @@ async function ensureToken() {
     tokenClient.requestAccessToken({
       prompt: '',
       callback: (resp) => {
-        if (!resp.error) { accessToken = resp.access_token; tokenExpiry = Date.now() + resp.expires_in * 1000; }
+        if (!resp.error) {
+          accessToken = resp.access_token;
+          window.accessToken = accessToken;  /* v28.5 — keep window mirror in sync */
+          tokenExpiry = Date.now() + resp.expires_in * 1000;
+        }
         resolve();
       }
     });

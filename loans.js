@@ -186,15 +186,20 @@ async function syncLoansToSheet() {
     l.color, l.hasSchedule ? 'YES' : 'NO',
     l.createdAt, l.updatedAt,
   ]);
-  // Clear old data then write fresh
   if (rows.length > 0) {
+    // Write fresh data
     await window.sheetsRequest('PUT',
-      `/${spreadsheetId}/values/${LOANS_TAB_NAME}!A2:R${rows.length + 1}?valueInputOption=RAW`,
+      `/${window.spreadsheetId}/values/${LOANS_TAB_NAME}!A2:R${rows.length + 1}?valueInputOption=RAW`,
       { values: rows });
-    // Clear any leftover rows below
+    // Clear any leftover rows below (e.g. after a delete)
     const clearStart = rows.length + 2;
     await window.sheetsRequest('POST',
-      `/${spreadsheetId}/values/${LOANS_TAB_NAME}!A${clearStart}:R${clearStart + 100}:clear`, null);
+      `/${window.spreadsheetId}/values/${LOANS_TAB_NAME}!A${clearStart}:R${clearStart + 100}:clear`, null);
+  } else {
+    // v28.5 — All loans deleted: wipe row 2 onwards so the Sheet matches.
+    // Without this, the last surviving loan row would linger forever.
+    await window.sheetsRequest('POST',
+      `/${window.spreadsheetId}/values/${LOANS_TAB_NAME}!A2:R1000:clear`, null);
   }
 }
 
