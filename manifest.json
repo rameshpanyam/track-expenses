@@ -1,12 +1,16 @@
 {
+  "id": "/track-expenses/",
   "name": "My Expense Tracker",
   "short_name": "Expenses",
-  "description": "Track your monthly expenses by category — offline, on your iPhone.",
-  "start_url": ".",
+  "description": "Track your monthly expenses by category — offline, on your phone.",
+  "start_url": "/track-expenses/",
+  "scope": "/track-expenses/",
   "display": "standalone",
   "background_color": "#0f0f13",
   "theme_color": "#7c5cfc",
   "orientation": "portrait",
+  "categories": ["finance", "productivity"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "icons/icon-192.png",
@@ -26,28 +30,28 @@
       "name": "Add Food",
       "short_name": "Food",
       "description": "Quickly log a food expense",
-      "url": "./?quickadd=food",
+      "url": "/track-expenses/?quickadd=food",
       "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Add Grocery",
       "short_name": "Grocery",
       "description": "Quickly log a grocery expense",
-      "url": "./?quickadd=grocery",
+      "url": "/track-expenses/?quickadd=grocery",
       "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Add Petrol",
       "short_name": "Petrol",
       "description": "Quickly log a petrol expense",
-      "url": "./?quickadd=petrol",
+      "url": "/track-expenses/?quickadd=petrol",
       "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Voice Add",
       "short_name": "Voice",
       "description": "Add expense by voice",
-      "url": "./?quickadd=voice",
+      "url": "/track-expenses/?quickadd=voice",
       "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
     }
   ]
