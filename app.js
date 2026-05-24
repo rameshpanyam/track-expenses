@@ -3208,4 +3208,169 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('new-cat-icon').addEventListener('input', validateNewCat);
   document.getElementById('new-cat-name').addEventListener('input', validateNewCat);
   if (typeof google !== 'undefined' && google.accounts) initGoogleAuth();
+
+  // v28.3 — wire up refresh UX: button + pull-down + visibility
+  initRefreshUX();
 });
+
+/* ═══════════════════════════════════════════════════════════
+   v28.3 — REFRESH UX
+   1. Header 🔄 button       → refreshFromSheet()
+   2. Pull-down gesture      → refreshFromSheet() when user drags from top
+   3. Visibility / focus     → refreshFromSheet() when app returns to fg
+   All three share the same debounced loader so spam = single fetch.
+   ═══════════════════════════════════════════════════════════ */
+
+let _isRefreshing = false;
+let _lastRefreshAt = 0;
+const REFRESH_COOLDOWN_MS = 2000; // Treat rapid taps within 2s as one refresh
+
+/* Single source-of-truth refresh — used by button, pull, and visibility. */
+async function refreshFromSheet({ silent = false } = {}) {
+  if (!spreadsheetId) {
+    if (!silent) showToast('Sign in first', true);
+    return;
+  }
+  if (_isRefreshing) return;
+  if (Date.now() - _lastRefreshAt < REFRESH_COOLDOWN_MS) return; // debounce
+
+  _isRefreshing = true;
+  const btn = document.getElementById('header-refresh-btn');
+  if (btn) btn.classList.add('is-refreshing');
+
+  const prevCount = (typeof expenses !== 'undefined' && Array.isArray(expenses)) ? expenses.length : 0;
+
+  try {
+    await ensureToken();
+
+    /* Re-fetch the data the user cares about. allSettled so one failure
+       doesn't sink the rest. We DON'T reload meta / loans / savings here
+       — those rarely change from the WhatsApp bot. Add them later if needed. */
+    await loadExpenses();
+    await Promise.allSettled([
+      loadCustomCategories(),
+      loadBudgets(),
+    ]);
+
+    /* Re-render whatever view the user is on. */
+    rerenderActiveView();
+
+    const newCount = (typeof expenses !== 'undefined' && Array.isArray(expenses)) ? expenses.length : 0;
+    const diff = newCount - prevCount;
+
+    if (!silent) {
+      if (diff > 0)      showToast(`📥 ${diff} new entr${diff === 1 ? 'y' : 'ies'} synced`);
+      else if (diff < 0) showToast(`Synced — ${Math.abs(diff)} removed`);
+      else               showToast('Up to date ✓');
+    } else if (diff > 0) {
+      // Even silent refresh should signal NEW entries so user knows
+      showToast(`📥 ${diff} new entr${diff === 1 ? 'y' : 'ies'} synced`);
+    }
+
+    _lastRefreshAt = Date.now();
+  } catch (err) {
+    console.error('[Refresh] Failed:', err);
+    if (!silent) showToast('Refresh failed: ' + err.message, true);
+  } finally {
+    _isRefreshing = false;
+    if (btn) btn.classList.remove('is-refreshing');
+  }
+}
+
+/* Re-render whichever view is currently active. Safe fallbacks for views
+   whose render fn might not exist in all builds. */
+function rerenderActiveView() {
+  try { renderHomeDashboard?.(); } catch (e) {}
+  try { renderTodayTotal?.(); } catch (e) {}
+  if (currentView === 'dashboard') { try { renderDashboard?.(); } catch (e) {} }
+  if (currentView === 'insights')  { try { renderInsights?.();  } catch (e) {} }
+  if (currentView === 'history')   { try { renderHistory?.();   } catch (e) {} }
+}
+
+/* ── PULL-TO-REFRESH (touch gesture) ───────────────────────── */
+function initPullToRefresh() {
+  const indicator = document.getElementById('ptr-indicator');
+  const iconEl    = document.getElementById('ptr-icon');
+  const textEl    = document.getElementById('ptr-text');
+  if (!indicator) return;
+
+  const TRIGGER_DISTANCE = 70;   // px — pull this far to arm
+  const MAX_DISTANCE     = 140;  // px — visual cap on indicator travel
+  let startY = 0;
+  let pulling = false;
+  let armed = false;
+
+  function atScrollTop() {
+    return (window.scrollY || document.documentElement.scrollTop || 0) <= 0;
+  }
+
+  function reset() {
+    pulling = false;
+    armed = false;
+    indicator.classList.remove('visible', 'armed', 'refreshing');
+    indicator.style.transform = 'translate(-50%, -100%)';
+    textEl.textContent = 'Pull to refresh';
+  }
+
+  document.addEventListener('touchstart', (e) => {
+    if (!atScrollTop()) return;
+    if (_isRefreshing) return;
+    startY = e.touches[0].clientY;
+    pulling = true;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', (e) => {
+    if (!pulling) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy <= 0) { reset(); return; }
+    const travel = Math.min(dy * 0.5, MAX_DISTANCE); // resistance feel
+    indicator.classList.add('visible');
+    indicator.style.transform = `translate(-50%, ${travel - 60}px)`;
+
+    const shouldArm = travel >= TRIGGER_DISTANCE;
+    if (shouldArm && !armed) {
+      armed = true;
+      indicator.classList.add('armed');
+      textEl.textContent = 'Release to refresh';
+    } else if (!shouldArm && armed) {
+      armed = false;
+      indicator.classList.remove('armed');
+      textEl.textContent = 'Pull to refresh';
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', async () => {
+    if (!pulling) return;
+    if (armed) {
+      indicator.classList.add('refreshing');
+      indicator.classList.remove('armed');
+      textEl.textContent = 'Refreshing…';
+      indicator.style.transform = 'translate(-50%, 14px)';
+      await refreshFromSheet();
+      // brief pause so user sees the spinner before it slides away
+      setTimeout(reset, 400);
+    } else {
+      reset();
+    }
+  });
+
+  document.addEventListener('touchcancel', reset);
+}
+
+/* ── VISIBILITY / FOCUS REFRESH (silent) ───────────────────── */
+function initVisibilityRefresh() {
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshFromSheet({ silent: true });
+  });
+  window.addEventListener('focus', () => {
+    refreshFromSheet({ silent: true });
+  });
+}
+
+function initRefreshUX() {
+  initPullToRefresh();
+  initVisibilityRefresh();
+}
+
+/* Expose for inline onclick="refreshFromSheet()" in the header */
+window.refreshFromSheet = refreshFromSheet;

@@ -115,10 +115,17 @@
       <button id="month-next" style="visibility:hidden">›</button>
     </div>
     <div class="header-actions">
+      <button id="header-refresh-btn" class="header-icon-btn" title="Refresh from Google Sheet" onclick="refreshFromSheet()">🔄</button>
       <button class="header-icon-btn" title="Tools (search, recurring, goals, export)" onclick="openToolsMenu()">🛠️</button>
       <button class="header-icon-btn" title="Set monthly budget" onclick="openBudgetModal()">🎯</button>
       <button class="header-icon-btn" title="Change sheet" onclick="showSheetChooser()">📑</button>
       <button class="signout-btn" onclick="signOut()">Sign out</button>
+    </div>
+
+    <!-- Pull-to-refresh indicator (slides down from top while pulling) -->
+    <div id="ptr-indicator" class="ptr-indicator" aria-hidden="true">
+      <span id="ptr-icon" class="ptr-icon">↓</span>
+      <span id="ptr-text" class="ptr-text">Pull to refresh</span>
     </div>
   </header>
 

@@ -5587,3 +5587,58 @@ body::before {
 }
 
 /* ─── End v28.2 savings + home revamp ─── */
+
+/* ═══════════════════════════════════════════════════════════
+   v28.3 — Manual refresh button + pull-to-refresh gesture
+   ═══════════════════════════════════════════════════════════ */
+
+/* Spin the refresh icon while a refresh is in flight */
+#header-refresh-btn.is-refreshing {
+  animation: ptr-spin 0.8s linear infinite;
+  pointer-events: none;
+  opacity: 0.7;
+}
+@keyframes ptr-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Pull-to-refresh indicator — slides down from the top of the viewport */
+.ptr-indicator {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -100%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: var(--card, #fff);
+  border-radius: 0 0 14px 14px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text, #222);
+  z-index: 9999;
+  pointer-events: none;
+  transition: transform 0.18s ease-out, opacity 0.18s ease-out;
+  opacity: 0;
+}
+.ptr-indicator.visible {
+  opacity: 1;
+}
+.ptr-indicator.armed .ptr-icon {
+  transform: rotate(180deg);
+}
+.ptr-indicator.refreshing .ptr-icon {
+  animation: ptr-spin 0.8s linear infinite;
+}
+.ptr-icon {
+  display: inline-block;
+  font-size: 16px;
+  line-height: 1;
+  transition: transform 0.18s ease-out;
+}
+.ptr-text {
+  white-space: nowrap;
+}
+/* ─── End v28.3 refresh ─── */
