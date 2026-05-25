@@ -7,6 +7,24 @@
 /* ── Reset ─────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ── Mobile responsiveness baseline ────────────────────────────
+   `touch-action: manipulation` kills the 300 ms tap delay that
+   iOS Safari (and old Android Chrome) add to anything that looks
+   interactive — they're waiting to see if you'll double-tap-zoom.
+   This single rule makes every tap on a button or link feel
+   instant on mobile. The matching `-webkit-tap-highlight-color`
+   removes the grey flash that briefly appears on tap.
+
+   We also disable user-select on tappable controls so a long-press
+   doesn't pop a text-selection menu instead of firing the click. */
+button, a, [role="button"], .cat-btn, .nav-item, .voice-btn,
+.add-btn, .icon-btn, .chip {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* ── Design tokens — v5 palette (Cardy) ────────────────────── */
 :root {
   /* Surfaces — warm gray-beige family */
@@ -127,8 +145,16 @@ body::before {
   opacity: 0;
   filter: saturate(.7);
   animation: money-float var(--ms, 24s) linear var(--md, 0s) infinite;
-  will-change: transform, opacity;
+  /* `will-change` was forcing these 10 icons onto their own GPU layers
+     forever and stealing frame budget from button taps. The animation
+     itself only uses transform + opacity, both of which are already
+     GPU-accelerated; will-change is unnecessary here and actively
+     harmful on mobile. */
 }
+/* When the app puts itself in low-power mode (e.g. tab hidden, or
+   the user is interacting with a heavy view) we pause the float
+   loop entirely instead of paying the per-frame GPU cost. */
+.low-fx .money-bg__icon { animation-play-state: paused !important; }
 @keyframes money-float {
   0%   { transform: translate3d(0, 0, 0)            rotate(0deg);   opacity: 0; }
   10%  { opacity: .14; }

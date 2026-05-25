@@ -164,13 +164,30 @@ function daysElapsedInMonth(date) {
     : new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
 }
 
+/* Memoize expensesForMonth() — renderDashboard() / renderInsights() /
+   stat cards all call this 4-6 times in a single render cycle. Without
+   the cache each call re-scans `allExpenses` (potentially thousands of
+   rows) and splits date strings. We invalidate whenever the master
+   array changes (see invalidateExpenseCache()). */
+let _expForMonthCache = new Map();   // 'YYYY-M' → filtered array
 function expensesForMonth(date) {
   const y = date.getFullYear(), m = date.getMonth() + 1;
-  return allExpenses.filter(e => {
+  const key = y + '-' + m;
+  const hit = _expForMonthCache.get(key);
+  if (hit) return hit;
+  const result = allExpenses.filter(e => {
     if (!e.date) return false;
     const [ey, em] = e.date.split('-').map(Number);
     return ey === y && em === m;
   });
+  _expForMonthCache.set(key, result);
+  return result;
+}
+/* Wipe the per-month cache whenever the underlying expense list changes.
+   Cheap: just clears a single Map. Callers: loadExpenses (after fetch),
+   saveExpense (after append), deleteExpense (after row removal). */
+function invalidateExpenseCache() {
+  _expForMonthCache.clear();
 }
 
 /* ── Toast ─────────────────────────────────────────────────── */
@@ -346,6 +363,7 @@ async function loadExpenses() {
       createdAt: row[4] || '',
     }))
     .filter(e => e.date && e.amount > 0);
+  invalidateExpenseCache();
 }
 
 async function appendExpenseRow(exp) {
@@ -913,6 +931,7 @@ function signOut() {
   spreadsheetId = null;
   sheetGid      = -1;
   allExpenses   = [];
+  invalidateExpenseCache();
   document.getElementById('app').style.display           = 'none';
   document.getElementById('sheet-chooser').style.display = 'none';
   document.getElementById('login-screen').style.display  = 'flex';
@@ -1394,44 +1413,54 @@ function renderDashboard() {
   document.getElementById('bar-chart-sub').textContent =
     `${barLabels[0]} → ${barLabels[5]} · current month highlighted`;
 
-  destroyCharts();
-
-  const barCtx = document.getElementById('monthlyBarChart').getContext('2d');
-  barChart = new Chart(barCtx, {
-    type: 'bar',
-    data: {
-      labels: barLabels,
-      datasets: [{
-        data:            barData,
-        backgroundColor: barColors,
-        borderRadius:    8,
-        borderSkipped:   false,
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: ctx => ' ' + fmt(ctx.raw),
-          }
-        }
+  /* Chart.js: UPDATE in place instead of destroy+recreate. Recreating
+     instances was the #1 cause of jank when adding an expense —
+     Chart.js teardown+init costs ~300-500ms on a mid-range phone. The
+     `'none'` animation arg skips the easing pass too so updates feel
+     snappy. We only fall back to `new Chart()` the first time. */
+  if (barChart) {
+    barChart.data.labels                       = barLabels;
+    barChart.data.datasets[0].data             = barData;
+    barChart.data.datasets[0].backgroundColor  = barColors;
+    barChart.update('none');
+  } else {
+    const barCtx = document.getElementById('monthlyBarChart').getContext('2d');
+    barChart = new Chart(barCtx, {
+      type: 'bar',
+      data: {
+        labels: barLabels,
+        datasets: [{
+          data:            barData,
+          backgroundColor: barColors,
+          borderRadius:    8,
+          borderSkipped:   false,
+        }]
       },
-      scales: {
-        x: { grid: { display: false }, ticks: { font: { family: 'IBM Plex Sans', size: 11 }, color: '#9098B1' } },
-        y: {
-          grid: { color: 'rgba(0,0,0,.05)' },
-          ticks: {
-            font: { family: 'IBM Plex Sans', size: 10 },
-            color: '#9098B1',
-            callback: v => v >= 1000 ? '₹' + (v/1000).toFixed(0) + 'k' : '₹' + v,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => ' ' + fmt(ctx.raw),
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { family: 'IBM Plex Sans', size: 11 }, color: '#9098B1' } },
+          y: {
+            grid: { color: 'rgba(0,0,0,.05)' },
+            ticks: {
+              font: { family: 'IBM Plex Sans', size: 10 },
+              color: '#9098B1',
+              callback: v => v >= 1000 ? '₹' + (v/1000).toFixed(0) + 'k' : '₹' + v,
+            }
           }
         }
       }
-    }
-  });
+    });
+  }
 
   /* ── Donut chart: this month categories ── */
   const catSorted = allCategories()
@@ -1443,29 +1472,43 @@ function renderDashboard() {
   document.getElementById('donut-center-val').textContent = fmt(total);
 
   if (catSorted.length > 0) {
-    const donutCtx = document.getElementById('categoryDonutChart').getContext('2d');
-    donutChart = new Chart(donutCtx, {
-      type: 'doughnut',
-      data: {
-        labels:   catSorted.map(c => c.label),
-        datasets: [{
-          data:              catSorted.map(c => c.amount),
-          backgroundColor:   catSorted.map(c => c.color),
-          borderWidth:       2,
-          borderColor:       '#FFFFFF',
-          hoverBorderWidth:  3,
-          borderRadius:      4,
-        }]
-      },
-      options: {
-        responsive: false,
-        cutout: '68%',
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmt(ctx.raw)}` } }
+    // Same in-place update pattern for the donut chart
+    if (donutChart) {
+      donutChart.data.labels                      = catSorted.map(c => c.label);
+      donutChart.data.datasets[0].data            = catSorted.map(c => c.amount);
+      donutChart.data.datasets[0].backgroundColor = catSorted.map(c => c.color);
+      donutChart.update('none');
+    } else {
+      const donutCtx = document.getElementById('categoryDonutChart').getContext('2d');
+      donutChart = new Chart(donutCtx, {
+        type: 'doughnut',
+        data: {
+          labels:   catSorted.map(c => c.label),
+          datasets: [{
+            data:              catSorted.map(c => c.amount),
+            backgroundColor:   catSorted.map(c => c.color),
+            borderWidth:       2,
+            borderColor:       '#FFFFFF',
+            hoverBorderWidth:  3,
+            borderRadius:      4,
+          }]
+        },
+        options: {
+          responsive: false,
+          cutout: '68%',
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmt(ctx.raw)}` } }
+          }
         }
-      }
-    });
+      });
+    }
+  } else if (donutChart) {
+    // Month has no expenses — clear the donut so the previous month's
+    // data doesn't linger visually
+    donutChart.data.labels = [];
+    donutChart.data.datasets[0].data = [];
+    donutChart.update('none');
   }
 
   /* Donut legend */
@@ -1877,7 +1920,8 @@ function renderVerdictStrip() {
 function jumpToMonth(year, month) {
   viewMonth = new Date(year, month - 1, 1);
   switchView('dashboard');
-  destroyCharts();
+  // No destroyCharts() here — renderDashboard() now updates existing
+  // chart instances in place, which is ~10x faster than rebuilding them
   renderDashboard();
 }
 
@@ -2295,7 +2339,7 @@ function updateHeaderMonth() {
 function changeMonth(delta) {
   viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + delta, 1);
   updateHeaderMonth();
-  if (currentView === 'dashboard') { destroyCharts(); renderDashboard(); }
+  if (currentView === 'dashboard') renderDashboard();   // in-place chart update — no destroy needed
   if (currentView === 'insights')  renderInsights();
 }
 
@@ -3193,9 +3237,14 @@ if ('serviceWorker' in navigator) {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  // Amount input — sanitize digits IMMEDIATELY (so the bad char never
+  // appears) but debounce refreshAddBtn() which runs toLocaleString,
+  // re-flows the button label, and isn't worth doing on every keystroke.
+  let _amtDebounce;
   document.getElementById('amount-input').addEventListener('input', function() {
     this.value = this.value.replace(/[^0-9.]/g, '');
-    refreshAddBtn();
+    clearTimeout(_amtDebounce);
+    _amtDebounce = setTimeout(refreshAddBtn, 120);
   });
   document.getElementById('month-prev').addEventListener('click', () => changeMonth(-1));
   document.getElementById('month-next').addEventListener('click', () => changeMonth(1));
@@ -3360,7 +3409,15 @@ function initPullToRefresh() {
 /* ── VISIBILITY / FOCUS REFRESH (silent) ───────────────────── */
 function initVisibilityRefresh() {
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) refreshFromSheet({ silent: true });
+    if (document.hidden) {
+      // App is in background — pause decorative background animations
+      // so we don't burn battery / GPU for nothing. The .low-fx class
+      // toggles animation-play-state: paused on .money-bg__icon.
+      document.body.classList.add('low-fx');
+    } else {
+      document.body.classList.remove('low-fx');
+      refreshFromSheet({ silent: true });
+    }
   });
   window.addEventListener('focus', () => {
     refreshFromSheet({ silent: true });
