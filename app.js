@@ -1189,6 +1189,26 @@ function escapeHtmlSimple(s) {
 }
 window.quickAddFromChip = quickAddFromChip;
 
+/* OPTIMISTIC SAVE
+   Previously this function showed a loading overlay and AWAITED three
+   sequential network calls (ensureToken → appendExpenseRow → loadExpenses)
+   before clearing the form or showing any feedback. On a 3G connection
+   that's 2-5 seconds of "did my tap register?" anxiety, which on mobile
+   leads users to double-tap and get duplicate entries.
+
+   New flow:
+     1. Validate inputs
+     2. IMMEDIATELY: push the expense into allExpenses, reset the form,
+        repaint the relevant views, show a "Saving…" toast. Total time
+        from tap → visual change: <50 ms.
+     3. IN BACKGROUND: send the actual append to Google Sheets. On
+        success, reload to get the real rowIndex (so delete works) and
+        upgrade the toast to "Saved ✓".
+     4. ON FAILURE: roll back the local entry, restore the form values
+        so the user can retry, and show an error toast.
+
+   This is the single biggest perceived-performance win we can make
+   without rewriting the data layer. */
 async function saveExpense() {
   const amountEl = document.getElementById('amount-input');
   const noteEl   = document.getElementById('note-input');
@@ -1199,30 +1219,88 @@ async function saveExpense() {
   if (!selectedCat)            { showToast('Pick a category', true); return; }
   if (!dateEl.value)           { dateEl.focus(); return; }
 
-  setLoading('Saving to Google Sheets…');
+  // Snapshot the inputs before we wipe them — needed for the network
+  // call AND for the rollback path if the save fails.
+  const expense = {
+    date:      dateEl.value,
+    category:  selectedCat,
+    amount,
+    note:      noteEl.value.trim(),
+    createdAt: new Date().toISOString(),
+  };
+  // Stable client-side ID so we can find the optimistic row again later
+  // when the server-side rowIndex comes back from the reload.
+  const optimisticId = '__pending-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+
+  // ── STEP 1: OPTIMISTIC LOCAL UPDATE ──────────────────────────
+  // rowIndex: -1 marks this as "not yet persisted to Sheet". If the
+  // user tries to delete it before the save completes, delete-handler
+  // skips the network call and just removes it locally.
+  const optimisticEntry = { rowIndex: -1, _optimisticId: optimisticId, ...expense };
+  allExpenses.push(optimisticEntry);
+  invalidateExpenseCache();
+
+  // Reset form NOW — no awaits before this point
+  amountEl.value = '';
+  noteEl.value   = '';
+  dateEl.value   = todayStr();
+  selectedCat    = null;
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
+  refreshAddBtn();
+
+  // Repaint the visible views with the new entry already in place
+  renderTodayTotal();
+  try { renderHomeDashboard?.(); } catch (e) {}
+  if (currentView === 'dashboard') { try { renderDashboard?.(); } catch (e) {} }
+
+  // Instant feedback (NOT a blocking overlay — keeps the UI usable)
+  showToast('Saving…');
+  burstConfetti(document.getElementById('add-btn'));
+
+  // ── STEP 2: BACKGROUND NETWORK SYNC ──────────────────────────
   try {
     await ensureToken();
-    const dateValue = dateEl.value;
-    await appendExpenseRow({ date: dateValue, category: selectedCat, amount, note: noteEl.value.trim(), createdAt: new Date().toISOString() });
+    await appendExpenseRow(expense);
+
+    // Reload to get the real rowIndex (so delete works) — this also
+    // dumps our optimistic row in favour of the canonical server one
     await loadExpenses();
+
     /* Keep Budgets tab in sync if a budget exists for this expense's month */
-    const [ey, em] = dateValue.split('-').map(Number);
+    const [ey, em] = expense.date.split('-').map(Number);
     try { await recomputeBudgetForMonth(ey, em); } catch (err) { console.warn('Budget sync failed:', err); }
 
-    amountEl.value = '';
-    noteEl.value   = '';
-    dateEl.value   = todayStr();
-    selectedCat    = null;
-    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('selected'));
-    refreshAddBtn();
+    // Repaint AGAIN now that we have the authoritative data (rowIndex
+    // etc.) — needed so delete buttons wire up to real rows
     renderTodayTotal();
-    clearLoading();
+    try { renderHomeDashboard?.(); } catch (e) {}
+    if (currentView === 'dashboard') { try { renderDashboard?.(); } catch (e) {} }
     showToast('Saved ✓');
-    burstConfetti(document.getElementById('add-btn'));
   } catch (e) {
-    clearLoading();
-    showToast('Save failed: ' + e.message, true);
-    console.error(e);
+    // ── STEP 3: ROLLBACK ──────────────────────────────────────
+    // Yank the optimistic row back out so the user doesn't see a
+    // ghost entry that never made it to the sheet.
+    const idx = allExpenses.findIndex(x => x._optimisticId === optimisticId);
+    if (idx !== -1) allExpenses.splice(idx, 1);
+    invalidateExpenseCache();
+
+    // Restore the form so the user can immediately retry without
+    // re-typing the amount/note/category they just entered.
+    amountEl.value = String(expense.amount);
+    noteEl.value   = expense.note;
+    dateEl.value   = expense.date;
+    selectedCat    = expense.category;
+    const catBtn = document.querySelector(`.cat-btn[data-cat="${expense.category}"]`);
+    if (catBtn) catBtn.classList.add('selected');
+    refreshAddBtn();
+
+    // Repaint so the rolled-back entry disappears from totals
+    renderTodayTotal();
+    try { renderHomeDashboard?.(); } catch (e) {}
+    if (currentView === 'dashboard') { try { renderDashboard?.(); } catch (e) {} }
+
+    showToast('Save failed: ' + e.message + ' — tap Add to retry', true);
+    console.error('[saveExpense] sync failed, rolled back:', e);
   }
 }
 
@@ -1243,10 +1321,24 @@ async function confirmDelete() {
   closeConfirm();
   if (row === null || row === undefined) return;
 
-  setLoading('Deleting…');
   /* Capture the expense's month before deletion so we can resync its budget */
   const target  = allExpenses.find(e => e.rowIndex === row);
   const monthOf = target?.date ? target.date.split('-').map(Number) : null;
+
+  // Optimistic-save edge case: rowIndex === -1 means this expense is
+  // still in flight to the sheet (the optimistic local copy from
+  // saveExpense). Just remove it locally — no sheet row exists to delete.
+  if (row === -1) {
+    const idx = allExpenses.findIndex(e => e.rowIndex === -1);
+    if (idx !== -1) allExpenses.splice(idx, 1);
+    invalidateExpenseCache();
+    renderTodayTotal();
+    if (currentView === 'dashboard') renderDashboard();
+    showToast('Removed (pending entry) ✓');
+    return;
+  }
+
+  setLoading('Deleting…');
   try {
     await ensureToken();
     await deleteSheetRow(row);
@@ -3284,27 +3376,40 @@ async function refreshFromSheet({ silent = false } = {}) {
   if (Date.now() - _lastRefreshAt < REFRESH_COOLDOWN_MS) return; // debounce
 
   _isRefreshing = true;
+  // Set the cooldown stamp NOW (not just on success) — otherwise a slow
+  // failing refresh leaves the button tappable but stuck behind
+  // _isRefreshing, and on retry we re-enter immediately and spam the API.
+  _lastRefreshAt = Date.now();
+
   const btn = document.getElementById('header-refresh-btn');
   if (btn) btn.classList.add('is-refreshing');
 
-  const prevCount = (typeof expenses !== 'undefined' && Array.isArray(expenses)) ? expenses.length : 0;
+  // BUG FIX: previous version read from a non-existent `expenses` global
+  // (the actual global is `allExpenses`), so prev/newCount were always 0
+  // and the toast ALWAYS said "Up to date ✓" — even when new bot entries
+  // had just synced. The user reasonably concluded the button "wasn't
+  // working" because the toast lied. Use the real array.
+  const prevCount = Array.isArray(allExpenses) ? allExpenses.length : 0;
 
   try {
     await ensureToken();
 
     /* Re-fetch the data the user cares about. allSettled so one failure
-       doesn't sink the rest. We DON'T reload meta / loans / savings here
-       — those rarely change from the WhatsApp bot. Add them later if needed. */
+       doesn't sink the rest. We now also reload loans/savings because
+       the WhatsApp bot writes to those tabs too. */
     await loadExpenses();
     await Promise.allSettled([
       loadCustomCategories(),
       loadBudgets(),
+      // These return early if their module isn't loaded — safe to call
+      typeof window.loadLoansFromSheet   === 'function' ? window.loadLoansFromSheet()   : Promise.resolve(),
+      typeof window.loadSavingsFromSheet === 'function' ? window.loadSavingsFromSheet() : Promise.resolve(),
     ]);
 
     /* Re-render whatever view the user is on. */
     rerenderActiveView();
 
-    const newCount = (typeof expenses !== 'undefined' && Array.isArray(expenses)) ? expenses.length : 0;
+    const newCount = Array.isArray(allExpenses) ? allExpenses.length : 0;
     const diff = newCount - prevCount;
 
     if (!silent) {
@@ -3326,14 +3431,24 @@ async function refreshFromSheet({ silent = false } = {}) {
   }
 }
 
-/* Re-render whichever view is currently active. Safe fallbacks for views
-   whose render fn might not exist in all builds. */
+/* Re-render whichever view is currently active.
+   Previously this only handled dashboard / insights / history — so a
+   refresh while on the Add view (the default) re-fetched the data but
+   never repainted anything, making it look like "nothing happened".
+   We now cover EVERY view that has a render fn, mirroring switchView(). */
 function rerenderActiveView() {
-  try { renderHomeDashboard?.(); } catch (e) {}
-  try { renderTodayTotal?.(); } catch (e) {}
-  if (currentView === 'dashboard') { try { renderDashboard?.(); } catch (e) {} }
-  if (currentView === 'insights')  { try { renderInsights?.();  } catch (e) {} }
-  if (currentView === 'history')   { try { renderHistory?.();   } catch (e) {} }
+  // These are global to the Add view (today total + home cards) — always safe to repaint
+  try { renderTodayTotal?.(); } catch (e) { console.warn('renderTodayTotal:', e); }
+  try { renderHomeDashboard?.(); } catch (e) { console.warn('renderHomeDashboard:', e); }
+  try { renderStreakCard?.(); } catch (e) {}
+  try { refreshAddBtn?.(); } catch (e) {}
+
+  // View-specific re-renders
+  if (currentView === 'dashboard') { try { renderDashboard?.(); } catch (e) { console.warn(e); } }
+  if (currentView === 'insights')  { try { renderInsights?.();  } catch (e) { console.warn(e); } }
+  if (currentView === 'history')   { try { renderHistory?.();   } catch (e) { console.warn(e); } }
+  if (currentView === 'loans')     { try { window.renderLoans?.();   } catch (e) { console.warn(e); } }
+  if (currentView === 'savings')   { try { window.renderSavings?.(); } catch (e) { console.warn(e); } }
 }
 
 /* ── PULL-TO-REFRESH (touch gesture) ───────────────────────── */
