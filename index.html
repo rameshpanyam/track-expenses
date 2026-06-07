@@ -18,7 +18,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 
   <title>Expense Tracker</title>
-  <link rel="stylesheet" href="style.css?v=28.10" />
+  <link rel="stylesheet" href="style.css?v=29.0" />
 
   <!-- Chart.js for the Dashboard -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
@@ -448,10 +448,13 @@
     </div>
   </div>
 
-  <!-- ── Savings View (v28.2) ── -->
+  <!-- ── Savings View (v29.0) ── -->
   <div id="view-savings" class="view">
-    <!-- Hero: current balance -->
+    <!-- Hero: current balance / pot balance -->
     <div class="savings-hero" id="savings-hero"></div>
+
+    <!-- Pot filter bar (chips: All + each pot + New) -->
+    <div class="savings-pot-bar" id="savings-pot-bar"></div>
 
     <!-- Add button -->
     <div class="savings-actions">
@@ -459,7 +462,7 @@
     </div>
 
     <!-- Entries list -->
-    <p class="savings-section-label">Recent activity</p>
+    <p class="savings-section-label" id="savings-section-label-dynamic">Recent activity</p>
     <div id="savings-list"></div>
 
     <p class="savings-section-hint">💡 Tap any entry to edit or delete. Savings is independent — no other module touches this data.</p>
@@ -999,6 +1002,9 @@
 
       <label class="savings-form-label">Note (optional)</label>
       <input id="savings-form-note" class="savings-form-note" type="text" placeholder="e.g. Salary, Lent to Rahul, Gift…" autocomplete="off" />
+
+      <label class="savings-form-label">Savings pot (optional)</label>
+      <select id="savings-form-pot" class="savings-form-pot-select"></select>
     </div>
 
     <div class="confirm-actions savings-form-actions">
@@ -1009,9 +1015,29 @@
   </div>
 </div>
 
-<script src="app.js?v=28.10"></script>
-<script src="features.js?v=28.10"></script>
-<script src="loans.js?v=28.10"></script>
-<script src="savings.js?v=28.10"></script>
+<!-- ═══════════════════════════════════════════════════════════════
+     SAVINGS POT MODAL (v29.0 — create / rename / delete a pot)
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="savings-pot-modal" class="confirm-modal" style="display:none;">
+  <div class="confirm-box savings-pot-modal-box">
+    <p class="confirm-msg" id="savings-pot-modal-title">New Savings Pot</p>
+    <p class="confirm-sub">Give your savings pot a clear name (e.g. "Travel", "Emergency Fund").</p>
+    <div class="savings-pot-name-wrap">
+      <input id="savings-pot-name-input" class="savings-pot-name-input" type="text"
+             maxlength="30" placeholder="Pot name…" autocomplete="off" />
+    </div>
+    <div class="confirm-actions savings-pot-modal-actions">
+      <button class="confirm-cancel" onclick="closeSavingsPotModal()">Cancel</button>
+      <button class="confirm-ok cat-del-force-btn" id="savings-pot-delete-btn"
+              onclick="deleteSavingsPot()" style="display:none;">Delete</button>
+      <button class="confirm-ok" id="savings-pot-save-btn" onclick="saveSavingsPot()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js?v=29.0"></script>
+<script src="features.js?v=29.0"></script>
+<script src="loans.js?v=29.0"></script>
+<script src="savings.js?v=29.0"></script>
 </body>
 </html>

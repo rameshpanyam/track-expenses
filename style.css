@@ -5615,6 +5615,175 @@ body::before {
 /* ─── End v28.2 savings + home revamp ─── */
 
 /* ═══════════════════════════════════════════════════════════
+   v29.0 — Savings Pots (multi-category savings buckets)
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Pot filter bar ── */
+.savings-pot-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 2px 0 12px;
+  margin-bottom: 6px;
+}
+.savings-pot-bar::-webkit-scrollbar { display: none; }
+
+/* ── Each chip ── */
+.savings-pot-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 7px 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .14s, border-color .14s, transform .1s;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+.savings-pot-chip:active { transform: scale(.96); }
+.savings-pot-chip.active {
+  background: var(--text);
+  border-color: var(--text);
+  color: #fff;
+}
+.savings-pot-chip-name {
+  font-family: var(--f-display);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.savings-pot-chip-bal {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  font-weight: 600;
+  opacity: .72;
+}
+.savings-pot-chip.active .savings-pot-chip-bal { opacity: .85; }
+
+/* Edit ✎ icon inside chip */
+.savings-pot-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.06);
+  border: none;
+  border-radius: 50%;
+  width: 18px; height: 18px;
+  font-size: 10px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+  color: inherit;
+  flex-shrink: 0;
+  transition: background .12s;
+}
+.savings-pot-chip.active .savings-pot-edit-btn {
+  background: rgba(255,255,255,.18);
+}
+.savings-pot-edit-btn:active { background: rgba(0,0,0,.14); }
+
+/* "+ New" chip */
+.savings-pot-new-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-pill);
+  padding: 7px 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: var(--f-display);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+  transition: color .14s, border-color .14s, transform .1s;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+.savings-pot-new-chip:active { transform: scale(.96); }
+.savings-pot-new-chip:hover, .savings-pot-new-chip:focus { color: var(--text); border-color: var(--text); }
+
+/* ── Pot badge on entries (shown in "All" view) ── */
+.savings-entry-row3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+}
+.savings-entry-pot-badge {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(0,0,0,.06);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-family: var(--f-mono);
+  font-size: 9.5px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+.savings-entry-pot-badge.unassigned {
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--muted-2);
+}
+
+/* ── Pot select in entry form ── */
+.savings-form-pot-select {
+  width: 100%;
+  background: var(--bg2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm, 10px);
+  padding: 11px 14px;
+  font-family: var(--f-display);
+  font-size: 14px;
+  color: var(--text);
+  margin-top: 4px;
+  margin-bottom: 2px;
+  appearance: auto;
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.savings-form-pot-select:focus {
+  outline: none;
+  border-color: var(--text);
+}
+
+/* ── Pot modal ── */
+.savings-pot-modal-box {
+  padding: 26px 22px calc(var(--safe-bot) + 22px);
+}
+.savings-pot-name-wrap {
+  margin: 14px 0;
+}
+.savings-pot-name-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--bg2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm, 10px);
+  padding: 12px 14px;
+  font-family: var(--f-display);
+  font-size: 16px;
+  color: var(--text);
+  transition: border-color .15s;
+}
+.savings-pot-name-input:focus {
+  outline: none;
+  border-color: var(--text);
+}
+.savings-pot-modal-actions { gap: 10px; }
+
+/* ─── End v29.0 savings pots ─── */
+
+/* ═══════════════════════════════════════════════════════════
    v28.3 — Manual refresh button + pull-to-refresh gesture
    ═══════════════════════════════════════════════════════════ */
 
