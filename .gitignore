@@ -4,3 +4,9 @@ node_modules/
 .vscode/
 .idea/
 .wibey-test/
+
+# TWA / APK build artifacts (keystore is secret — never commit)
+android-build/
+*.keystore
+*.apk
+*.aab
