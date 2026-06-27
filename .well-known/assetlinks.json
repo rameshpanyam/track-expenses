@@ -1,12 +1,8 @@
-[
-  {
-    "relation": ["delegate_permission/common.handle_all_urls"],
-    "target": {
-      "namespace": "android_app",
-      "package_name": "io.github.rameshpanyam.trackexpenses",
-      "sha256_cert_fingerprints": [
-        "FD:05:02:34:59:14:77:54:88:29:0B:82:06:4D:A6:A2:A5:A8:89:E4:91:44:2B:7F:D1:77:4C:6A:23:9E:41:BA"
-      ]
-    }
-  }
-]
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.rameshpanyam.twa",
+        "sha256_cert_fingerprints": ["EA:07:FE:04:FE:4E:4E:6B:48:F8:D4:16:E8:DE:56:BE:6F:2B:FC:A7:83:21:EF:36:08:27:A9:2D:2D:29:01:15"]
+      }
+    }]
