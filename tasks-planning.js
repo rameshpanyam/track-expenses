@@ -113,7 +113,7 @@ function renderTasksPlanList() {
     <div class="tasks-plan-row">
       <div class="tasks-plan-row-text">
         <div class="tasks-item-title">${escapeHTML(t.title)}</div>
-        ${tasksCarryCount(t) ? `<div class="tasks-plan-meta">&#8635; carried ${tasksCarryCount(t)}&times;</div>` : ''}
+        <div class="tasks-plan-meta">${tasksTypeBadgeHTML(t)}${tasksCarryCount(t) ? ` &#8635; carried ${tasksCarryCount(t)}&times;` : ''}</div>
       </div>
       <button type="button" class="tasks-plan-btn" data-plan="remove" data-id="${escapeHTML(t.id)}"
               aria-label="Remove ${escapeHTML(t.title)}">&#10005;</button>
@@ -130,6 +130,11 @@ function tasksPlanFrameHTML(h, key, parents, showReview) {
     <select id="tasks-plan-parent" class="savings-form-pot-select" aria-label="Part of (optional)">
       <option value="">Part of&hellip; (optional)</option>
       ${parents.map(p => `<option value="${escapeHTML(p.id)}">${escapeHTML(p.title)}</option>`).join('')}
+    </select>` : '';
+  const typeSel = tasksState.types.length ? `
+    <select id="tasks-plan-type" class="savings-form-pot-select" aria-label="Type (optional)">
+      <option value="">Type&hellip; (optional)</option>
+      ${tasksState.types.map(t => `<option value="${escapeHTML(t.id)}"${t.id === tasksActiveTypeId ? ' selected' : ''}>${escapeHTML(t.name)}</option>`).join('')}
     </select>` : '';
 
   return `
@@ -149,6 +154,7 @@ function tasksPlanFrameHTML(h, key, parents, showReview) {
           <input id="tasks-plan-input" class="savings-form-note" type="text" maxlength="120"
                  autocomplete="off" aria-label="New task" placeholder="Add a task&hellip;" />
           ${parentSel}
+          ${typeSel}
           <button type="button" class="tasks-plan-add-btn" data-plan="add">Add</button>
         </div>
       </section>
@@ -227,9 +233,11 @@ function addTasksPlanTask() {
   const title = input.value.trim();
   if (!title) return tasksNotify('Type a task first', true);
   const parent = tasksEl('tasks-plan-parent');
+  const type   = tasksEl('tasks-plan-type');
   tasksAdd({
     title, horizon: tasksPlanHorizon, periodKey: tasksCurrentPeriod(tasksPlanHorizon),
     parentId: parent && parent.value ? parent.value : null,
+    typeId:   type && type.value ? type.value : null,
   });
   input.value = '';
   renderTasksPlanList();

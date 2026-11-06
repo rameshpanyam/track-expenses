@@ -70,11 +70,12 @@ test('push: creates TasksV2 + TasksMeta with correct headers and rows', async ({
     meta: __sheet.tabs.TasksMeta.slice(1).map(r => r[0]),
   }));
   expect(out.names).toEqual(['TasksMeta', 'TasksV2']);
-  expect(out.header).toHaveLength(11);
+  expect(out.header).toHaveLength(12);
+  expect(out.header[11]).toBe('TypeId');
   expect(out.rows).toBe(3);
   expect(out.first.slice(0, 7)).toEqual(['t0', 'Ship v2', 'week', expect.any(String), 'blocked', 'waiting on review', '']);
   expect(out.first[7].split('|')).toHaveLength(2);        // both carries survive
-  expect(out.meta).toEqual(['reviews', 'planning', 'settings']);
+  expect(out.meta).toEqual(['reviews', 'planning', 'settings', 'types']);
 });
 
 test('pull: a second device gets the same tasks, reviews, settings and planning marker', async ({ page }) => {

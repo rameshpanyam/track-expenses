@@ -18,8 +18,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 
   <title>Expense Tracker</title>
-  <link rel="stylesheet" href="style.css?v=31.1" />
-  <link rel="stylesheet" href="tasks.css?v=31.1" />
+  <link rel="stylesheet" href="style.css?v=31.2" />
+  <link rel="stylesheet" href="tasks.css?v=31.2" />
 
   <!-- Chart.js for the Dashboard -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
@@ -469,13 +469,16 @@
     <p class="savings-section-hint">💡 Tap any entry to edit or delete. Savings is independent — no other module touches this data.</p>
   </div>
 
-  <!-- ── Tasks View (v31.1): Weekly / Monthly / Yearly / Long-term targets ── -->
+  <!-- ── Tasks View (v31.2): Weekly / Monthly / Yearly / Long-term targets ── -->
   <div id="view-tasks" class="view">
     <!-- Hero: done / total + progress bar for the period being viewed -->
     <div class="savings-hero" id="tasks-hero"></div>
 
     <!-- Horizon chips: Weekly | Monthly | Yearly | Long-term -->
     <div class="savings-pot-bar" id="tasks-horizon-bar"></div>
+
+    <!-- Your own goal types: All | Health | Career | … | + New type -->
+    <div class="savings-pot-bar tasks-type-bar" id="tasks-type-bar"></div>
 
     <!-- Previous / this / next period (hidden for Long-term) -->
     <div class="tasks-period-nav" id="tasks-period-nav" hidden></div>
@@ -1062,7 +1065,7 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
-     TASKS (v31.1): task form, stats/settings modal, planning overlay
+     TASKS (v31.2): task form, stats/settings modal, planning overlay
      ═══════════════════════════════════════════════════════════════════════════════════════════════════════════ -->
 <div id="tasks-form-modal" class="confirm-modal" style="display:none;">
   <div class="confirm-box savings-form-box tasks-form-box">
@@ -1084,6 +1087,11 @@
         <label class="savings-form-label" for="tasks-form-reason">What is blocking it? (required)</label>
         <input id="tasks-form-reason" class="savings-form-note" type="text" maxlength="160"
                placeholder="e.g. Waiting on documents" autocomplete="off" />
+      </div>
+
+      <div id="tasks-form-type-wrap" hidden>
+        <label class="savings-form-label" for="tasks-form-type">Type (optional)</label>
+        <select id="tasks-form-type" class="savings-form-pot-select"></select>
       </div>
 
       <div id="tasks-form-parent-wrap" hidden>
@@ -1112,21 +1120,40 @@
   </div>
 </div>
 
+<!-- Create / rename / delete a goal type -->
+<div id="tasks-type-modal" class="confirm-modal" style="display:none;">
+  <div class="confirm-box savings-pot-modal-box">
+    <p class="confirm-msg" id="tasks-type-modal-title">New Type</p>
+    <p class="confirm-sub">A label for your goals, e.g. "Health", "Career", "Side project".</p>
+    <div class="savings-pot-name-wrap">
+      <input id="tasks-type-name-input" class="savings-pot-name-input" type="text"
+             maxlength="30" placeholder="Type name&hellip;" aria-label="Goal type name" autocomplete="off" />
+    </div>
+    <div class="confirm-actions savings-pot-modal-actions">
+      <button class="confirm-cancel" onclick="closeTasksTypeModal()">Cancel</button>
+      <button class="confirm-ok cat-del-force-btn" id="tasks-type-delete-btn"
+              onclick="deleteTasksType()" style="display:none;">Delete</button>
+      <button class="confirm-ok" onclick="saveTasksType()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- Full-screen planning prompt (filled by tasks-planning.js) -->
 <div id="tasks-planning" class="tasks-plan" hidden></div>
 
-<script src="app.js?v=31.1"></script>
-<script src="features.js?v=31.1"></script>
-<script src="loans.js?v=31.1"></script>
-<script src="savings.js?v=31.1"></script>
-<script src="tasks-periods.js?v=31.1"></script>
-<script src="tasks-model.js?v=31.1"></script>
-<script src="tasks-stats.js?v=31.1"></script>
-<script src="tasks-sheet.js?v=31.1"></script>
-<script src="tasks-ui.js?v=31.1"></script>
-<script src="tasks-form.js?v=31.1"></script>
-<script src="tasks-planning.js?v=31.1"></script>
-<script src="tasks-insights.js?v=31.1"></script>
-<script src="tasks.js?v=31.1"></script>
+<script src="app.js?v=31.2"></script>
+<script src="features.js?v=31.2"></script>
+<script src="loans.js?v=31.2"></script>
+<script src="savings.js?v=31.2"></script>
+<script src="tasks-periods.js?v=31.2"></script>
+<script src="tasks-model.js?v=31.2"></script>
+<script src="tasks-stats.js?v=31.2"></script>
+<script src="tasks-types.js?v=31.2"></script>
+<script src="tasks-sheet.js?v=31.2"></script>
+<script src="tasks-ui.js?v=31.2"></script>
+<script src="tasks-form.js?v=31.2"></script>
+<script src="tasks-planning.js?v=31.2"></script>
+<script src="tasks-insights.js?v=31.2"></script>
+<script src="tasks.js?v=31.2"></script>
 </body>
 </html>

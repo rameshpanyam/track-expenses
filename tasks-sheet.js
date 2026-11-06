@@ -4,9 +4,9 @@
    New tab names on purpose: the v1 "Tasks" tab has different columns,
    so reusing it would make old rows parse as garbage.
 
-     "TasksV2"   — 11 cols: ID|Title|Horizon|PeriodKey|Status|BlockedReason|
-                            ParentId|CarriedFrom|CompletedAt|CreatedAt|UpdatedAt
-     "TasksMeta" —  2 cols: Key|Value   (reviews / planning / settings as JSON)
+     "TasksV2"   — 12 cols: ID|Title|Horizon|PeriodKey|Status|BlockedReason|
+                            ParentId|CarriedFrom|CompletedAt|CreatedAt|UpdatedAt|TypeId
+     "TasksMeta" —  2 cols: Key|Value   (reviews / planning / settings / types as JSON)
 
    One generic ensure/write pair serves both tabs.
    ═══════════════════════════════════════════════════════════════════ */
@@ -15,10 +15,10 @@
 const TASKS_TAB = {
   name: 'TasksV2',
   headers: ['ID','Title','Horizon','PeriodKey','Status','BlockedReason',
-            'ParentId','CarriedFrom','CompletedAt','CreatedAt','UpdatedAt'],
+            'ParentId','CarriedFrom','CompletedAt','CreatedAt','UpdatedAt','TypeId'],
 };
 const TASKS_META_TAB = { name: 'TasksMeta', headers: ['Key','Value'] };
-const TASKS_META_KEYS = ['reviews', 'planning', 'settings'];
+const TASKS_META_KEYS = ['reviews', 'planning', 'settings', 'types'];
 const TASKS_CARRIED_SEPARATOR = '|';
 const TASKS_SHEET_CLEAR_PADDING = 200; // stale rows to wipe below the data
 
@@ -28,7 +28,7 @@ function tasksSheetsReady() {
 }
 
 function tasksLastCol(tab) {
-  return String.fromCharCode(64 + tab.headers.length); // 2 → 'B', 11 → 'K'
+  return String.fromCharCode(64 + tab.headers.length); // 2 → 'B', 12 → 'L'
 }
 
 /** Create the tab if missing, and (re)write the header row if it's wrong. */
@@ -75,7 +75,7 @@ function tasksToRow(t) {
   return [
     t.id, t.title, t.horizon, t.periodKey, t.status, t.blockedReason,
     t.parentId || '', t.carriedFrom.join(TASKS_CARRIED_SEPARATOR),
-    t.completedAt || '', t.createdAt, t.updatedAt,
+    t.completedAt || '', t.createdAt, t.updatedAt, t.typeId || '',
   ];
 }
 
@@ -88,6 +88,7 @@ function tasksFromRow(r) {
     completedAt:   r[8] || null,
     createdAt:     r[9] || '',
     updatedAt:     r[10] || '',
+    typeId:        r[11] || null,
   };
 }
 
@@ -133,6 +134,7 @@ async function pullTasksFromSheet() {
     reviews:  meta.reviews  ?? tasksState.reviews,
     planning: meta.planning ?? tasksState.planning,
     settings: meta.settings ?? tasksState.settings,
+    types:    meta.types    ?? tasksState.types,
   });
   saveTasksLocal();
   return true;

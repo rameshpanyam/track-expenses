@@ -28,6 +28,14 @@ function refreshTasksFormParent(selectedId) {
   tasksEl('tasks-form-parent').innerHTML = tasksOptionsHTML(items, selectedId || '');
 }
 
+/** Type picker. Hidden when no types exist (nothing to choose). */
+function refreshTasksFormType(selectedId) {
+  const items = [{ value: '', label: '\u2014 None \u2014' }]
+    .concat(tasksState.types.map(t => ({ value: t.id, label: t.name })));
+  tasksEl('tasks-form-type').innerHTML = tasksOptionsHTML(items, selectedId || '');
+  tasksEl('tasks-form-type-wrap').hidden = tasksState.types.length === 0;
+}
+
 function refreshTasksFormReason() {
   const blocked = tasksEl('tasks-form-status').value === 'blocked';
   tasksEl('tasks-form-reason-wrap').hidden = !blocked;
@@ -76,6 +84,7 @@ function openTasksForm(task, preset = {}) {
   tasksEl('tasks-form-horizon-wrap').hidden = !!task;   // horizon is fixed once created
 
   refreshTasksFormParent(task ? task.parentId : (preset.parentId || null));
+  refreshTasksFormType(task ? task.typeId : (preset.typeId ?? tasksActiveTypeId));
   refreshTasksFormReason();
   refreshTasksFormNudge(task);
   refreshTasksFormMove(task);
@@ -110,6 +119,7 @@ function readTasksForm() {
     status:        tasksEl('tasks-form-status').value,
     blockedReason: tasksEl('tasks-form-reason').value.trim(),
     parentId:      tasksEl('tasks-form-parent').value || null,
+    typeId:        tasksEl('tasks-form-type').value || null,
   };
 }
 
@@ -168,8 +178,8 @@ function tasksFormNudge(choice) {
   const childHorizon = TASKS_CHILD_HORIZON[task.horizon];
   closeTasksFormModal();
   openTasksForm(null, childHorizon
-    ? { horizon: childHorizon, periodKey: tasksCurrentPeriod(childHorizon), parentId: task.id }
-    : { horizon: task.horizon,  periodKey: task.periodKey, title: `${task.title} \u2013 first step` });
+    ? { horizon: childHorizon, periodKey: tasksCurrentPeriod(childHorizon), parentId: task.id, typeId: task.typeId }
+    : { horizon: task.horizon,  periodKey: task.periodKey, typeId: task.typeId, title: `${task.title} \u2013 first step` });
 }
 
 function initTasksForm() {

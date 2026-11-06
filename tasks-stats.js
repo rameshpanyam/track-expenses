@@ -10,10 +10,11 @@
    ═══════════════════════════════════════════════════════════════════ */
 'use strict';
 
-function tasksEntries(horizon, key) {
+function tasksEntries(horizon, key, typeId = null) {
   const entries = [];
   for (const task of tasksState.tasks) {
     if (task.horizon !== horizon) continue;
+    if (typeId && task.typeId !== typeId) continue;      // optional category filter
     if (task.periodKey === key)               entries.push({ task, status: task.status, moved: false });
     else if (task.carriedFrom.includes(key))  entries.push({ task, status: 'todo',      moved: true  });
   }
@@ -32,8 +33,9 @@ function tasksSummarize(entries) {
   };
 }
 
-function tasksPeriodStats(horizon, key) {
-  return tasksSummarize(tasksEntries(horizon, key));
+/** typeId (optional) scopes the score to one category; streak/history stay overall. */
+function tasksPeriodStats(horizon, key, typeId = null) {
+  return tasksSummarize(tasksEntries(horizon, key, typeId));
 }
 
 /** Done / total of a parent's linked children (dropped ones ignored). */

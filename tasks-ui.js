@@ -33,6 +33,7 @@ function renderTasks() {
   if (!tasksState) loadTasksState();
   renderTasksHero();
   renderTasksHorizonBar();
+  renderTasksTypeBar();
   renderTasksPeriodNav();
   renderTasksList();
 }
@@ -54,10 +55,12 @@ function renderTasksHero() {
   if (!el) return;
   const horizon = tasksActiveHorizon;
   const key     = tasksViewKey(horizon);
-  const stats   = tasksPeriodStats(horizon, key);
-  const label   = tasksHasPeriod(horizon)
+  const stats   = tasksPeriodStats(horizon, key, tasksActiveTypeId);
+  const type    = tasksTypeById(tasksActiveTypeId);
+  const when    = tasksHasPeriod(horizon)
     ? `${tasksPeriodName(horizon, key)} \u00B7 ${tasksPeriodLabel(horizon, key)}`
     : 'Long-term targets';
+  const label   = type ? `${when} \u00B7 ${type.name}` : when;
   el.innerHTML = `
     <div class="savings-hero-label">${escapeHTML(label.toUpperCase())}</div>
     <div class="savings-hero-amount">${stats.done} / ${stats.total} done</div>
@@ -102,6 +105,8 @@ function renderTasksPeriodNav() {
 
 function tasksTagsHTML(task) {
   const tags = [`<span class="tasks-status st-${task.status}">${tasksStatusLabel(task.status)}</span>`];
+  const typeBadge = tasksTypeBadgeHTML(task);
+  if (typeBadge) tags.push(typeBadge);
   const carries = tasksCarryCount(task);
   if (carries) {
     const hot = carries >= TASKS_NUDGE_AFTER_CARRIES && tasksIsOpen(task);
@@ -140,11 +145,13 @@ function tasksRowHTML(task) {
 
 function tasksEmptyHTML(horizon, key) {
   const h = tasksHorizon(horizon);
+  const type  = tasksTypeById(tasksActiveTypeId);
   const where = tasksHasPeriod(horizon) ? tasksPeriodName(horizon, key).toLowerCase() : 'long-term';
+  const what  = type ? `${type.name} ${h.label.toLowerCase()}` : h.label.toLowerCase();
   return `
     <div class="savings-empty">
       <div class="savings-empty-icon">&#127919;</div>
-      <div class="savings-empty-title">No ${h.label.toLowerCase()} tasks for ${escapeHTML(where)}</div>
+      <div class="savings-empty-title">No ${escapeHTML(what)} tasks for ${escapeHTML(where)}</div>
       <div class="savings-empty-sub">Tap <strong>+ Add Task</strong> above to set your first one.</div>
     </div>`;
 }
@@ -154,7 +161,7 @@ function renderTasksList() {
   if (!el) return;
   const horizon = tasksActiveHorizon;
   const key     = tasksViewKey(horizon);
-  const tasks   = tasksSorted(tasksOfPeriod(horizon, key));
+  const tasks   = tasksSorted(tasksOfPeriod(horizon, key).filter(tasksMatchesType));
 
   const labelEl = tasksEl('tasks-section-label');
   if (labelEl) labelEl.textContent = `${tasksHorizon(horizon).label} tasks`;
@@ -195,6 +202,9 @@ const TASKS_ACTIONS = {
   'toggle':      id => toggleTaskCompleted(id),
   'edit':        id => openTasksEditModal(id),
   'horizon':     id => setTasksHorizon(id),
+  'select-type': id => setTasksActiveType(id),
+  'edit-type':   id => openTasksTypeEditModal(id),
+  'new-type':    ()  => openTasksTypeAddModal(),
   'period-prev': ()  => shiftTasksViewPeriod(-1),
   'period-next': ()  => shiftTasksViewPeriod(1),
   'period-now':  ()  => resetTasksViewPeriod(),

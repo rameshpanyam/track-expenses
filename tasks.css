@@ -332,3 +332,19 @@
 @media (prefers-reduced-motion: reduce) {
   .tasks-progress-fill, .tasks-item, .tasks-check { transition: none; }
 }
+
+/* ═══════════════ Goal types (v31.2) ═══════════════ */
+/* Edit pencil inside a type chip (glyph drawn here so the markup stays clean) */
+.tasks-type-bar .savings-pot-edit-btn::before { content: "\270E"; }
+
+/* Coloured category badge. Same type id -> same hue; light tint + dark text = AA contrast. */
+.tasks-type-badge {
+  background: hsl(var(--hue, 0) 70% 90%);
+  color: hsl(var(--hue, 0) 60% 22%);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}

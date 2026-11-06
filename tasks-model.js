@@ -6,7 +6,8 @@
      {
        version: 2,
        tasks: [ { id, title, horizon, periodKey, status, blockedReason,
-                  parentId, carriedFrom[], completedAt, createdAt, updatedAt } ],
+                  parentId, typeId, carriedFrom[], completedAt, createdAt, updatedAt } ],
+       types:    [ { id, name, createdAt } ],      // your own categories (Health, Career…)
        reviews:  [ { horizon, periodKey, reflection, done, total, pct, createdAt } ],
        planning: { prompted: { week, month, year }, skipped: ['week:2026-11-01'] },
        settings: { weeklyCap, streakPct }
@@ -92,6 +93,7 @@ function tasksNormalizeTask(raw) {
     status,
     blockedReason: status === 'blocked' ? (raw.blockedReason || '') : '',
     parentId:      raw.parentId || null,
+    typeId:        raw.typeId || null,          // null = uncategorised
     carriedFrom:   Array.isArray(raw.carriedFrom) ? raw.carriedFrom.slice() : [],
     completedAt:   status === 'completed' ? (raw.completedAt || now) : null,
     createdAt:     raw.createdAt || now,
@@ -105,6 +107,7 @@ function tasksSeedState() {
   return {
     version:  2,
     tasks:    [],
+    types:    tasksStarterTypes(),
     reviews:  [],
     planning: {
       prompted: { month: tasksCurrentPeriod('month'), year: tasksCurrentPeriod('year') },
@@ -122,6 +125,11 @@ function tasksNormalizeState(raw) {
     version: 2,
     tasks:   (Array.isArray(src.tasks) ? src.tasks : [])
                .filter(t => t && t.id && t.title).map(tasksNormalizeTask),
+    // Starter types only when the key is MISSING; an empty list means
+    // "I deleted them all" and must stay empty.
+    types:   Array.isArray(src.types)
+               ? src.types.filter(t => t && t.id && t.name).map(t => ({ ...t, createdAt: t.createdAt || '' }))
+               : tasksStarterTypes(),
     reviews: Array.isArray(src.reviews) ? src.reviews : [],
     planning: {
       prompted: { ...seed.planning.prompted, ...(plan.prompted || {}) },
@@ -201,21 +209,22 @@ function tasksApplyStatus(task, status, reason = '') {
   tasksTouch(task);
 }
 
-function tasksAdd({ title, horizon, periodKey = '', parentId = null, status = 'todo', blockedReason = '' }) {
+function tasksAdd({ title, horizon, periodKey = '', parentId = null, typeId = null, status = 'todo', blockedReason = '' }) {
   const task = tasksNormalizeTask({
-    id: tasksNewId('task'), title, horizon, periodKey, parentId, status, blockedReason,
+    id: tasksNewId('task'), title, horizon, periodKey, parentId, typeId, status, blockedReason,
   });
   tasksState.tasks.push(task);
   saveTasksState();
   return task;
 }
 
-/** Edit title / status / reason / parent in one save. */
-function tasksEdit(id, { title, status, blockedReason, parentId }) {
+/** Edit title / status / reason / parent / type in one save. */
+function tasksEdit(id, { title, status, blockedReason, parentId, typeId }) {
   const task = tasksById(id);
   if (!task) return null;
   task.title    = title;
   task.parentId = parentId || null;
+  task.typeId   = typeId || null;
   tasksApplyStatus(task, status, blockedReason);
   saveTasksState();
   return task;
