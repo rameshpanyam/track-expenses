@@ -18,7 +18,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 
   <title>Expense Tracker</title>
-  <link rel="stylesheet" href="style.css?v=29.0" />
+  <link rel="stylesheet" href="style.css?v=30.0" />
+  <link rel="stylesheet" href="tasks.css?v=30.0" />
 
   <!-- Chart.js for the Dashboard -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
@@ -468,7 +469,25 @@
     <p class="savings-section-hint">💡 Tap any entry to edit or delete. Savings is independent — no other module touches this data.</p>
   </div>
 
-  <!-- Bottom nav (5 tabs as of v28.2) -->
+  <!-- ── Tasks View (v30.0) ── -->
+  <div id="view-tasks" class="view">
+    <!-- Hero: done / total + progress bar -->
+    <div class="savings-hero" id="tasks-hero"></div>
+
+    <!-- Type filter bar (chips: All + each type + New) -->
+    <div class="savings-pot-bar tasks-type-bar" id="tasks-type-bar"></div>
+
+    <div class="savings-actions">
+      <button class="savings-add-btn" onclick="openTasksAddModal()">+ Add Task</button>
+    </div>
+
+    <p class="savings-section-label" id="tasks-section-label">All tasks</p>
+    <div id="tasks-list"></div>
+
+    <p class="savings-section-hint">Tap the circle to mark a task done. Tap a task to edit or delete it. Timelines are tentative &mdash; overdue tasks are flagged in red.</p>
+  </div>
+
+  <!-- Bottom nav (6 tabs as of v30.0) -->
   <nav class="bottom-nav">
     <button id="nav-add" class="nav-btn active" onclick="switchView('add')">
       <span class="nav-icon">🏠</span><span>Home</span>
@@ -483,7 +502,10 @@
       <span class="nav-icon">💳</span><span>Loans</span>
     </button>
     <button id="nav-savings" class="nav-btn" onclick="switchView('savings')">
-      <span class="nav-icon">💰</span><span>Savings</span>
+      <span class="nav-icon">&#128176;</span><span>Savings</span>
+    </button>
+    <button id="nav-tasks" class="nav-btn" onclick="switchView('tasks')">
+      <span class="nav-icon">&#128221;</span><span>Tasks</span>
     </button>
   </nav>
 
@@ -1035,9 +1057,55 @@
   </div>
 </div>
 
-<script src="app.js?v=29.0"></script>
-<script src="features.js?v=29.0"></script>
-<script src="loans.js?v=29.0"></script>
-<script src="savings.js?v=29.0"></script>
+<!-- ═══════════════════════════════════════════════════════════════
+     TASKS MODALS (v30.0 — task form + type create/rename/delete)
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="tasks-form-modal" class="confirm-modal" style="display:none;">
+  <div class="confirm-box savings-form-box">
+    <p class="confirm-msg" id="tasks-form-title-text">Add Task</p>
+    <div class="savings-form-fields">
+      <label class="savings-form-label" for="tasks-form-title">Task</label>
+      <input id="tasks-form-title" class="savings-form-note" type="text" maxlength="120"
+             placeholder="e.g. Renew insurance, Book flights&hellip;" autocomplete="off" />
+
+      <label class="savings-form-label" for="tasks-form-start">Start date</label>
+      <input id="tasks-form-start" class="savings-form-date" type="date" />
+
+      <label class="savings-form-label" for="tasks-form-end">Tentative end date</label>
+      <input id="tasks-form-end" class="savings-form-date" type="date" />
+
+      <label class="savings-form-label" for="tasks-form-type">Type</label>
+      <select id="tasks-form-type" class="savings-form-pot-select"></select>
+    </div>
+    <div class="confirm-actions savings-form-actions">
+      <button class="confirm-cancel" onclick="closeTasksFormModal()">Cancel</button>
+      <button class="confirm-ok cat-del-force-btn" id="tasks-form-delete" onclick="deleteTasksForm()" style="display:none;">Delete</button>
+      <button class="confirm-ok" onclick="saveTasksForm()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="tasks-type-modal" class="confirm-modal" style="display:none;">
+  <div class="confirm-box savings-pot-modal-box">
+    <p class="confirm-msg" id="tasks-type-modal-title">New Task Type</p>
+    <p class="confirm-sub">Group your tasks, e.g. "Work", "Health", "Home".</p>
+    <div class="savings-pot-name-wrap">
+      <input id="tasks-type-name-input" class="savings-pot-name-input" type="text"
+             maxlength="30" placeholder="Type name&hellip;" aria-label="Task type name" autocomplete="off" />
+    </div>
+    <div class="confirm-actions savings-pot-modal-actions">
+      <button class="confirm-cancel" onclick="closeTasksTypeModal()">Cancel</button>
+      <button class="confirm-ok cat-del-force-btn" id="tasks-type-delete-btn"
+              onclick="deleteTasksType()" style="display:none;">Delete</button>
+      <button class="confirm-ok" onclick="saveTasksType()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js?v=30.0"></script>
+<script src="features.js?v=30.0"></script>
+<script src="loans.js?v=30.0"></script>
+<script src="savings.js?v=30.0"></script>
+<script src="tasks.js?v=30.0"></script>
 </body>
 </html>

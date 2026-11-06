@@ -771,12 +771,14 @@ async function enterMainApp() {
         ? window.loadLoanMetaFromSheet()      : null,
       typeof window.loadSavingsFromSheet === 'function'
         ? window.loadSavingsFromSheet()       : null,
+      typeof window.loadTasksFromSheet === 'function'
+        ? window.loadTasksFromSheet()         : null,
     ]);
     results.forEach((r, i) => {
       if (r.status === 'rejected') {
         const names = ['loadBudgets', 'loadLoansFromSheet',
                        'loadLoanScheduleFromSheet', 'loadLoanMetaFromSheet',
-                       'loadSavingsFromSheet'];
+                       'loadSavingsFromSheet', 'loadTasksFromSheet'];
         console.warn(`${names[i]} failed (using local cache):`, r.reason?.message || r.reason);
       }
     });
@@ -2397,6 +2399,7 @@ function switchView(view) {
   if (view === 'insights')  renderInsights();
   if (view === 'loans')     window.renderLoans && window.renderLoans();
   if (view === 'savings')   window.renderSavings && window.renderSavings();
+  if (view === 'tasks')     window.renderTasks && window.renderTasks();
 }
 
 function updateHeaderMonth() {
@@ -2418,7 +2421,11 @@ function updateHeaderMonth() {
     prev.style.visibility   = 'hidden';
     next.style.visibility   = 'hidden';
   } else if (currentView === 'savings') {
-    el.textContent          = '💰 Savings';
+    el.textContent          = '\u{1F4B0} Savings';
+    prev.style.visibility   = 'hidden';
+    next.style.visibility   = 'hidden';
+  } else if (currentView === 'tasks') {
+    el.textContent          = '\u{1F4DD} Tasks';
     prev.style.visibility   = 'hidden';
     next.style.visibility   = 'hidden';
   } else {
@@ -3404,6 +3411,7 @@ async function refreshFromSheet({ silent = false } = {}) {
       // These return early if their module isn't loaded — safe to call
       typeof window.loadLoansFromSheet   === 'function' ? window.loadLoansFromSheet()   : Promise.resolve(),
       typeof window.loadSavingsFromSheet === 'function' ? window.loadSavingsFromSheet() : Promise.resolve(),
+      typeof window.loadTasksFromSheet   === 'function' ? window.loadTasksFromSheet()   : Promise.resolve(),
     ]);
 
     /* Re-render whatever view the user is on. */
@@ -3449,6 +3457,7 @@ function rerenderActiveView() {
   if (currentView === 'history')   { try { renderHistory?.();   } catch (e) { console.warn(e); } }
   if (currentView === 'loans')     { try { window.renderLoans?.();   } catch (e) { console.warn(e); } }
   if (currentView === 'savings')   { try { window.renderSavings?.(); } catch (e) { console.warn(e); } }
+  if (currentView === 'tasks')     { try { window.renderTasks?.();   } catch (e) { console.warn(e); } }
 }
 
 /* ── PULL-TO-REFRESH (touch gesture) ───────────────────────── */

@@ -1,0 +1,124 @@
+/* ═══════════════════════════════════════════════════════════
+   v30.0 · TASKS MODULE STYLES
+   Deliberately small: the hero card, type chips, form fields,
+   empty state and modals all reuse the generic .savings-* rules
+   in style.css. Only task-specific pieces live here.
+   ═══════════════════════════════════════════════════════════ */
+
+#view-tasks { padding: 18px 18px calc(var(--safe-bot) + 100px); }
+
+/* ── Progress bar inside the (black) hero card ── */
+.tasks-progress {
+  height: 8px;
+  margin-top: 16px;
+  background: rgba(255,255,255,.12);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.tasks-progress-fill {
+  height: 100%;
+  background: #66BB6A;
+  border-radius: var(--radius-pill);
+  transition: width .25s ease;
+}
+.tasks-progress-label {
+  margin-top: 8px;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--on-dark-2);
+}
+
+/* ── Edit glyph inside a type chip (drawn here so the markup stays clean) ── */
+.tasks-type-bar .savings-pot-edit-btn::before { content: "\270E"; }
+
+/* ── Task list ── */
+.tasks-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tasks-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-left: 4px solid transparent;
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: transform .12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.tasks-item:active { transform: scale(.99); }
+.tasks-item.overdue { border-left-color: #C62828; }
+
+.tasks-item-meta { min-width: 0; flex: 1; }
+.tasks-item-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.tasks-item-dates {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 3px;
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.tasks-item-row3 { margin-top: 6px; }
+
+/* Completed: struck through, muted, but still readable */
+.tasks-item.done .tasks-item-title {
+  text-decoration: line-through;
+  color: var(--muted);
+  font-weight: 500;
+}
+.tasks-item.done .tasks-item-dates { opacity: .8; }
+
+.tasks-overdue-tag {
+  background: rgba(198,40,40,.12);
+  color: #B71C1C;
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+/* ── Round checkbox (a real <button role="checkbox">) ── */
+.tasks-check {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 28px; height: 28px;
+  padding: 0;
+  background: transparent;
+  border: 2px solid var(--muted);
+  border-radius: 50%;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .14s, border-color .14s;
+  -webkit-tap-highlight-color: transparent;
+}
+.tasks-check:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
+.tasks-check[aria-checked="true"] {
+  background: #2E7D32;
+  border-color: #2E7D32;
+}
+.tasks-check[aria-checked="true"]::before { content: "\2713"; }
+
+/* Honour reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .tasks-progress-fill, .tasks-item, .tasks-check { transition: none; }
+}

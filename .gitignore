@@ -10,3 +10,7 @@ android-build/
 *.keystore
 *.apk
 *.aab
+
+# Test artifacts
+playwright-report/
+test-results/
