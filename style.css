@@ -5837,3 +5837,27 @@ body::before {
   white-space: nowrap;
 }
 /* ─── End v28.3 refresh ─── */
+
+/* ═══════════════════════════════════════════════════════════
+   v31.1 · HEADER FITS A 390px PHONE
+   Title + month block + 5 action buttons needed 410-433px, so every
+   tab scrolled sideways, "Sign out" was clipped, and fixed modals
+   (sized to the widened page) spilled off-screen.
+   ═══════════════════════════════════════════════════════════ */
+.app-header { flex-wrap: wrap; row-gap: 6px; }
+.header-actions { margin-left: auto; }
+
+/* Hidden ‹ › arrows must not reserve space (app.js hides them inline) */
+#month-prev[style*="hidden"],
+#month-next[style*="hidden"] { display: none; }
+
+/* Month / view label always gets its own centred row, on EVERY tab, so the
+   header never changes shape when you switch tabs. Title + buttons share row 1. */
+.header-month {
+  order: 3;
+  flex-basis: 100%;
+  justify-content: center;
+  min-width: 0;
+}
+/* Safety net: a long label shrinks with "…" instead of widening the page */
+#header-month-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
