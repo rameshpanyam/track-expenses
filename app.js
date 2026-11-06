@@ -2400,6 +2400,7 @@ function switchView(view) {
   if (view === 'loans')     window.renderLoans && window.renderLoans();
   if (view === 'savings')   window.renderSavings && window.renderSavings();
   if (view === 'tasks')     window.renderTasks && window.renderTasks();
+  if (view === 'tasks')     window.checkTasksPlanning && window.checkTasksPlanning();
 }
 
 function updateHeaderMonth() {

@@ -18,8 +18,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 
   <title>Expense Tracker</title>
-  <link rel="stylesheet" href="style.css?v=30.0" />
-  <link rel="stylesheet" href="tasks.css?v=30.0" />
+  <link rel="stylesheet" href="style.css?v=31.0" />
+  <link rel="stylesheet" href="tasks.css?v=31.0" />
 
   <!-- Chart.js for the Dashboard -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
@@ -469,22 +469,26 @@
     <p class="savings-section-hint">💡 Tap any entry to edit or delete. Savings is independent — no other module touches this data.</p>
   </div>
 
-  <!-- ── Tasks View (v30.0) ── -->
+  <!-- ── Tasks View (v31.0): Weekly / Monthly / Yearly / Long-term targets ── -->
   <div id="view-tasks" class="view">
-    <!-- Hero: done / total + progress bar -->
+    <!-- Hero: done / total + progress bar for the period being viewed -->
     <div class="savings-hero" id="tasks-hero"></div>
 
-    <!-- Type filter bar (chips: All + each type + New) -->
-    <div class="savings-pot-bar tasks-type-bar" id="tasks-type-bar"></div>
+    <!-- Horizon chips: Weekly | Monthly | Yearly | Long-term -->
+    <div class="savings-pot-bar" id="tasks-horizon-bar"></div>
 
-    <div class="savings-actions">
-      <button class="savings-add-btn" onclick="openTasksAddModal()">+ Add Task</button>
+    <!-- Previous / this / next period (hidden for Long-term) -->
+    <div class="tasks-period-nav" id="tasks-period-nav" hidden></div>
+
+    <div class="savings-actions tasks-actions">
+      <button class="savings-add-btn" data-action="add">+ Add Task</button>
+      <button class="tasks-stats-btn" data-action="stats">Stats</button>
     </div>
 
-    <p class="savings-section-label" id="tasks-section-label">All tasks</p>
+    <p class="savings-section-label" id="tasks-section-label">Weekly tasks</p>
     <div id="tasks-list"></div>
 
-    <p class="savings-section-hint">Tap the circle to mark a task done. Tap a task to edit or delete it. Timelines are tentative &mdash; overdue tasks are flagged in red.</p>
+    <p class="savings-section-hint">Tap the circle to complete a task. Tap a task to change its status, link it to a bigger goal, or move it to the next period. Each new week and month starts with a quick planning prompt.</p>
   </div>
 
   <!-- Bottom nav (6 tabs as of v30.0) -->
@@ -1057,25 +1061,38 @@
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════════
-     TASKS MODALS (v30.0 — task form + type create/rename/delete)
-     ═══════════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+     TASKS (v31.0): task form, stats/settings modal, planning overlay
+     ═══════════════════════════════════════════════════════════════════════════════════════════════════════════ -->
 <div id="tasks-form-modal" class="confirm-modal" style="display:none;">
-  <div class="confirm-box savings-form-box">
+  <div class="confirm-box savings-form-box tasks-form-box">
     <p class="confirm-msg" id="tasks-form-title-text">Add Task</p>
     <div class="savings-form-fields">
       <label class="savings-form-label" for="tasks-form-title">Task</label>
       <input id="tasks-form-title" class="savings-form-note" type="text" maxlength="120"
-             placeholder="e.g. Renew insurance, Book flights&hellip;" autocomplete="off" />
+             placeholder="e.g. Finish tax filing, Gym 3 times&hellip;" autocomplete="off" />
 
-      <label class="savings-form-label" for="tasks-form-start">Start date</label>
-      <input id="tasks-form-start" class="savings-form-date" type="date" />
+      <div id="tasks-form-horizon-wrap">
+        <label class="savings-form-label" for="tasks-form-horizon">Section</label>
+        <select id="tasks-form-horizon" class="savings-form-pot-select"></select>
+      </div>
 
-      <label class="savings-form-label" for="tasks-form-end">Tentative end date</label>
-      <input id="tasks-form-end" class="savings-form-date" type="date" />
+      <label class="savings-form-label" for="tasks-form-status">Status</label>
+      <select id="tasks-form-status" class="savings-form-pot-select"></select>
 
-      <label class="savings-form-label" for="tasks-form-type">Type</label>
-      <select id="tasks-form-type" class="savings-form-pot-select"></select>
+      <div id="tasks-form-reason-wrap" hidden>
+        <label class="savings-form-label" for="tasks-form-reason">What is blocking it? (required)</label>
+        <input id="tasks-form-reason" class="savings-form-note" type="text" maxlength="160"
+               placeholder="e.g. Waiting on documents" autocomplete="off" />
+      </div>
+
+      <div id="tasks-form-parent-wrap" hidden>
+        <label class="savings-form-label" for="tasks-form-parent">Part of (bigger goal)</label>
+        <select id="tasks-form-parent" class="savings-form-pot-select"></select>
+      </div>
+
+      <div id="tasks-form-nudge" class="tasks-nudge" hidden></div>
+      <button type="button" id="tasks-form-move" class="tasks-move-btn" onclick="moveTasksForm()" hidden></button>
     </div>
     <div class="confirm-actions savings-form-actions">
       <button class="confirm-cancel" onclick="closeTasksFormModal()">Cancel</button>
@@ -1085,27 +1102,31 @@
   </div>
 </div>
 
-<div id="tasks-type-modal" class="confirm-modal" style="display:none;">
-  <div class="confirm-box savings-pot-modal-box">
-    <p class="confirm-msg" id="tasks-type-modal-title">New Task Type</p>
-    <p class="confirm-sub">Group your tasks, e.g. "Work", "Health", "Home".</p>
-    <div class="savings-pot-name-wrap">
-      <input id="tasks-type-name-input" class="savings-pot-name-input" type="text"
-             maxlength="30" placeholder="Type name&hellip;" aria-label="Task type name" autocomplete="off" />
-    </div>
-    <div class="confirm-actions savings-pot-modal-actions">
-      <button class="confirm-cancel" onclick="closeTasksTypeModal()">Cancel</button>
-      <button class="confirm-ok cat-del-force-btn" id="tasks-type-delete-btn"
-              onclick="deleteTasksType()" style="display:none;">Delete</button>
-      <button class="confirm-ok" onclick="saveTasksType()">Save</button>
+<div id="tasks-insights-modal" class="confirm-modal" style="display:none;">
+  <div class="confirm-box savings-form-box tasks-form-box">
+    <p class="confirm-msg">Stats &amp; settings</p>
+    <div class="savings-form-fields" id="tasks-insights-body"></div>
+    <div class="confirm-actions savings-form-actions">
+      <button class="confirm-ok" onclick="closeTasksInsights()">Close</button>
     </div>
   </div>
 </div>
 
-<script src="app.js?v=30.0"></script>
-<script src="features.js?v=30.0"></script>
-<script src="loans.js?v=30.0"></script>
-<script src="savings.js?v=30.0"></script>
-<script src="tasks.js?v=30.0"></script>
+<!-- Full-screen planning prompt (filled by tasks-planning.js) -->
+<div id="tasks-planning" class="tasks-plan" hidden></div>
+
+<script src="app.js?v=31.0"></script>
+<script src="features.js?v=31.0"></script>
+<script src="loans.js?v=31.0"></script>
+<script src="savings.js?v=31.0"></script>
+<script src="tasks-periods.js?v=31.0"></script>
+<script src="tasks-model.js?v=31.0"></script>
+<script src="tasks-stats.js?v=31.0"></script>
+<script src="tasks-sheet.js?v=31.0"></script>
+<script src="tasks-ui.js?v=31.0"></script>
+<script src="tasks-form.js?v=31.0"></script>
+<script src="tasks-planning.js?v=31.0"></script>
+<script src="tasks-insights.js?v=31.0"></script>
+<script src="tasks.js?v=31.0"></script>
 </body>
 </html>

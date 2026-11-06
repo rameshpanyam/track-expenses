@@ -1,11 +1,16 @@
 /* ═══════════════════════════════════════════════════════════
-   v30.0 · TASKS MODULE STYLES
-   Deliberately small: the hero card, type chips, form fields,
-   empty state and modals all reuse the generic .savings-* rules
-   in style.css. Only task-specific pieces live here.
+   v31.0 · TASKS / TARGETS STYLES
+   Hero card, horizon chips, buttons, form fields and empty state
+   reuse the generic .savings-* rules in style.css. Only
+   task-specific pieces live here.
    ═══════════════════════════════════════════════════════════ */
 
 #view-tasks { padding: 18px 18px calc(var(--safe-bot) + 100px); }
+
+/* `hidden` must win over any display: rule below */
+#view-tasks [hidden],
+.tasks-form-box [hidden],
+.tasks-plan[hidden] { display: none !important; }
 
 /* ── Progress bar inside the (black) hero card ── */
 .tasks-progress {
@@ -30,22 +35,78 @@
   color: var(--on-dark-2);
 }
 
-/* ── Edit glyph inside a type chip (drawn here so the markup stays clean) ── */
-.tasks-type-bar .savings-pot-edit-btn::before { content: "\270E"; }
+/* ── Four fixed horizons: share the row evenly instead of scrolling ── */
+#tasks-horizon-bar { overflow-x: visible; gap: 6px; }
+#tasks-horizon-bar .savings-pot-chip {
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 9px 4px;
+}
+
+/* ── Previous / this / next period ── */
+.tasks-period-nav {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.tasks-nav-btn,
+.tasks-nav-now {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--f-display);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.tasks-nav-btn { width: 48px; font-size: 22px; line-height: 1; }
+.tasks-nav-now {
+  flex: 1;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.tasks-nav-range {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .08em;
+  color: var(--muted);
+}
+.tasks-nav-btn:focus-visible,
+.tasks-nav-now:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
+
+/* ── Add + Stats buttons side by side ── */
+.tasks-actions { display: flex; gap: 10px; }
+.tasks-actions .savings-add-btn { flex: 1; width: auto; }
+.tasks-stats-btn {
+  padding: 0 18px;
+  background: var(--bg2);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
 
 /* ── Task list ── */
-.tasks-items {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
+.tasks-items { display: flex; flex-direction: column; gap: 8px; }
 .tasks-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
   background: var(--bg2);
   border: 1px solid var(--border);
-  border-left: 4px solid transparent;
   border-radius: var(--radius);
   padding: 14px 16px;
   cursor: pointer;
@@ -53,7 +114,17 @@
   -webkit-tap-highlight-color: transparent;
 }
 .tasks-item:active { transform: scale(.99); }
-.tasks-item.overdue { border-left-color: #C62828; }
+/* Status stripe: an inset rounded bar (a border-left would curve into a crescent) */
+.tasks-item.st-inprogress::before,
+.tasks-item.st-blocked::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 12px; bottom: 12px;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+}
+.tasks-item.st-inprogress::before { background: #E65100; }
+.tasks-item.st-blocked::before    { background: #C62828; }
 
 .tasks-item-meta { min-width: 0; flex: 1; }
 .tasks-item-title {
@@ -62,29 +133,28 @@
   color: var(--text);
   overflow-wrap: anywhere;
 }
-.tasks-item-dates {
+.tasks-item-tags {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 3px;
-  font-family: var(--f-mono);
-  font-size: 10.5px;
-  color: var(--muted);
+  gap: 6px;
+  margin-top: 6px;
 }
-.tasks-item-row3 { margin-top: 6px; }
+.tasks-blocked-reason { margin-top: 6px; font-size: 12px; color: #9E1B28; }
 
-/* Completed: struck through, muted, but still readable */
-.tasks-item.done .tasks-item-title {
+.tasks-item.st-completed .tasks-item-title,
+.tasks-item.st-dropped   .tasks-item-title {
   text-decoration: line-through;
   color: var(--muted);
   font-weight: 500;
 }
-.tasks-item.done .tasks-item-dates { opacity: .8; }
+.tasks-item.st-dropped { opacity: .75; }
 
-.tasks-overdue-tag {
-  background: rgba(198,40,40,.12);
-  color: #B71C1C;
+/* ── Status pill (dark text on a light tint = AA contrast) ── */
+.tasks-status,
+.tasks-carry-tag,
+.tasks-link-tag,
+.tasks-skip-tag {
   border-radius: 4px;
   padding: 2px 7px;
   font-size: 9.5px;
@@ -92,6 +162,17 @@
   letter-spacing: .08em;
   text-transform: uppercase;
 }
+.tasks-status.st-todo       { background: rgba(10,10,10,.08);   color: #3D3B37; }
+.tasks-status.st-started    { background: rgba(21,101,192,.12); color: #0D47A1; }
+.tasks-status.st-inprogress { background: rgba(230,81,0,.14);   color: #8F3200; }
+.tasks-status.st-completed  { background: rgba(31,122,79,.14);  color: #145C3A; }
+.tasks-status.st-blocked    { background: rgba(196,40,54,.12);  color: #9E1B28; }
+.tasks-status.st-dropped    { background: rgba(10,10,10,.06);   color: #57544E; }
+
+.tasks-carry-tag { background: rgba(10,10,10,.06); color: #3D3B37; }
+.tasks-carry-tag.hot { background: rgba(196,40,54,.14); color: #9E1B28; }
+.tasks-link-tag  { background: transparent; color: var(--muted); letter-spacing: .04em; text-transform: none; font-weight: 600; }
+.tasks-skip-tag  { background: rgba(196,40,54,.1); color: #9E1B28; }
 
 /* ── Round checkbox (a real <button role="checkbox">) ── */
 .tasks-check {
@@ -112,11 +193,140 @@
   -webkit-tap-highlight-color: transparent;
 }
 .tasks-check:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
-.tasks-check[aria-checked="true"] {
-  background: #2E7D32;
-  border-color: #2E7D32;
-}
+.tasks-check[aria-checked="true"] { background: #2E7D32; border-color: #2E7D32; }
 .tasks-check[aria-checked="true"]::before { content: "\2713"; }
+
+/* ── Form modal extras ── */
+.tasks-form-box { max-height: 92dvh; overflow-y: auto; }
+/* Long modals scroll, but Save / Close must never scroll away.
+   The box's own bottom padding moves INTO the sticky bar so content
+   can't peek through a gap underneath it. */
+.tasks-form-box { padding-bottom: 0; }
+.tasks-form-box .confirm-actions {
+  position: sticky;
+  bottom: 0;
+  padding: 10px 0 calc(env(safe-area-inset-bottom, 0px) + 20px);
+  background: inherit;
+}
+
+/* Inputs/labels inside wrapper <div>s don't get the flex-column stretch
+   that direct children get, so make them full-width blocks explicitly. */
+.tasks-form-box .savings-form-label,
+.tasks-plan-section .savings-form-label { display: block; }
+.tasks-form-box .savings-form-note,
+.tasks-plan-section .savings-form-note { width: 100%; box-sizing: border-box; }
+.tasks-move-btn,
+.tasks-nudge-btn {
+  background: var(--bg3);
+  border: 1.5px solid var(--border-2);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 11px 14px;
+  cursor: pointer;
+}
+.tasks-move-btn { width: 100%; margin-top: 12px; }
+.tasks-nudge {
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(196,40,54,.08);
+  border: 1px solid rgba(196,40,54,.25);
+  border-radius: var(--radius);
+}
+.tasks-nudge-text { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: #9E1B28; }
+.tasks-nudge-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ═══════════════ Planning overlay + stats modal ═══════════════ */
+.tasks-plan {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  justify-content: center;
+  background: var(--bg);
+  overflow-y: auto;
+}
+.tasks-plan-sheet {
+  width: 100%;
+  max-width: 520px;
+  padding: calc(env(safe-area-inset-top, 0px) + 28px) 20px calc(env(safe-area-inset-bottom, 0px) + 28px);
+}
+.tasks-plan-title { margin: 0; font-family: var(--f-display); font-size: 26px; letter-spacing: -.02em; }
+.tasks-plan-sub { margin: 4px 0 18px; font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.tasks-plan-section { margin-bottom: 22px; }
+.tasks-plan-group {
+  margin: 14px 0 8px;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tasks-plan-summary { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+.tasks-plan-meta { font-size: 11.5px; font-weight: 500; color: var(--muted); }
+.tasks-plan-counter { margin-bottom: 8px; font-size: 13px; font-weight: 600; }
+.tasks-plan-over { color: #9E1B28; }
+
+.tasks-plan-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 12px 14px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.tasks-plan-row-text { min-width: 0; flex: 1; }
+.tasks-plan-row-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.tasks-plan-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+.tasks-plan-add { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.tasks-plan-add-btn {
+  background: var(--text);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 12px;
+  font-family: var(--f-display);
+  font-weight: 700;
+  cursor: pointer;
+}
+.tasks-plan-footer { display: flex; flex-direction: column; gap: 10px; }
+.tasks-plan-footer .confirm-ok,
+.tasks-plan-footer .confirm-cancel { width: 100%; }
+.tasks-plan-later {
+  background: none;
+  border: none;
+  padding: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.tasks-plan-btn:focus-visible,
+.tasks-plan-add-btn:focus-visible,
+.tasks-plan-later:focus-visible,
+.tasks-nudge-btn:focus-visible,
+.tasks-move-btn:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
+
+/* ── History bars ── */
+.tasks-hist-row { margin-bottom: 12px; }
+.tasks-hist-top { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; }
+.tasks-hist-score { font-family: var(--f-mono); font-size: 11px; color: var(--muted); }
+.tasks-hist-bar { height: 6px; margin-top: 5px; background: var(--bg3); border-radius: var(--radius-pill); overflow: hidden; }
+.tasks-hist-fill { height: 100%; background: #2E7D32; border-radius: var(--radius-pill); }
+.tasks-hist-note { margin-top: 4px; font-size: 12px; font-style: italic; color: var(--muted); }
 
 /* Honour reduced-motion preferences */
 @media (prefers-reduced-motion: reduce) {

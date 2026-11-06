@@ -1,17 +1,25 @@
 // Service Worker — cache-first for shell assets, network-first for everything else
-const CACHE_NAME = 'expense-tracker-v30.0';
+const CACHE_NAME = 'expense-tracker-v31.0';
 // Use relative paths so this works on GitHub Pages (e.g. /expense-tracker/index.html)
 const BASE = self.registration.scope;
 const SHELL_ASSETS = [
   BASE,
   BASE + 'index.html',
-  BASE + 'style.css?v=30.0',
-  BASE + 'app.js?v=30.0',
-  BASE + 'features.js?v=30.0',
-  BASE + 'loans.js?v=30.0',
-  BASE + 'savings.js?v=30.0',
-  BASE + 'tasks.js?v=30.0',
-  BASE + 'tasks.css?v=30.0',
+  BASE + 'style.css?v=31.0',
+  BASE + 'app.js?v=31.0',
+  BASE + 'features.js?v=31.0',
+  BASE + 'loans.js?v=31.0',
+  BASE + 'savings.js?v=31.0',
+  BASE + 'tasks-periods.js?v=31.0',
+  BASE + 'tasks-model.js?v=31.0',
+  BASE + 'tasks-stats.js?v=31.0',
+  BASE + 'tasks-sheet.js?v=31.0',
+  BASE + 'tasks-ui.js?v=31.0',
+  BASE + 'tasks-form.js?v=31.0',
+  BASE + 'tasks-planning.js?v=31.0',
+  BASE + 'tasks-insights.js?v=31.0',
+  BASE + 'tasks.js?v=31.0',
+  BASE + 'tasks.css?v=31.0',
   BASE + 'manifest.json',
 ];
 
